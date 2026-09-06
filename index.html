@@ -870,7 +870,7 @@
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 50000;
+            z-index: 99999;
             animation: fadeInModal 0.4s ease;
         }
         @keyframes fadeInModal {
@@ -1636,7 +1636,25 @@
             background: #ff6b9d;
             color: #000;
         }
-    </style>
+    
+#dgxenLogoTitle{
+  cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none;
+  position:relative;z-index:20;outline:none;
+}
+#dgxenLogoTitle.holding{
+  color:var(--accent)!important;
+  text-shadow:0 0 18px var(--accent-glow);
+  transform:scale(1.04);
+  transition:transform .15s,color .15s,text-shadow .15s;
+}
+.cat-mode-bar{
+  display:none;margin:10px 8px 18px;padding:12px;border-radius:14px;
+  border:1px solid var(--glass-border);background:rgba(0,0,0,.2);font-size:12px;font-weight:700;color:var(--text-dim);
+}
+body.cat-world-active .cat-mode-bar{display:block}
+.cat-mode-bar label{display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer;color:var(--text-main)}
+
+</style>
 </head>
 <body>
 
@@ -1681,7 +1699,12 @@
 
     <!-- Sidebar with Premium SVGs -->
     <div class="sidebar glass-panel" style="border-radius: 0 35px 35px 0; border-left: none;">
-        <h1 id="dgxenLogoTitle">DGXEN</h1>
+        <h1 id="dgxenLogoTitle" title="Hold 3s for Cat World">DGXEN</h1>
+        <div class="cat-mode-bar" id="catModeBar">
+          <div style="margin-bottom:6px;opacity:.8;">Cat dance mode</div>
+          <label><input type="radio" name="catMode" id="catModeManual" value="manual" checked> Manual (67s)</label>
+          <label><input type="radio" name="catMode" id="catModeAuto" value="auto"> Auto</label>
+        </div>
         <div class="nav-link active" onclick="switchTab('dashboard', this)" id="nav-dashboard">
             <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
             Dashboard
@@ -2418,121 +2441,12 @@
             } else setGateStatus('Wrong code.');
         }
 
-        // --- Face helpers (browser FaceDetector + simple embedding fallback) ---
-        async function detectOneFace(videoEl) {
-            if (!videoEl || videoEl.readyState < 2) throw new Error('Camera not ready');
-            const w = videoEl.videoWidth,
-                h = videoEl.videoHeight;
-            const canvas = document.createElement('canvas');
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(videoEl, 0, 0);
-            let box = null;
-            if (window.FaceDetector) {
-                const fd = new FaceDetector({ fastMode: false, maxDetectedFaces: 1 });
-                const faces = await fd.detect(canvas);
-                if (faces && faces.length) box = faces[0].boundingBox;
-            }
-            if (!box) {
-                // fallback assumed center — still enforce timing, weaker geometry
-                box = { x: w * 0.3, y: h * 0.2, width: w * 0.4, height: h * 0.5 };
-            }
-            const cx = box.x + box.width / 2,
-                cy = box.y + box.height / 2;
-            const ratio = box.width / Math.max(1, box.height);
-            // Frontal face: roughly square-ish, not narrow side profile
-            if (ratio < 0.55 || ratio > 1.35) throw new Error('Face the screen — no side face');
-            if (box.width < w * 0.16 || box.height < h * 0.16) throw new Error('Move closer — look at the screen');
-            if (Math.abs(cx - w / 2) > w * 0.22 || Math.abs(cy - h / 2) > h * 0.25) throw new Error(
-            'Center your face on screen');
-            // "Eyes open / looking" heuristic: upper third of face must have enough bright variance (open eyes)
-            const sx = Math.max(0, box.x | 0),
-                sy = Math.max(0, box.y | 0);
-            const sw = Math.min(w - sx, box.width | 0),
-                sh = Math.min(h - sy, box.height | 0);
-            const eyeBand = ctx.getImageData(sx, sy, Math.max(1, sw), Math.max(1, Math.floor(sh * 0.45)));
-            let sum = 0,
-                sum2 = 0,
-                n = 0;
-            for (let i = 0; i < eyeBand.data.length; i += 16) {
-                const lum = (eyeBand.data[i] * 3 + eyeBand.data[i + 1] * 6 + eyeBand.data[i + 2]) / 10;
-                sum += lum;
-                sum2 += lum * lum;
-                n++;
-            }
-            const mean = sum / Math.max(1, n);
-            const variance = sum2 / Math.max(1, n) - mean * mean;
-            if (variance < 180) throw new Error('Eyes open and look at the screen');
-            const faceImg = ctx.getImageData(sx, sy, Math.max(1, sw), Math.max(1, sh));
-            return { embed: embedFromImageData(faceImg), box, cx, cy };
-        }
-
-        async function captureFaceDescriptor(videoEl) {
-            // Must look ahead continuously for ~1 second (no closed eyes / side face)
-            const needMs = 1000;
-            const start = Date.now();
-            const embeds = [];
-            let lastCx = null,
-                lastCy = null;
-            while (Date.now() - start < needMs) {
-                const { embed, cx, cy } = await detectOneFace(videoEl);
-                if (lastCx != null) {
-                    if (Math.abs(cx - lastCx) > videoEl.videoWidth * 0.08 || Math.abs(cy - lastCy) > videoEl.videoHeight *
-                        0.08) {
-                        throw new Error('Hold still — look straight for 1 second');
-                    }
-                }
-                lastCx = cx;
-                lastCy = cy;
-                embeds.push(embed);
-                await new Promise(r => setTimeout(r, 120));
-            }
-            if (embeds.length < 3) throw new Error('Look at the screen for a full second');
-            // average embedding
-            const avg = embeds[0].map((_, i) => {
-                let s = 0;
-                embeds.forEach(e => s += e[i]);
-                return +(s / embeds.length).toFixed(6);
-            });
-            return avg;
-        }
-
-        function embedFromImageData(img) {
-            const d = img.data;
-            const bins = new Array(64).fill(0);
-            let n = 0;
-            for (let i = 0; i < d.length; i += 16) {
-                const r = d[i],
-                    g = d[i + 1],
-                    b = d[i + 2];
-                const lum = (r * 3 + g * 6 + b) / 10;
-                const bi = Math.min(63, Math.floor(lum / 4));
-                bins[bi] += 1;
-                n++;
-            }
-            if (n)
-                for (let i = 0; i < bins.length; i++) bins[i] = +(bins[i] / n).toFixed(6);
-            return bins;
-        }
-
-        function faceDistance(a, b) {
-            if (!a || !b || a.length !== b.length) return 99;
-            let s = 0;
-            for (let i = 0; i < a.length; i++) {
-                const d = a[i] - b[i];
-                s += d * d;
-            }
-            return Math.sqrt(s);
-        }
+        /* face removed */
+        function faceDistance(){ return 99; }
 
         async function startCamera(videoId) {
             const v = document.getElementById(videoId);
-            if (!v) throw new Error('No video element');
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-            v.srcObject = stream;
-            v.style.display = 'block';
-            await v.play();
+            if (!v) throw new Error('Camera element missing');
             return v;
         }
 
@@ -2540,12 +2454,7 @@
             setGateStatus('Face unlock removed.');
         }
 
-        async function hasEnrolledFaces() {
-            try {
-                const snap = await get(ref(db, 'settings/adminGate/faces'));
-                return snap.exists() && Object.keys(snap.val() || {}).length > 0;
-            } catch (e) { return false; }
-        }
+        async function hasEnrolledFaces() { return false; }
 
         async function verifyExistingFingerprint() {
             if (!window.PublicKeyCredential) return false;
@@ -2573,24 +2482,7 @@
             } catch (e) { return false; }
         }
 
-        async function verifyExistingFace() {
-            try {
-                const facesSnap = await get(ref(db, 'settings/adminGate/faces'));
-                if (!facesSnap.exists()) return false;
-                const faces = facesSnap.val() || {};
-                const v = await startCamera('secFaceVideo');
-                await new Promise(r => setTimeout(r, 500));
-                const desc = await captureFaceDescriptor(v);
-                if (v.srcObject) v.srcObject.getTracks().forEach(t => t.stop());
-                v.style.display = 'none';
-                let best = 99;
-                for (const id in faces) {
-                    const f = faces[id];
-                    if (f && f.descriptor) best = Math.min(best, faceDistance(desc, f.descriptor));
-                }
-                return best < 0.32;
-            } catch (e) { return false; }
-        }
+        async function verifyExistingFace() { return false; }
 
         async function ensureAdminIdentity(stEl) {
             const fbIds = await getFirebaseFpIds();
@@ -2683,8 +2575,7 @@
 
         window.enrollAdminFace = async function() {
             const st = document.getElementById('secStatus');
-            if (st) { st.style.color = 'var(--error)';
-                st.textContent = 'Face system removed.'; }
+            if (st) { st.style.color = 'var(--text-dim)'; st.textContent = 'Face system removed.'; }
         };
 
         window.changeAdminCode = async function() {
@@ -2742,23 +2633,7 @@
 
         function renderFaceList() {
             const box = document.getElementById('faceList');
-            if (!box) return;
-            get(ref(db, 'settings/adminGate/faces')).then(snap => {
-                if (!snap.exists()) {
-                    box.innerHTML = '<div style="color:var(--text-dim);padding:12px;">No faces enrolled.</div>';
-                    return;
-                }
-                const data = snap.val();
-                box.innerHTML = Object.keys(data).map(id => {
-                    const f = data[id] || {};
-                    return `<div class="mk-item"><div style="font-size:13px;font-weight:700;">Face ID ${f.primary ? '(primary admin)' : ''}
-                    <div style="font-size:11px;color:var(--text-dim);font-family:monospace;word-break:break-all;margin-top:4px;">${id}</div>
-                    <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Delete only via Firebase</div>
-                </div></div>`;
-                }).join('');
-            }).catch(() => {
-                box.innerHTML = '<div style="color:var(--text-dim);padding:12px;">Could not load faces.</div>';
-            });
+            if (box) box.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:8px 0;">Face unlock disabled.</div>';
         }
 
         window.toggleSecurityPanel = function(force) {
@@ -4119,6 +3994,7 @@
             document.getElementById('stat-banned').innerText = bannedCount;
             const liveStat = document.getElementById('stat-live-active');
             if (liveStat) liveStat.innerText = liveCount;
+        try { bindBanButtons(document); } catch (e) {}
         }
 
 
@@ -4219,9 +4095,33 @@
                 if (t.closest('#keyBanModal .btn-confirm') && window.confirmKeyBan) { e.preventDefault();
                     window.confirmKeyBan(); return; }
             } catch (err) { console.error(err); }
-        }, true);
+        }, false);
 
-        window.openGuideModal = () => { document.getElementById('guideModal').style.display = 'flex'; }
+        
+function bindBanButtons(root) {
+  try {
+    const scope = root || document;
+    scope.querySelectorAll('[data-action="ban-device"]').forEach(function(btn) {
+      if (btn.__banBound) return;
+      btn.__banBound = true;
+      btn.addEventListener('click', function(ev) {
+        ev.preventDefault();
+        const id = btn.getAttribute('data-user-id');
+        if (id && window.openBanModal) window.openBanModal(id);
+      });
+    });
+    scope.querySelectorAll('[data-action="ban-key"]').forEach(function(btn) {
+      if (btn.__banBound) return;
+      btn.__banBound = true;
+      btn.addEventListener('click', function(ev) {
+        ev.preventDefault();
+        if (window.banUserKey) window.banUserKey(btn.getAttribute('data-user-id'), btn.getAttribute('data-key') || '');
+      });
+    });
+  } catch (e) { console.warn('bindBan', e); }
+}
+
+window.openGuideModal = () => { document.getElementById('guideModal').style.display = 'flex'; }
         window.openUnbindInfo = () => { document.getElementById('unbindInfoModal').style.display = 'flex'; }
         window.banUserKey = function(userId, keyStr) {
             try {
@@ -4431,123 +4331,142 @@
             }
         }
 
-        // ===== CAT WORLD EASTER EGG (Admin) =====
-        (function() {
-            const HOLD_MS = 3000;
-            let holdTimer = null;
-            let catWorldOn = false;
-            let leafNodes = [];
+        
+// ===== CAT WORLD EASTER EGG (Admin) — robust 3s hold =====
+(function(){
+  const HOLD_MS = 3000;
+  let holdTimer = null;
+  let holdStartX = 0, holdStartY = 0;
+  let catWorldOn = false;
+  let leafNodes = [];
 
-            function spawnLeaves(n) {
-                clearLeaves();
-                for (let i = 0; i < n; i++) {
-                    const el = document.createElement('div');
-                    el.className = 'cat-leaf';
-                    el.textContent = ['🍃', '🌿', '🍀', '🍂'][i % 4];
-                    el.style.left = (Math.random() * 100) + 'vw';
-                    el.style.animationDuration = (7 + Math.random() * 8) + 's';
-                    el.style.animationDelay = (Math.random() * 4) + 's';
-                    el.style.fontSize = (14 + Math.random() * 12) + 'px';
-                    document.body.appendChild(el);
-                    leafNodes.push(el);
-                }
-            }
+  function spawnLeaves(n){
+    clearLeaves();
+    for(let i=0;i<n;i++){
+      const el=document.createElement('div');
+      el.className='cat-leaf';
+      el.textContent=['🍃','🌿','🍀','🍂'][i%4];
+      el.style.left=(Math.random()*100)+'vw';
+      el.style.animationDuration=(7+Math.random()*8)+'s';
+      el.style.animationDelay=(Math.random()*4)+'s';
+      el.style.fontSize=(14+Math.random()*12)+'px';
+      document.body.appendChild(el);
+      leafNodes.push(el);
+    }
+  }
+  function clearLeaves(){
+    leafNodes.forEach(function(n){ try{n.remove()}catch(e){} });
+    leafNodes=[];
+  }
+  function enterCatWorld(){
+    if(catWorldOn) return;
+    // Block if global kill / dead app vibe
+    if(document.body.classList.contains('global-kill-mode')) return;
+    catWorldOn=true;
+    document.body.classList.add('theme-cute','cat-world-active');
+    spawnLeaves(14);
+    try{
+      const m=window.__catDanceMode||'manual';
+      const man=document.getElementById('catModeManual');
+      const aut=document.getElementById('catModeAuto');
+      if(man&&aut){ man.checked=(m!=='auto'); aut.checked=(m==='auto'); }
+    }catch(e){}
+  }
+  function exitCatWorld(){
+    if(!catWorldOn) return;
+    catWorldOn=false;
+    document.body.classList.remove('theme-cute','cat-world-active');
+    clearLeaves();
+  }
+  function toggleCatWorld(){
+    if(catWorldOn) exitCatWorld(); else enterCatWorld();
+  }
 
-            function clearLeaves() {
-                leafNodes.forEach(n => { try { n.remove() } catch (e) {} });
-                leafNodes = [];
-            }
+  function bindLogoHold(){
+    const logo=document.getElementById('dgxenLogoTitle');
+    if(!logo){ console.warn('dgxenLogoTitle missing'); return; }
+    logo.style.cursor='pointer';
+    logo.style.touchAction='manipulation';
 
-            function enterCatWorld() {
-                if (catWorldOn) return;
-                catWorldOn = true;
-                document.body.classList.add('theme-cute', 'cat-world-active');
-                spawnLeaves(14);
-                // sync radios from firebase if already loaded
-                try {
-                    const m = window.__catDanceMode || 'manual';
-                    const man = document.getElementById('catModeManual');
-                    const aut = document.getElementById('catModeAuto');
-                    if (man && aut) { man.checked = (m !== 'auto');
-                        aut.checked = (m === 'auto'); }
-                } catch (e) {}
-            }
+    function clearHold(){
+      if(holdTimer){ clearTimeout(holdTimer); holdTimer=null; }
+      logo.classList.remove('holding');
+    }
+    function startHold(e){
+      if(e && e.type==='mousedown' && e.button!==0) return;
+      clearHold();
+      try{
+        const pt = e.touches && e.touches[0] ? e.touches[0] : e;
+        holdStartX = pt.clientX||0; holdStartY = pt.clientY||0;
+      }catch(err){ holdStartX=0; holdStartY=0; }
+      logo.classList.add('holding');
+      holdTimer=setTimeout(function(){
+        holdTimer=null;
+        logo.classList.remove('holding');
+        if(navigator.vibrate) try{navigator.vibrate(30)}catch(e){}
+        toggleCatWorld();
+      }, HOLD_MS);
+    }
+    function moveHold(e){
+      if(!holdTimer) return;
+      try{
+        const pt = e.touches && e.touches[0] ? e.touches[0] : e;
+        const dx=(pt.clientX||0)-holdStartX, dy=(pt.clientY||0)-holdStartY;
+        if(dx*dx+dy*dy > 100) clearHold(); // finger moved ~10px → cancel
+      }catch(err){}
+    }
 
-            function exitCatWorld() {
-                if (!catWorldOn) return;
-                catWorldOn = false;
-                document.body.classList.remove('theme-cute', 'cat-world-active');
-                clearLeaves();
-            }
+    ['pointerdown','touchstart','mousedown'].forEach(function(ev){
+      logo.addEventListener(ev, startHold, {passive:true});
+    });
+    ['pointerup','pointercancel','pointerleave','touchend','touchcancel','mouseup','mouseleave'].forEach(function(ev){
+      logo.addEventListener(ev, clearHold, {passive:true});
+    });
+    ['pointermove','touchmove','mousemove'].forEach(function(ev){
+      logo.addEventListener(ev, moveHold, {passive:true});
+    });
+    logo.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+  }
 
-            function toggleCatWorld() {
-                if (catWorldOn) exitCatWorld();
-                else enterCatWorld();
-            }
+  function bindModeRadios(){
+    const apply=async function(mode){
+      window.__catDanceMode=mode;
+      try{ await set(ref(db,'settings/catDanceMode'), mode); }catch(e){ console.warn('catDanceMode write', e); }
+    };
+    const man=document.getElementById('catModeManual');
+    const aut=document.getElementById('catModeAuto');
+    if(man) man.addEventListener('change',function(){ if(man.checked) apply('manual'); });
+    if(aut) aut.addEventListener('change',function(){ if(aut.checked) apply('auto'); });
+  }
 
-            function bindLogoHold() {
-                const logo = document.getElementById('dgxenLogoTitle');
-                if (!logo) return;
-                const start = (e) => {
-                    if (holdTimer) clearTimeout(holdTimer);
-                    holdTimer = setTimeout(() => {
-                        holdTimer = null;
-                        if (navigator.vibrate) try { navigator.vibrate(30) } catch (e) {}
-                        toggleCatWorld();
-                    }, HOLD_MS);
-                };
-                const cancel = () => { if (holdTimer) { clearTimeout(holdTimer);
-                        holdTimer = null; } };
-                logo.addEventListener('pointerdown', start);
-                logo.addEventListener('pointerup', cancel);
-                logo.addEventListener('pointerleave', cancel);
-                logo.addEventListener('pointercancel', cancel);
-                logo.addEventListener('contextmenu', e => e.preventDefault());
-            }
+  function listenFirebaseMode(){
+    try{
+      onValue(ref(db,'settings/catDanceMode'), function(snap){
+        let mode='manual';
+        if(snap.exists()){
+          const v=snap.val();
+          if(v==='auto'||v==='manual') mode=v;
+        }
+        window.__catDanceMode=mode;
+        const man=document.getElementById('catModeManual');
+        const aut=document.getElementById('catModeAuto');
+        if(man&&aut){ man.checked=(mode==='manual'); aut.checked=(mode==='auto'); }
+      });
+    }catch(e){ console.warn('catDanceMode listen', e); }
+  }
 
-            function bindModeRadios() {
-                const apply = async (mode) => {
-                    window.__catDanceMode = mode;
-                    try { await set(ref(db, 'settings/catDanceMode'), mode); } catch (e) { console.warn(
-                            'catDanceMode write', e); }
-                };
-                const man = document.getElementById('catModeManual');
-                const aut = document.getElementById('catModeAuto');
-                if (man) man.addEventListener('change', () => { if (man.checked) apply('manual'); });
-                if (aut) aut.addEventListener('change', () => { if (aut.checked) apply('auto'); });
-            }
+  function boot(){
+    bindLogoHold();
+    bindModeRadios();
+    listenFirebaseMode();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+  // Retry bind if logo was late
+  setTimeout(bindLogoHold, 800);
+})();
 
-            function listenFirebaseMode() {
-                try {
-                    onValue(ref(db, 'settings/catDanceMode'), (snap) => {
-                        let mode = 'manual';
-                        if (snap.exists()) {
-                            const v = snap.val();
-                            if (v === 'auto' || v === 'manual') mode = v;
-                        }
-                        window.__catDanceMode = mode;
-                        const man = document.getElementById('catModeManual');
-                        const aut = document.getElementById('catModeAuto');
-                        if (man && aut) { man.checked = (mode === 'manual');
-                            aut.checked = (mode === 'auto'); }
-                    });
-                } catch (e) { console.warn('catDanceMode listen', e); }
-            }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => { bindLogoHold();
-                    bindModeRadios();
-                    listenFirebaseMode(); });
-            } else {
-                bindLogoHold();
-                bindModeRadios();
-                listenFirebaseMode();
-            }
-        })();
-
-
-
-        // ===== NOTICE PANEL =====
+// ===== NOTICE PANEL =====
         window.toggleNoticePanel = function() {
             const p = document.getElementById('noticePanel');
             const c = document.getElementById('noticeChip');
