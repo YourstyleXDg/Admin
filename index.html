@@ -310,7 +310,8 @@
         @keyframes pulseSkeleton { 0% { opacity: 0.3; } 50% { opacity: 0.7; } 100% { opacity: 0.3; } }
 
         /* --- Modals --- */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); display: none; justify-content: center; align-items: center; z-index: 50000; animation: fadeInModal 0.4s ease; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); display: none; justify-content: center; align-items: center; z-index: 99999; animation: fadeInModal 0.4s ease; }
+        .modal-overlay.is-open { display: flex !important; pointer-events: auto !important; }
         @keyframes fadeInModal { from { opacity: 0; } to { opacity: 1; } }
         .modal { background: var(--glass-bg); backdrop-filter: blur(50px) saturate(200%); -webkit-backdrop-filter: blur(50px) saturate(200%); border: 1px solid var(--glass-border); border-top: 1px solid var(--glass-shine); border-left: 1px solid var(--glass-shine); border-radius: 40px; padding: 50px; width: 90%; max-width: 460px; text-align: center; box-shadow: 0 40px 100px rgba(0,0,0,0.8); transform: scale(0.85); opacity: 0; animation: scaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes scaleUp { to { transform: scale(1); opacity: 1; } }
@@ -1222,7 +1223,7 @@ body.cat-world-active #cat-world{display:block;opacity:1;transform:translateY(0)
             <p>Enter a custom reason for this ban (User will see this).</p>
             <input type="text" id="banReasonInput" placeholder="e.g., Suspicious activity detected." style="width: 100%; margin-bottom: 0;">
             <div class="modal-btns">
-                <button class="btn-confirm" onclick="confirmBan()">CONFIRM BAN</button>
+                <button type="button" class="btn-confirm" onclick="window.confirmBan()">CONFIRM BAN</button>
                 <button class="btn-cancel" onclick="closeModals()">CANCEL</button>
             </div>
         </div>
@@ -1234,7 +1235,7 @@ body.cat-world-active #cat-world{display:block;opacity:1;transform:translateY(0)
             <p style="margin-bottom: 10px;">Key: <br><span id="keyBanTarget" style="color: var(--accent); font-family: monospace; font-size: 19px; font-weight: 800; display: inline-block; margin-top: 10px;"></span></p>
             <input type="text" id="keyBanReasonInput" placeholder="e.g., Key was shared publicly." style="width: 100%; margin-top: 15px;">
             <div class="modal-btns">
-                <button class="btn-confirm" onclick="confirmKeyBan()">CONFIRM BAN</button>
+                <button type="button" class="btn-confirm" onclick="window.confirmKeyBan()">CONFIRM BAN</button>
                 <button class="btn-cancel" onclick="closeModals()">CANCEL</button>
             </div>
         </div>
@@ -2594,7 +2595,10 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         const modals = ['banModal', 'resetModal', 'keyBanModal', 'guideModal', 'confirmActionModal', 'unbindInfoModal'];
         modals.forEach(id => {
             const el = document.getElementById(id);
-            if(el) el.style.display = 'none';
+            if(el) {
+                el.style.display = 'none';
+                el.classList.remove('is-open');
+            }
         });
     }
 
@@ -3098,7 +3102,7 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
                         <div class="user-id copyable" style="cursor:pointer;" title="Click to copy ID" data-copy="${user.id}">ID: ${user.id}</div>
                         ${nativeId ? `<div class="copyable" style="font-size:10px;color:var(--text-dim);margin:0 0 8px;font-family:monospace;cursor:pointer;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Click to copy native id" data-copy="${String(nativeId).replace(/"/g,'&quot;')}">Dev: ${nativeId}</div>` : ''}
                         <div class="copyable" style="font-size:11px;font-weight:800;color:var(--accent);margin:0 0 12px;padding:6px 10px;border-radius:8px;background:rgba(0,255,136,0.1);cursor:pointer;" title="Click to copy version" data-copy="${resolveAppVersion(user)}">v ${resolveAppVersion(user)}</div>
-                        <button type="button" class="btn-full bg-warn" data-action="ban-device" data-user-id="${user.id}" onclick="openBanModal('${user.id}')">BAN DEVICE</button>
+                        <button type="button" class="btn-full bg-warn ban-device-btn" data-action="ban-device" data-user-id="${String(user.id).replace(/"/g,'&quot;')}">BAN DEVICE</button>
                     </div>`;
             }
 
@@ -3111,7 +3115,7 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
                         <div class="user-name copyable" style="cursor:pointer; margin-top:6px; padding-right:100px;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}</div>
                         <div class="user-id copyable" style="cursor:pointer;" title="Click to copy ID" data-copy="${user.id}">ID: ${user.id}</div>
                         <div style="font-size:13px;color:var(--text-dim);margin:12px 0 8px;font-family:monospace;word-break:break-all;" class="copyable" data-copy="${user.lastGeneratedKey || ''}" title="Click to copy key">${user.lastGeneratedKey || '—'}</div>
-                        <button type="button" class="btn-full bg-warn" data-action="ban-key" data-user-id="${user.id}" data-key="${String(user.lastGeneratedKey||'').replace(/"/g,'&quot;')}" onclick="banUserKey('${user.id}', this.getAttribute('data-key'))">BAN KEY</button>
+                        <button type="button" class="btn-full bg-warn ban-key-btn" data-action="ban-key" data-user-id="${String(user.id).replace(/"/g,'&quot;')}" data-key="${String(user.lastGeneratedKey||'').replace(/"/g,'&quot;')}">BAN KEY</button>
                     </div>`;
             }
         });
@@ -3134,88 +3138,78 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
     }
 
     
-// ===== RELIABLE BAN CLICKS (capture phase) =====
-document.addEventListener('click', function(e){
-  try {
-    const t = e.target;
-    if (!t || !t.closest) return;
-    const banDev = t.closest('button[data-action="ban-device"]');
+
+// ===== BAN / KEY BAN — bubble delegation (no capture, no stopPropagation) =====
+(function(){
+  if (window.__banDelegateBound) return;
+  window.__banDelegateBound = true;
+  document.addEventListener('click', function(e){
+    const banDev = e.target.closest('[data-action="ban-device"], .ban-device-btn');
     if (banDev) {
-      /* allow bubble + inline onclick */
       const id = banDev.getAttribute('data-user-id');
-      if (id && window.openBanModal) window.openBanModal(id);
+      if (id) window.openBanModal(id);
       return;
     }
-    // fallback: text BAN DEVICE
-    const anyBtn = t.closest('button.btn-full');
-    if (anyBtn && /BAN DEVICE/i.test(anyBtn.textContent||'')) {
-      /* allow bubble + inline onclick */
-      let id = anyBtn.getAttribute('data-user-id');
-      if (!id) {
-        const oc = anyBtn.getAttribute('onclick') || '';
-        const m = oc.match(/openBanModal\(['"]([^'"]+)['"]\)/);
-        if (m) id = m[1];
-      }
-      if (id && window.openBanModal) window.openBanModal(id);
+    const banKey = e.target.closest('[data-action="ban-key"], .ban-key-btn');
+    if (banKey) {
+      window.banUserKey(banKey.getAttribute('data-user-id'), banKey.getAttribute('data-key') || '');
       return;
     }
-    const banKeyBtn = t.closest('button[data-action="ban-key"]');
-    if (banKeyBtn) {
-      /* allow bubble + inline onclick */
-      if (window.banUserKey) window.banUserKey(banKeyBtn.getAttribute('data-user-id'), banKeyBtn.getAttribute('data-key')||'');
-      return;
-    }
-    if (t.closest('#banModal .btn-confirm') && window.confirmBan) {
-      window.confirmBan();
-      return;
-    }
-    if (t.closest('#keyBanModal .btn-confirm') && window.confirmKeyBan) {
-      window.confirmKeyBan();
-      return;
-    }
-  } catch (err) { console.error(err); }
-}, true);
+  }, false);
+})();
 
 window.openGuideModal = () => { document.getElementById('guideModal').style.display = 'flex'; }
     window.openUnbindInfo = () => { document.getElementById('unbindInfoModal').style.display = 'flex'; }
     window.banUserKey = function(userId, keyStr) {
+        if (!keyStr) {
+            if (typeof showConfirm === 'function') showConfirm("Error", "This user has no active key to ban.", null);
+            return;
+        }
+        pendingKeyToBan = String(keyStr);
+        window.__banKeyUserId = userId;
+        window.__banKeyFromActive = true;
         try {
-            if (!keyStr) return showConfirm("Error", "This user has no active key to ban.", null);
-            pendingKeyToBan = String(keyStr);
-            window.__banKeyUserId = userId;
-            window.__banKeyFromActive = true;
             const reasonEl = document.getElementById('keyBanReasonInput');
             if (reasonEl) reasonEl.value = 'Ban: generate a new key to continue.';
             const t = document.getElementById('keyBanTarget');
             if (t) t.innerText = String(keyStr);
             const modal = document.getElementById('keyBanModal');
-            if (modal) modal.style.display = 'flex';
-        } catch (e) { showConfirm("Error", String(e.message||e), null); }
+            if (modal) {
+                modal.classList.add('is-open');
+                modal.style.display = 'flex';
+            }
+        } catch (err) { console.error('banUserKey', err); }
     };
 
     window.openBanModal = function(userId) {
+        window.__currentBanUserId = String(userId || '');
+        currentBanUserId = window.__currentBanUserId;
         try {
-            currentBanUserId = userId;
             const inp = document.getElementById('banReasonInput');
             if (inp) inp.value = '';
             const modal = document.getElementById('banModal');
-            if (!modal) { alert('Ban modal missing'); return; }
-            modal.style.setProperty('display', 'flex', 'important');
-            modal.style.setProperty('z-index', '50000', 'important');
-            modal.style.setProperty('pointer-events', 'auto', 'important');
-        } catch (e) { alert('Ban error: '+(e.message||e)); }
+            if (!modal) { console.error('banModal missing'); return; }
+            modal.classList.add('is-open');
+            modal.style.display = 'flex';
+        } catch (err) { console.error('openBanModal', err); }
     };
     
-    window.confirmBan = async function() { 
+    window.confirmBan = async function() {
         try {
-            const uid = currentBanUserId;
-            if (!uid) return showConfirm("Error", "No user selected.", null);
+            const uid = window.__currentBanUserId || currentBanUserId;
+            if (!uid) {
+                if (typeof showConfirm === 'function') showConfirm("Error", "No user selected.", null);
+                return;
+            }
             const reasonEl = document.getElementById('banReasonInput');
             const reason = (reasonEl && reasonEl.value.trim()) || "violations of terms!";
             closeModals();
             await update(ref(db, 'users/' + uid), { status: 'banned', banReason: reason });
             currentBanUserId = null;
-        } catch (e) { showConfirm("Error", "Ban failed: " + (e.message||e), null); }
+            window.__currentBanUserId = null;
+        } catch (e) {
+            if (typeof showConfirm === 'function') showConfirm("Error", "Ban failed: " + (e.message||e), null);
+        }
     };
     window.unbanUser = async function(userId) {
         try { await update(ref(db, 'users/' + userId), { status: 'active', banReason: null }); }
