@@ -1431,37 +1431,41 @@
             padding: 12px 10px;
             border-bottom: 1px solid var(--glass-border);
             font-size: 13px;
-        }   
-.cloud-preview-drawer {
-    grid-column: 1 / -1;
-    padding: 12px 0;
-}
-.cloud-preview-drawer img,
-.cloud-preview-drawer video {
-    max-width: 100%;
-    max-height: 300px;
-    border-radius: 8px;
-}
-.cloud-preview-drawer iframe {
-    width: 100%;
-    height: 320px;
-    border: none;
-    border-radius: 8px;
-}
-.cloud-preview-drawer pre {
-    background: rgba(0,0,0,0.6);
-    color: var(--accent);
-    padding: 12px;
-    border-radius: 8px;
-    max-height: 240px;
-    overflow: auto;
-    text-align: left;
-    font-family: monospace;
-    font-size: 12px;
-    margin: 0;
-    white-space: pre-wrap;
-    word-break: break-all;
-}
+        }
+
+        .cloud-preview-drawer {
+            width: 100% !important;
+            padding: 12px 0;
+            display: block;
+            clear: both;
+        }
+        .cloud-preview-drawer img,
+        .cloud-preview-drawer video {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+        }
+        .cloud-preview-drawer iframe {
+            width: 100%;
+            height: 320px;
+            border: none;
+            border-radius: 8px;
+        }
+        .cloud-preview-drawer pre {
+            background: rgba(0,0,0,0.6);
+            color: var(--accent);
+            padding: 12px;
+            border-radius: 8px;
+            max-height: 240px;
+            overflow: auto;
+            text-align: left;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
         .cloud-file-row .name {
             flex: 1;
             font-weight: 700;
@@ -5743,81 +5747,80 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
           return;
         }
 
+        // ===== FILE LIST WITH PREVIEW BUTTON =====
         box.innerHTML =
-  files
-    .map(
-      f => {
+          files
+            .map(
+              f => {
 
-        const name =
-          String(
-            f.fileName || ''
-          )
-            .replace(
-              /"/g,
-              '&quot;'
+                const name =
+                  String(
+                    f.fileName || ''
+                  )
+                    .replace(
+                      /"/g,
+                      '&quot;'
+                    )
+                    .replace(
+                      /</g,
+                      '&lt;'
+                    );
+
+                const size =
+                  formatBytes(
+                    f.contentLength
+                  );
+
+                const fid =
+                  String(
+                    f.fileId || ''
+                  )
+                    .replace(
+                      /"/g,
+                      '&quot;'
+                    );
+
+                // ---- File type detection ----
+                const ext = name.split('.').pop().toLowerCase();
+                const hasPreview = ['jpg','jpeg','png','gif','webp','svg','mp3','wav','ogg','m4a','mp4','webm','mov','pdf','txt','md','json','csv','log','html','js','css'].includes(ext);
+
+                return (
+                  '<div class="cloud-file-row">' +
+
+                  '<div class="name">' +
+                  name +
+
+                  '<div class="meta">' +
+                  size +
+                  '</div>' +
+
+                  '</div>' +
+
+                  (hasPreview ? '<button class="btn" type="button" style="background:rgba(0,255,136,.15);color:var(--accent);" data-exp-id="' + fid + '" data-exp-name="' + name + '">👁</button>' : '') +
+
+                  '<button class="btn" type="button" style="background:rgba(92,200,255,.15);color:#5cc8ff;" data-dl-name="' +
+                  name +
+                  '" data-dl-id="' +
+                  fid +
+                  '">DL</button>' +
+
+                  '<button class="btn" type="button" style="background:rgba(255,59,48,.15);color:var(--error);" data-del-name="' +
+                  name +
+                  '" data-del-id="' +
+                  fid +
+                  '">DEL</button>' +
+
+                  '</div>'
+                );
+              }
             )
-            .replace(
-              /</g,
-              '&lt;'
-            );
+            .join('');
 
-        const size =
-          formatBytes(
-            f.contentLength
-          );
-
-        const fid =
-          String(
-            f.fileId || ''
-          )
-            .replace(
-              /"/g,
-              '&quot;'
-            );
-
-        // ---- File type detection ----
-        const ext = name.split('.').pop().toLowerCase();
-        const hasPreview = ['jpg','jpeg','png','gif','webp','svg','mp3','wav','ogg','m4a','mp4','webm','mov','pdf','txt','md','json','csv','log','html','js','css'].includes(ext);
-
-        return (
-          '<div class="cloud-file-row">' +
-
-          '<div class="name">' +
-          name +
-
-          '<div class="meta">' +
-          size +
-          '</div>' +
-
-          '</div>' +
-
-          (hasPreview ? '<button class="btn" type="button" style="background:rgba(0,255,136,.15);color:var(--accent);" data-exp-id="' + fid + '" data-exp-name="' + name + '">👁</button>' : '') +
-
-          '<button class="btn" type="button" style="background:rgba(92,200,255,.15);color:#5cc8ff;" data-dl-name="' +
-          name +
-          '" data-dl-id="' +
-          fid +
-          '">DL</button>' +
-
-          '<button class="btn" type="button" style="background:rgba(255,59,48,.15);color:var(--error);" data-del-name="' +
-          name +
-          '" data-del-id="' +
-          fid +
-          '">DEL</button>' +
-
-          '</div>'
-        );
-      }
-    )
-    .join('');
-
+        // ===== DOWNLOAD BUTTONS =====
         box
-          .querySelectorAll(
-            '[data-dl-name]'
-          )
+          .querySelectorAll('[data-dl-name]')
           .forEach(
             btn => {
-
               btn.addEventListener(
                 'click',
                 () =>
@@ -5833,74 +5836,83 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             }
           );
 
+        // ===== DELETE BUTTONS (with confirmation) =====
         box
-          .querySelectorAll(
-            '[data-del-name]'
-          )
+          .querySelectorAll('[data-del-name]')
           .forEach(
             btn => {
-
               btn.addEventListener(
                 'click',
-                () =>
-                  deleteCloudFile(
-                    btn.getAttribute(
-                      'data-del-name'
-                    ),
-                    btn.getAttribute(
-                      'data-del-id'
-                    )    
-                  )
+                function(e) {
+                  const fileName = this.getAttribute('data-del-name');
+                  const fileId = this.getAttribute('data-del-id');
+                  
+                  // Show confirm dialog
+                  if (confirm('⚠️ Are you sure you want to delete "' + fileName + '"? This action cannot be undone.')) {
+                    deleteCloudFile(fileName, fileId);
+                  }
+                }
               );
-// ---- Preview button listener ----
-box.querySelectorAll('[data-exp-id]').forEach(btn => {
-  btn.addEventListener('click', async function() {
-    const fileId = this.getAttribute('data-exp-id');
-    const fileName = this.getAttribute('data-exp-name');
-    const row = this.closest('.cloud-file-row');
-    let drawer = row.querySelector('.cloud-preview-drawer');
-    if (drawer) { drawer.remove(); return; }
-    drawer = document.createElement('div');
-    drawer.className = 'cloud-preview-drawer';
-    drawer.style.cssText = 'grid-column:1/-1;padding:12px 0;border-top:1px solid var(--glass-border);';
-    drawer.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">Loading preview...</div>';
-    row.after(drawer);
-    try {
-      await authorizeB2();
-      const authRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_download_authorization', {
-        method: 'POST',
-        headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bucketId: b2.bucketId, fileNamePrefix: fileName, validDurationInSeconds: 3600 })
-      });
-      const authData = await authRes.json().catch(() => ({}));
-      if (!authRes.ok) throw new Error(authData.message || 'Auth failed');
-      const path = fileName.split('/').map(encodeURIComponent).join('/');
-      const fileUrl = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path + '?Authorization=' + encodeURIComponent(authData.authorizationToken);
-      const ext = fileName.split('.').pop().toLowerCase();
-      if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) {
-        drawer.innerHTML = '<img src="' + fileUrl + '" alt="Preview" style="max-width:100%;max-height:300px;border-radius:8px;">';
-      } else if (['mp3','wav','ogg','m4a'].includes(ext)) {
-        drawer.innerHTML = '<audio controls src="' + fileUrl + '" style="width:100%;"></audio>';
-      } else if (['mp4','webm','mov'].includes(ext)) {
-        drawer.innerHTML = '<video controls src="' + fileUrl + '" style="max-width:100%;max-height:300px;border-radius:8px;"></video>';
-      } else if (['pdf'].includes(ext)) {
-        drawer.innerHTML = '<iframe src="' + fileUrl + '" style="width:100%;height:320px;border:none;border-radius:8px;"></iframe>';
-      } else if (['txt','md','json','csv','log','html','js','css'].includes(ext)) {
-        drawer.innerHTML = '<div style="color:var(--text-dim);font-size:11px;margin-bottom:6px;">📄 Reading text/code...</div>';
-        const textRes = await fetch(fileUrl);
-        const textData = await textRes.text();
-        const safeText = textData.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        drawer.innerHTML = '<pre style="background:rgba(0,0,0,0.6);color:var(--accent);padding:12px;border-radius:8px;max-height:240px;overflow:auto;text-align:left;font-family:monospace;font-size:12px;margin:0;white-space:pre-wrap;word-break:break-all;">' + safeText + '</pre>';
-      } else {
-        drawer.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">No preview available for this file type.</div>';
-      }
-    } catch (e) {
-      drawer.innerHTML = '<div style="color:var(--error);font-size:13px;">❌ ' + (e.message || 'Preview failed') + '</div>';
-    }
-  });
-});
             }
           );
+
+        // ===== PREVIEW BUTTONS (FIXED: only one preview at a time) =====
+        box.querySelectorAll('[data-exp-id]').forEach(btn => {
+          btn.addEventListener('click', async function(e) {
+            e.stopPropagation();
+            
+            const fileId = this.getAttribute('data-exp-id');
+            const fileName = this.getAttribute('data-exp-name');
+            const row = this.closest('.cloud-file-row');
+            
+            // Remove any existing preview drawer in this row (toggle)
+            let drawer = row.querySelector('.cloud-preview-drawer');
+            if (drawer) { drawer.remove(); return; }
+            
+            // Also remove any other open drawers (only one preview at a time)
+            document.querySelectorAll('.cloud-preview-drawer').forEach(d => d.remove());
+            
+            drawer = document.createElement('div');
+            drawer.className = 'cloud-preview-drawer';
+            drawer.style.cssText = 'width:100%;padding:12px 0;border-top:1px solid var(--glass-border);';
+            drawer.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">Loading preview...</div>';
+            row.after(drawer);
+            
+            try {
+              await authorizeB2();
+              const authRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_download_authorization', {
+                method: 'POST',
+                headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bucketId: b2.bucketId, fileNamePrefix: fileName, validDurationInSeconds: 3600 })
+              });
+              const authData = await authRes.json().catch(() => ({}));
+              if (!authRes.ok) throw new Error(authData.message || 'Auth failed');
+              const path = fileName.split('/').map(encodeURIComponent).join('/');
+              const fileUrl = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path + '?Authorization=' + encodeURIComponent(authData.authorizationToken);
+              const ext = fileName.split('.').pop().toLowerCase();
+              
+              if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) {
+                drawer.innerHTML = '<img src="' + fileUrl + '" alt="Preview" style="max-width:100%;max-height:300px;border-radius:8px;">';
+              } else if (['mp3','wav','ogg','m4a'].includes(ext)) {
+                drawer.innerHTML = '<audio controls src="' + fileUrl + '" style="width:100%;"></audio>';
+              } else if (['mp4','webm','mov'].includes(ext)) {
+                drawer.innerHTML = '<video controls src="' + fileUrl + '" style="max-width:100%;max-height:300px;border-radius:8px;"></video>';
+              } else if (['pdf'].includes(ext)) {
+                drawer.innerHTML = '<iframe src="' + fileUrl + '" style="width:100%;height:320px;border:none;border-radius:8px;"></iframe>';
+              } else if (['txt','md','json','csv','log','html','js','css'].includes(ext)) {
+                drawer.innerHTML = '<div style="color:var(--text-dim);font-size:11px;margin-bottom:6px;">📄 Reading text/code...</div>';
+                const textRes = await fetch(fileUrl);
+                const textData = await textRes.text();
+                const safeText = textData.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                drawer.innerHTML = '<pre style="background:rgba(0,0,0,0.6);color:var(--accent);padding:12px;border-radius:8px;max-height:240px;overflow:auto;text-align:left;font-family:monospace;font-size:12px;margin:0;white-space:pre-wrap;word-break:break-all;">' + safeText + '</pre>';
+              } else {
+                drawer.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">No preview available for this file type.</div>';
+              }
+            } catch (e) {
+              drawer.innerHTML = '<div style="color:var(--error);font-size:13px;">❌ ' + (e.message || 'Preview failed') + '</div>';
+            }
+          });
+        });
 
         setStatus(
           'Files synced.',
@@ -5930,10 +5942,6 @@ box.querySelectorAll('[data-exp-id]').forEach(btn => {
     };
 
   // =========================================================
-  // DOWNLOAD
-  // =========================================================
-
-    // =========================================================
   // DOWNLOAD (Direct Native Fetch)
   // =========================================================
 
@@ -5997,63 +6005,67 @@ box.querySelectorAll('[data-exp-id]').forEach(btn => {
   // DELETE
   // =========================================================
 
-    // =========================================================
-  // DOWNLOAD (Direct Native Fetch)
-  // =========================================================
-
-  async function downloadCloudFile(
+  async function deleteCloudFile(
     fileName,
     fileId
   ) {
 
+    if (!fileId)
+      return;
+
     try {
+
       await authorizeB2();
 
-      const authRes = await b2Fetch(
-          b2.apiUrl + '/b2api/v2/b2_get_download_authorization',
+      const res =
+        await b2Fetch(
+          b2.apiUrl +
+          '/b2api/v2/b2_delete_file_version',
           {
             method: 'POST',
+
             headers: {
-              Authorization: b2.authToken,
-              'Content-Type': 'application/json'
+              Authorization:
+                b2.authToken,
+
+              'Content-Type':
+                'application/json'
             },
-            body: JSON.stringify({
-                bucketId: b2.bucketId,
-                fileNamePrefix: fileName,
-                validDurationInSeconds: 3600
-            })
+
+            body:
+              JSON.stringify({
+                fileName:
+                  fileName,
+
+                fileId:
+                  fileId
+              })
           }
-      );
+        );
 
-      const authData = await authRes.json().catch(() => ({}));
-      if (!authRes.ok) {
-        throw new Error(authData.message || 'Download auth failed');
-      }
-
-      const path = fileName.split('/').map(encodeURIComponent).join('/');
-      const url = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path + '?Authorization=' + encodeURIComponent(authData.authorizationToken);
-
-      // --- DIRECT NATIVE FETCH FOR DOWNLOAD (Bypass Proxy) ---
-      const res = await fetch(url, { method: 'GET' });
+      const data =
+        await res.json()
+          .catch(
+            () => ({})
+          );
 
       if (!res.ok) {
-        throw new Error('Download failed (' + res.status + ')');
+
+        throw new Error(
+          data.message ||
+          'Delete failed'
+        );
       }
 
-      const blob = await res.blob();
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = fileName.split('/').pop() || 'download';
-      document.body.appendChild(a);
-      a.click();
-      
-      setTimeout(() => {
-          URL.revokeObjectURL(a.href);
-          a.remove();
-      }, 2000);
+      await refreshCloudFiles();
 
     } catch (e) {
-      setStatus('Download: ' + explainFetchError(e), false);
+
+      setStatus(
+        'Delete: ' +
+        explainFetchError(e),
+        false
+      );
     }
   }
 
