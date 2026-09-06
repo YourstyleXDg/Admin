@@ -5850,142 +5850,63 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   // DOWNLOAD
   // =========================================================
 
+    // =========================================================
+  // DOWNLOAD (Direct Native Fetch)
+  // =========================================================
+
   async function downloadCloudFile(
     fileName,
     fileId
   ) {
 
     try {
-
       await authorizeB2();
 
-      const authRes =
-        await b2Fetch(
-          b2.apiUrl +
-          '/b2api/v2/b2_get_download_authorization',
+      const authRes = await b2Fetch(
+          b2.apiUrl + '/b2api/v2/b2_get_download_authorization',
           {
             method: 'POST',
-
             headers: {
-              Authorization:
-                b2.authToken,
-
-              'Content-Type':
-                'application/json'
+              Authorization: b2.authToken,
+              'Content-Type': 'application/json'
             },
-
-            body:
-              JSON.stringify({
-                bucketId:
-                  b2.bucketId,
-
-                fileNamePrefix:
-                  fileName,
-
-                validDurationInSeconds:
-                  3600
-              })
+            body: JSON.stringify({
+                bucketId: b2.bucketId,
+                fileNamePrefix: fileName,
+                validDurationInSeconds: 3600
+            })
           }
-        );
+      );
 
-      const authData =
-        await authRes.json()
-          .catch(
-            () => ({})
-          );
-
+      const authData = await authRes.json().catch(() => ({}));
       if (!authRes.ok) {
-
-        throw new Error(
-          authData.message ||
-          'Download auth failed'
-        );
+        throw new Error(authData.message || 'Download auth failed');
       }
 
-      const path =
-        fileName
-          .split('/')
-          .map(
-            encodeURIComponent
-          )
-          .join('/');
+      const path = fileName.split('/').map(encodeURIComponent).join('/');
+      const url = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path + '?Authorization=' + encodeURIComponent(authData.authorizationToken);
 
-      const url =
-        b2.downloadUrl +
-        '/file/' +
-        encodeURIComponent(
-          b2.bucketName
-        ) +
-        '/' +
-        path +
-        '?Authorization=' +
-        encodeURIComponent(
-          authData.authorizationToken
-        );
-
-      const res =
-        await b2Fetch(
-          url,
-          {
-            method: 'GET',
-            binary: true
-          }
-        );
+      // --- DIRECT NATIVE FETCH FOR DOWNLOAD (Bypass Proxy) ---
+      const res = await fetch(url, { method: 'GET' });
 
       if (!res.ok) {
-
-        throw new Error(
-          'Download failed (' +
-          res.status +
-          ')'
-        );
+        throw new Error('Download failed (' + res.status + ')');
       }
 
-      const blob =
-        await res.blob();
-
-      const a =
-        document.createElement(
-          'a'
-        );
-
-      a.href =
-        URL.createObjectURL(
-          blob
-        );
-
-      a.download =
-        fileName
-          .split('/')
-          .pop() ||
-        'download';
-
-      document.body.appendChild(
-        a
-      );
-
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName.split('/').pop() || 'download';
+      document.body.appendChild(a);
       a.click();
-
-      setTimeout(
-        () => {
-
-          URL.revokeObjectURL(
-            a.href
-          );
-
+      
+      setTimeout(() => {
+          URL.revokeObjectURL(a.href);
           a.remove();
-
-        },
-        2000
-      );
+      }, 2000);
 
     } catch (e) {
-
-      setStatus(
-        'Download: ' +
-        explainFetchError(e),
-        false
-      );
+      setStatus('Download: ' + explainFetchError(e), false);
     }
   }
 
@@ -5993,67 +5914,63 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   // DELETE
   // =========================================================
 
-  async function deleteCloudFile(
+    // =========================================================
+  // DOWNLOAD (Direct Native Fetch)
+  // =========================================================
+
+  async function downloadCloudFile(
     fileName,
     fileId
   ) {
 
-    if (!fileId)
-      return;
-
     try {
-
       await authorizeB2();
 
-      const res =
-        await b2Fetch(
-          b2.apiUrl +
-          '/b2api/v2/b2_delete_file_version',
+      const authRes = await b2Fetch(
+          b2.apiUrl + '/b2api/v2/b2_get_download_authorization',
           {
             method: 'POST',
-
             headers: {
-              Authorization:
-                b2.authToken,
-
-              'Content-Type':
-                'application/json'
+              Authorization: b2.authToken,
+              'Content-Type': 'application/json'
             },
-
-            body:
-              JSON.stringify({
-                fileName:
-                  fileName,
-
-                fileId:
-                  fileId
-              })
+            body: JSON.stringify({
+                bucketId: b2.bucketId,
+                fileNamePrefix: fileName,
+                validDurationInSeconds: 3600
+            })
           }
-        );
+      );
 
-      const data =
-        await res.json()
-          .catch(
-            () => ({})
-          );
-
-      if (!res.ok) {
-
-        throw new Error(
-          data.message ||
-          'Delete failed'
-        );
+      const authData = await authRes.json().catch(() => ({}));
+      if (!authRes.ok) {
+        throw new Error(authData.message || 'Download auth failed');
       }
 
-      await refreshCloudFiles();
+      const path = fileName.split('/').map(encodeURIComponent).join('/');
+      const url = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path + '?Authorization=' + encodeURIComponent(authData.authorizationToken);
+
+      // --- DIRECT NATIVE FETCH FOR DOWNLOAD (Bypass Proxy) ---
+      const res = await fetch(url, { method: 'GET' });
+
+      if (!res.ok) {
+        throw new Error('Download failed (' + res.status + ')');
+      }
+
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName.split('/').pop() || 'download';
+      document.body.appendChild(a);
+      a.click();
+      
+      setTimeout(() => {
+          URL.revokeObjectURL(a.href);
+          a.remove();
+      }, 2000);
 
     } catch (e) {
-
-      setStatus(
-        'Delete: ' +
-        explainFetchError(e),
-        false
-      );
+      setStatus('Download: ' + explainFetchError(e), false);
     }
   }
 
