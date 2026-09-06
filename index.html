@@ -36,19 +36,24 @@
 
         /* Premium Light Mode */
         body.light-mode {
-            --bg-color: #f2f2f7;
-            --accent: #00c76b;
-            --accent-glow: rgba(0, 199, 107, 0.3);
-            --text-main: #1c1c1e;
-            --text-dim: #8e8e93;
-            --glass-bg: rgba(255, 255, 255, 0.55);
-            --glass-border: rgba(255, 255, 255, 1);
-            --glass-shine: rgba(255, 255, 255, 1);
-            --shadow-color: rgba(0, 0, 0, 0.08);
-            --orb-1: rgba(0, 255, 136, 0.3);
-            --orb-2: rgba(0, 150, 255, 0.2);
-            --input-bg: rgba(255, 255, 255, 0.9);
+            --bg-color: #e8eef6;
+            --accent: #00b86b;
+            --accent-glow: rgba(0, 184, 107, 0.35);
+            --text-main: #0f172a;
+            --text-dim: #64748b;
+            --glass-bg: rgba(255, 255, 255, 0.38);
+            --glass-border: rgba(255, 255, 255, 0.55);
+            --glass-shine: rgba(255, 255, 255, 0.85);
+            --shadow-color: rgba(15, 23, 42, 0.12);
+            --orb-1: rgba(0, 200, 120, 0.28);
+            --orb-2: rgba(80, 140, 255, 0.22);
+            --input-bg: rgba(255, 255, 255, 0.72);
             --float-amount: -5px;
+        }
+        body.light-mode::before,
+        body.light-mode::after {
+            filter: blur(100px);
+            opacity: 0.9;
         }
 
         /* MAX PRO MODE 🔥 */
@@ -248,11 +253,43 @@
         }
 
         body.light-mode .glass-panel {
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.08), inset 0 10px 25px rgba(255, 255, 255, 0.8), inset 0 -2px 10px rgba(255, 255, 255, 0.4);
-            border: 1.5px solid rgba(255, 255, 255, 0.8);
-            border-top: 1.5px solid #ffffff;
-            border-left: 1.5px solid #ffffff;
+            background: linear-gradient(145deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.28) 100%);
+            backdrop-filter: blur(48px) saturate(200%) brightness(1.05);
+            -webkit-backdrop-filter: blur(48px) saturate(200%) brightness(1.05);
+            box-shadow:
+                0 12px 40px rgba(15, 23, 42, 0.10),
+                0 2px 8px rgba(15, 23, 42, 0.04),
+                inset 0 1px 0 rgba(255,255,255,0.9),
+                inset 0 -1px 0 rgba(255,255,255,0.35);
+            border: 1px solid rgba(255, 255, 255, 0.65);
+            border-top: 1px solid rgba(255, 255, 255, 0.95);
+            border-left: 1px solid rgba(255, 255, 255, 0.75);
         }
+        body.light-mode .sidebar {
+            background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.35));
+            backdrop-filter: blur(50px) saturate(200%);
+            -webkit-backdrop-filter: blur(50px) saturate(200%);
+            border-right: 1px solid rgba(255,255,255,0.7);
+        }
+        body.light-mode #cloudPanel,
+        body.light-mode #securityPanel {
+            background: linear-gradient(160deg, rgba(255,255,255,0.72) 0%, rgba(245,248,255,0.45) 100%);
+            backdrop-filter: blur(56px) saturate(210%);
+            -webkit-backdrop-filter: blur(56px) saturate(210%);
+            box-shadow: -24px 0 60px rgba(15,23,42,0.12);
+            border-left: 1px solid rgba(255,255,255,0.8);
+        }
+        body.light-mode .stat-card:hover {
+            border-color: rgba(0,184,107,0.45);
+        }
+        body.light-mode input[type="text"],
+        body.light-mode input[type="number"],
+        body.light-mode input[type="password"] {
+            background: rgba(255,255,255,0.7);
+            border: 1px solid rgba(15,23,42,0.08);
+            box-shadow: inset 0 1px 2px rgba(15,23,42,0.04);
+        }
+
 
         body.max-mode .glass-panel {
             box-shadow: 0 30px 60px var(--shadow-color), inset 0 2px 20px rgba(0, 255, 213, 0.08);
@@ -1381,11 +1418,11 @@
             right: 0;
             bottom: 0;
             z-index: 121;
-            width: 560px;
+            width: min(52vw, 720px);
             max-width: 100%;
             overflow: auto;
             display: none;
-            padding: 36px 28px 50px;
+            padding: 28px 20px 50px;
             border-radius: 28px 0 0 28px;
             border-left: 1px solid var(--glass-border);
             box-shadow: -30px 0 80px rgba(0, 0, 0, 0.45);
@@ -1427,10 +1464,11 @@
         .cloud-file-row {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 12px 10px;
+            gap: 8px;
+            padding: 10px 8px;
             border-bottom: 1px solid var(--glass-border);
-            font-size: 13px;
+            font-size: 12px;
+            min-height: 44px;
         }
 
         .cloud-preview-drawer {
@@ -1823,6 +1861,83 @@ body.cat-world-active .cat-mode-bar{display:block}
     box-shadow: 0 0 20px rgba(255, 200, 0, 0.5);
 }
 
+
+        /* Background upload chip (stays while panel closed) */
+        #cloudBgUpload {
+            position: fixed;
+            left: 50%;
+            bottom: 28px;
+            transform: translateX(-50%);
+            z-index: 10050;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 18px;
+            border-radius: 16px;
+            background: rgba(12, 18, 28, 0.92);
+            border: 1px solid rgba(92, 200, 255, 0.35);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+            backdrop-filter: blur(16px);
+            max-width: min(92vw, 420px);
+        }
+        body.light-mode #cloudBgUpload {
+            background: rgba(255,255,255,0.92);
+            color: #0f172a;
+            border-color: rgba(0,180,255,0.35);
+            box-shadow: 0 12px 40px rgba(15,23,42,0.12);
+        }
+        #cloudBgUpload.show { display: flex; }
+        #cloudBgUpload .bar {
+            flex: 1;
+            height: 6px;
+            border-radius: 99px;
+            background: rgba(150,150,150,0.25);
+            overflow: hidden;
+            min-width: 80px;
+        }
+        #cloudBgUpload .bar > i {
+            display: block;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #5cc8ff, var(--accent));
+            border-radius: 99px;
+            transition: width .2s linear;
+        }
+        /* Anchor delete popup near click */
+        #cloudDelPop {
+            position: fixed;
+            z-index: 10060;
+            display: none;
+            min-width: 220px;
+            max-width: min(90vw, 300px);
+            padding: 14px;
+            border-radius: 16px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 16px 48px rgba(0,0,0,0.35);
+        }
+        body.light-mode #cloudDelPop {
+            background: rgba(255,255,255,0.92);
+            box-shadow: 0 16px 48px rgba(15,23,42,0.15);
+        }
+        #cloudDelPop.show { display: block; }
+        #cloudDelPop p {
+            margin: 0 0 12px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.4;
+        }
+        #cloudDelPop .row {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
 </style>
 </head>
 <body>
@@ -2205,6 +2320,17 @@ body.cat-world-active .cat-mode-bar{display:block}
         <div id="cloudFileList" class="mk-list" style="max-height:min(50vh,420px);overflow:auto;"></div>
     </div>
 
+        <div id="cloudBgUpload" aria-live="polite">
+        <span id="cloudBgUploadText">Uploading…</span>
+        <div class="bar"><i id="cloudBgUploadBar"></i></div>
+    </div>
+    <div id="cloudDelPop" role="dialog">
+        <p id="cloudDelPopMsg">Delete this file?</p>
+        <div class="row">
+            <button type="button" class="btn" id="cloudDelCancel" style="padding:10px 14px;">Cancel</button>
+            <button type="button" class="btn" id="cloudDelOk" style="padding:10px 14px;background:var(--error);color:#fff;">Delete</button>
+        </div>
+    </div>
     <button class="info-btn" onclick="openGuideModal()">i</button>
 
     <!-- CUSTOM CONFIRMATION MODAL -->
@@ -4867,6 +4993,78 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         };
     
 
+
+// ===== Cloud delete pop (near click) + background upload UI =====
+(function(){
+  let pendingDel = null;
+  window.openCloudDeletePop = function(anchorEl, fileName, fileId) {
+    const pop = document.getElementById('cloudDelPop');
+    const msg = document.getElementById('cloudDelPopMsg');
+    if (!pop) {
+      if (window.deleteCloudFile) window.deleteCloudFile(fileName, fileId);
+      return;
+    }
+    pendingDel = { fileName: fileName, fileId: fileId };
+    if (msg) msg.textContent = 'Delete "' + fileName + '"? This cannot be undone.';
+    const r = (anchorEl && anchorEl.getBoundingClientRect) ? anchorEl.getBoundingClientRect() : { left: 24, top: 24, bottom: 48, width: 40, height: 24 };
+    pop.classList.add('show');
+    const pw = pop.offsetWidth || 260;
+    const ph = pop.offsetHeight || 120;
+    let left = r.left + (r.width || 0) / 2 - pw / 2;
+    let top = r.bottom + 8;
+    if (top + ph > window.innerHeight - 12) top = r.top - ph - 8;
+    if (left < 8) left = 8;
+    if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+    if (top < 8) top = 8;
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+  };
+  function closeDel() {
+    const pop = document.getElementById('cloudDelPop');
+    if (pop) pop.classList.remove('show');
+    pendingDel = null;
+  }
+  document.addEventListener('click', function(e) {
+    const pop = document.getElementById('cloudDelPop');
+    if (!pop || !pop.classList.contains('show')) return;
+    if (pop.contains(e.target)) return;
+    if (e.target && e.target.closest && e.target.closest('[data-del-name]')) return;
+    closeDel();
+  });
+  function bindDelBtns() {
+    const ok = document.getElementById('cloudDelOk');
+    const cancel = document.getElementById('cloudDelCancel');
+    if (cancel) cancel.onclick = closeDel;
+    if (ok) ok.onclick = function() {
+      if (pendingDel && window.deleteCloudFile) {
+        var fn = pendingDel.fileName, fid = pendingDel.fileId;
+        closeDel();
+        window.deleteCloudFile(fn, fid);
+      } else closeDel();
+    };
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindDelBtns);
+  else bindDelBtns();
+
+  window.__cloudUploading = false;
+  window.setCloudBgUpload = function(show, text, percent) {
+    const el = document.getElementById('cloudBgUpload');
+    const tx = document.getElementById('cloudBgUploadText');
+    const bar = document.getElementById('cloudBgUploadBar');
+    if (!el) return;
+    if (show) {
+      window.__cloudUploading = true;
+      el.classList.add('show');
+      if (tx && text) tx.textContent = text;
+      if (bar && percent != null) bar.style.width = Math.max(0, Math.min(100, Number(percent) || 0)) + '%';
+    } else {
+      window.__cloudUploading = false;
+      el.classList.remove('show');
+      if (bar) bar.style.width = '0%';
+    }
+  };
+})();
+
 // ===== BACKBLAZE B2 CLOUD =====
 (function(){
   const B2_AUTH = 'https://api.backblazeb2.com/b2api/v2/b2_authorize_account';
@@ -4878,10 +5076,10 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
 
   // 10 MiB per part.
   // Only one part is held in memory at a time for large files.
-  const B2_PART_SIZE = 10 * 1024 * 1024;
+  const B2_PART_SIZE = 50 * 1024 * 1024; // fewer round-trips = faster
 
   // Files above 10 MiB use Large File API.
-  const B2_LARGE_FILE_THRESHOLD = 10 * 1024 * 1024;
+  const B2_LARGE_FILE_THRESHOLD = 50 * 1024 * 1024;
 
   let b2 = {
     keyId: '',
@@ -5853,9 +6051,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                   const fileId = this.getAttribute('data-del-id');
                   
                   // Show confirm dialog
-                  if (confirm('⚠️ Are you sure you want to delete "' + fileName + '"? This action cannot be undone.')) {
-                    deleteCloudFile(fileName, fileId);
-                  }
+                  openCloudDeletePop(this, fileName, fileId);
                 }
               );
             }
@@ -6559,13 +6755,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         // Give browser event loop / GC an opportunity.
         // ---------------------------------------------------
 
-        await new Promise(
-          resolve =>
-            setTimeout(
-              resolve,
-              0
-            )
-        );
+        /* yield removed for speed */
       }
 
       // =====================================================
@@ -6762,6 +6952,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         );
 
       let completed = 0;
+      if (typeof setCloudBgUpload === 'function') setCloudBgUpload(true, 'Starting upload…', 0);
 
       for (
         let i = 0;
@@ -6789,28 +6980,10 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             file,
             percent => {
 
-              if (prog) {
-
-                prog.textContent =
-                  'Uploading ' +
-                  (i + 1) +
-                  '/' +
-                  files.length +
-                  ': ' +
-                  file.name +
-                  ' — ' +
-                  percent.toFixed(1) +
-                  '%';
-              }
-
-              setStatus(
-                'Uploading ' +
-                file.name +
-                ' — ' +
-                percent.toFixed(1) +
-                '%',
-                null
-              );
+              const label = 'Uploading ' + (i + 1) + '/' + files.length + ': ' + file.name + ' — ' + percent.toFixed(1) + '%';
+              if (prog) prog.textContent = label;
+              setStatus(label, null);
+              if (typeof setCloudBgUpload === 'function') setCloudBgUpload(true, label, percent);
             }
           );
 
@@ -6845,15 +7018,13 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
       }
 
       if (prog) {
-
-        prog.textContent =
-          completed +
-          '/' +
-          files.length +
-          ' file(s) uploaded.';
+        prog.textContent = completed + '/' + files.length + ' file(s) uploaded.';
       }
-
-      await refreshCloudFiles();
+      if (typeof setCloudBgUpload === 'function') {
+        if (completed > 0) setCloudBgUpload(true, completed + '/' + files.length + ' done', 100);
+        setTimeout(function(){ setCloudBgUpload(false); }, 1800);
+      }
+      try { await refreshCloudFiles(); } catch (e) {}
     };
 
   // =========================================================
@@ -6922,27 +7093,13 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
           );
 
       } else {
-
-        p.classList.add(
-          'closing'
-        );
-
-        if (bd)
-          bd.classList.remove(
-            'open'
-          );
-
-        setTimeout(
-          () => {
-
-            p.classList.remove(
-              'open',
-              'closing'
-            );
-
-          },
-          380
-        );
+        p.classList.add('closing');
+        if (bd) bd.classList.remove('open');
+        setTimeout(() => { p.classList.remove('open', 'closing'); }, 380);
+        // upload continues in background; chip already driven by setCloudBgUpload
+        if (window.__cloudUploading && typeof setCloudBgUpload === 'function') {
+          setCloudBgUpload(true, document.getElementById('cloudBgUploadText') && document.getElementById('cloudBgUploadText').textContent || 'Uploading in background…', null);
+        }
       }
     };
 
