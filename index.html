@@ -5200,6 +5200,35 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   // ERROR EXPLANATION
   // =========================================================
 
+
+  function formatOrigDate(ms) {
+    const n = Number(ms);
+    if (!n || n < 1) return '';
+    try {
+      const d = new Date(n);
+      if (isNaN(d.getTime())) return '';
+      const p = function(x){ return String(x).padStart(2,'0'); };
+      return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    } catch (e) { return ''; }
+  }
+
+  function b2InfoHeaders(file) {
+    // B2 fileInfo: header X-Bz-Info-name (a-z, 0-9, _, -) value percent-encoded
+    const h = {};
+    try {
+      const lm = file && file.lastModified ? Number(file.lastModified) : 0;
+      if (lm > 0) {
+        h['X-Bz-Info-src_last_modified'] = encodeURIComponent(String(lm));
+        h['X-Bz-Info-src_date'] = encodeURIComponent(formatOrigDate(lm));
+      }
+      h['X-Bz-Info-uploaded_at'] = encodeURIComponent(String(Date.now()));
+      if (file && file.name) {
+        h['X-Bz-Info-orig_name'] = encodeURIComponent(String(file.name).slice(0, 200));
+      }
+    } catch (e) {}
+    return h;
+  }
+
   function explainFetchError(e) {
     const m =
       String(
@@ -5995,6 +6024,22 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
 
                   '<div class="meta">' +
                   size +
+                  (function(){
+                    try {
+                      const fi = f.fileInfo || {};
+                      const lm = Number(fi.src_last_modified || fi.src_last_modified_millis || 0);
+                      const od = fi.src_date || formatOrigDate(lm);
+                      if (od) return ' · Original ' + od;
+                      // fallback: B2 uploadTimestamp is when uploaded
+                      if (f.uploadTimestamp) {
+                        const ut = Number(f.uploadTimestamp);
+                        // B2 uploadTimestamp is in microseconds
+                        const ms = ut > 1e14 ? Math.floor(ut/1000) : ut;
+                        return ' · Uploaded ' + formatOrigDate(ms);
+                      }
+                    } catch (e) {}
+                    return '';
+                  })() +
                   '</div>' +
 
                   '</div>' +
@@ -6216,13 +6261,21 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   // DELETE
   // =========================================================
 
-  async function deleteCloudFile(
+  window.deleteCloudFile = async function deleteCloudFile(
     fileName,
     fileId
   ) {
 
-    if (!fileId)
+    fileName = String(fileName || '').trim();
+    fileId = String(fileId || '').trim();
+    if (!fileId) {
+      setStatus('Delete: missing file id', false);
       return;
+    }
+    if (!fileName) {
+      setStatus('Delete: missing file name', false);
+      return;
+    }
 
     try {
 
@@ -6272,13 +6325,12 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
 
     } catch (e) {
 
-      setStatus(
-        'Delete: ' +
-        explainFetchError(e),
-        false
-      );
+      const msg = 'Delete: ' + explainFetchError(e);
+      setStatus(msg, false);
+      console.error('[B2] delete', e);
+      alert(msg);
     }
-  }
+  };
 
   // =========================================================
   // SMALL FILE UPLOAD
@@ -6389,25 +6441,14 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         {
           method: 'POST',
 
-          headers: {
-            Authorization:
-              up.authorizationToken,
+          headers: Object.assign({
+            Authorization: up.authorizationToken,
+            'X-Bz-File-Name': encodeB2FileName(safeName),
+            'Content-Type': file.type || 'b2/x-auto',
+            'X-Bz-Content-Sha1': sha1
+          }, b2InfoHeaders(file)),
 
-            'X-Bz-File-Name':
-              encodeB2FileName(
-                safeName
-              ),
-
-            'Content-Type':
-              file.type ||
-              'b2/x-auto',
-
-            'X-Bz-Content-Sha1':
-              sha1
-          },
-
-          body:
-            buf
+          body: buf
         }
       );
 
@@ -6491,17 +6532,23 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
               'application/json'
           },
 
-          body:
-            JSON.stringify({
-              bucketId:
-                b2.bucketId,
-
-              fileName:
-                safeName,
-
-              contentType:
-                file.type ||
-                'b2/x-auto'
+          body: JSON.stringify({
+              bucketId: b2.bucketId,
+              fileName: safeName,
+              contentType: file.type || 'b2/x-auto',
+              fileInfo: (function(){
+                const o = {};
+                try {
+                  const lm = file && file.lastModified ? Number(file.lastModified) : 0;
+                  if (lm > 0) {
+                    o.src_last_modified = String(lm);
+                    o.src_date = formatOrigDate(lm);
+                  }
+                  o.uploaded_at = String(Date.now());
+                  if (file && file.name) o.orig_name = String(file.name).slice(0, 200);
+                } catch (e) {}
+                return o;
+              })()
             })
         }
       );
