@@ -2141,6 +2141,9 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <input type="text" id="b2BucketId" value="46433635305c7b6aac0b0111" style="width:100%;margin:4px 0 10px;" autocomplete="off">
                 <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Quota (GB)</label>
                 <input type="number" id="b2QuotaGb" value="10" min="1" style="width:100%;margin:4px 0 10px;">
+                <label style="font-size:11px;font-weight:700;color:var(--text-dim);">CORS Proxy / Worker URL (required for browser)</label>
+                <input type="text" id="b2ProxyUrl" placeholder="https://your-worker.workers.dev" style="width:100%;margin:4px 0 8px;" autocomplete="off">
+                <p style="font-size:11px;color:var(--text-dim);line-height:1.45;margin:0 0 10px;">B2 blocks direct browser login (CORS). Free Cloudflare Worker fix — see <b>i</b> guide or message below.</p>
                 <div class="input-group" style="margin:0;">
                     <button class="btn" type="button" style="background:#5cc8ff;color:#000;width:100%;" onclick="saveB2Settings()">SAVE & CONNECT</button>
                 </div>
@@ -4798,6 +4801,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     bucketName: 'DGXEN-storage',
     bucketId: '46433635305c7b6aac0b0111',
     quotaGb: QUOTA_DEFAULT_GB,
+    proxyUrl: '',
     authToken: '',
     apiUrl: '',
     downloadUrl: '',
@@ -4834,6 +4838,73 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     if (qL) qL.textContent = 'Quota: ' + (Number(b2.quotaGb) || QUOTA_DEFAULT_GB) + ' GB';
   }
 
+  function explainFetchError(e) {
+    const m = String((e && e.message) || e || '');
+    if (/failed to fetch|networkerror|load failed|cors/i.test(m)) {
+      return 'Failed to fetch = browser CORS block. B2 does not allow authorize from webpage directly. Add a free Cloudflare Worker URL in "CORS Proxy" (see steps in status), or host a tiny proxy.';
+    }
+    return m;
+  }
+
+  /** proxyUrl if set: POST {path, method, headers, bodyB64?} → {status, json, text} */
+  async function b2Fetch(url, opts) {
+    opts = opts || {};
+    const method = opts.method || 'GET';
+    const headers = opts.headers || {};
+    let body = opts.body;
+
+    if (b2.proxyUrl && b2.proxyUrl.trim()) {
+      const proxy = b2.proxyUrl.replace(/\/$/, '');
+      let bodyB64 = null;
+      if (body != null) {
+        if (typeof body === 'string') {
+          bodyB64 = btoa(unescape(encodeURIComponent(body)));
+        } else if (body instanceof ArrayBuffer) {
+          bodyB64 = btoa(String.fromCharCode.apply(null, new Uint8Array(body)));
+        } else if (body instanceof Uint8Array) {
+          bodyB64 = btoa(String.fromCharCode.apply(null, body));
+        }
+      }
+      const res = await fetch(proxy, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: url,
+          method: method,
+          headers: headers,
+          bodyB64: bodyB64,
+          isBinaryResponse: !!opts.binary
+        })
+      });
+      const pack = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(pack.error || pack.message || ('Proxy HTTP ' + res.status));
+      return {
+        ok: pack.status >= 200 && pack.status < 300,
+        status: pack.status,
+        json: async () => pack.json || {},
+        text: async () => pack.text || '',
+        blob: async () => {
+          if (pack.bodyB64) {
+            const bin = atob(pack.bodyB64);
+            const arr = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+            return new Blob([arr]);
+          }
+          return new Blob();
+        }
+      };
+    }
+
+    // Direct (often fails on authorize due to B2 CORS policy)
+    try {
+      const res = await fetch(url, { method: method, headers: headers, body: body });
+      return res;
+    } catch (e) {
+      e.message = explainFetchError(e);
+      throw e;
+    }
+  }
+
   async function loadSettingsFromFirebase() {
     try {
       const snap = await get(ref(db, 'settings/b2'));
@@ -4844,6 +4915,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         if (v.bucketName) b2.bucketName = String(v.bucketName);
         if (v.bucketId) b2.bucketId = String(v.bucketId);
         if (v.quotaGb) b2.quotaGb = Number(v.quotaGb) || QUOTA_DEFAULT_GB;
+        if (v.proxyUrl) b2.proxyUrl = String(v.proxyUrl);
       }
     } catch (e) { console.warn('b2 settings load', e); }
     try {
@@ -4852,11 +4924,13 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
       const bn = document.getElementById('b2BucketName');
       const bi = document.getElementById('b2BucketId');
       const qg = document.getElementById('b2QuotaGb');
+      const pu = document.getElementById('b2ProxyUrl');
       if (ki) ki.value = b2.keyId || '';
       if (ak) ak.value = b2.appKey || '';
       if (bn) bn.value = b2.bucketName || 'DGXEN-storage';
       if (bi) bi.value = b2.bucketId || '';
       if (qg) qg.value = b2.quotaGb || QUOTA_DEFAULT_GB;
+      if (pu) pu.value = b2.proxyUrl || '';
     } catch (e) {}
   }
 
@@ -4866,6 +4940,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     b2.bucketName = (document.getElementById('b2BucketName') && document.getElementById('b2BucketName').value || '').trim() || 'DGXEN-storage';
     b2.bucketId = (document.getElementById('b2BucketId') && document.getElementById('b2BucketId').value || '').trim();
     b2.quotaGb = Number(document.getElementById('b2QuotaGb') && document.getElementById('b2QuotaGb').value) || QUOTA_DEFAULT_GB;
+    b2.proxyUrl = (document.getElementById('b2ProxyUrl') && document.getElementById('b2ProxyUrl').value || '').trim();
     b2.authToken = '';
     b2.authAt = 0;
     if (!b2.keyId || !b2.appKey) {
@@ -4879,17 +4954,18 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         bucketName: b2.bucketName,
         bucketId: b2.bucketId,
         quotaGb: b2.quotaGb,
+        proxyUrl: b2.proxyUrl,
         updatedAt: Date.now()
       });
     } catch (e) {
-      setStatus('Saved locally only (Firebase write failed).', false);
+      setStatus('Firebase save failed — still trying connect…', false);
     }
     try {
       await authorizeB2(true);
-      setStatus('Connected to B2.', true);
+      setStatus(b2.proxyUrl ? 'Connected via proxy.' : 'Connected to B2.', true);
       await refreshCloudFiles();
     } catch (e) {
-      setStatus('Connect failed: ' + (e.message || e), false);
+      setStatus(explainFetchError(e), false);
     }
   };
 
@@ -4897,12 +4973,19 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     if (!force && b2.authToken && (Date.now() - b2.authAt) < 20 * 60 * 1000) return b2;
     if (!b2.keyId || !b2.appKey) throw new Error('Add B2 keys in connection settings');
     const basic = btoa(b2.keyId + ':' + b2.appKey);
-    const res = await fetch(B2_AUTH, {
-      method: 'GET',
-      headers: { Authorization: 'Basic ' + basic }
-    });
+    let res;
+    try {
+      res = await b2Fetch(B2_AUTH, {
+        method: 'GET',
+        headers: { Authorization: 'Basic ' + basic }
+      });
+    } catch (e) {
+      throw new Error(explainFetchError(e));
+    }
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.message || data.code || ('Auth HTTP ' + res.status));
+    if (!res.ok) {
+      throw new Error(data.message || data.code || ('Auth failed HTTP ' + res.status + ' — check Key ID / App Key'));
+    }
     b2.authToken = data.authorizationToken;
     b2.apiUrl = data.apiUrl;
     b2.downloadUrl = data.downloadUrl;
@@ -4918,7 +5001,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     do {
       const body = { bucketId: b2.bucketId, maxFileCount: 1000 };
       if (start) body.startFileName = start;
-      const res = await fetch(b2.apiUrl + '/b2api/v2/b2_list_file_names', {
+      const res = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_list_file_names', {
         method: 'POST',
         headers: {
           Authorization: b2.authToken,
@@ -4939,6 +5022,10 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     if (box) box.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-weight:700;">Loading…</div>';
     try {
       await loadSettingsFromFirebase();
+      if (!b2.keyId || !b2.appKey) {
+        if (box) box.innerHTML = '<div style="padding:14px;color:var(--text-dim);font-weight:700;">Add keys + SAVE & CONNECT</div>';
+        return;
+      }
       const files = await listAllFiles();
       let used = 0;
       files.forEach(f => { used += Number(f.contentLength) || 0; });
@@ -4949,7 +5036,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         return;
       }
       box.innerHTML = files.map(f => {
-        const name = String(f.fileName || '').replace(/"/g, '&quot;');
+        const name = String(f.fileName || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
         const size = formatBytes(f.contentLength);
         const fid = String(f.fileId || '').replace(/"/g, '&quot;');
         return '<div class="cloud-file-row">' +
@@ -4966,8 +5053,8 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
       });
       setStatus('Files synced.', true);
     } catch (e) {
-      if (box) box.innerHTML = '<div style="padding:14px;color:var(--error);font-weight:700;">' + (e.message || e) + '</div>';
-      setStatus(String(e.message || e), false);
+      if (box) box.innerHTML = '<div style="padding:14px;color:var(--error);font-weight:700;">' + explainFetchError(e) + '</div>';
+      setStatus(explainFetchError(e), false);
       paintUsage(0);
     }
   };
@@ -4975,9 +5062,25 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   async function downloadCloudFile(fileName, fileId) {
     try {
       await authorizeB2();
-      // Private bucket: authorized download by name
-      const url = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + fileName.split('/').map(encodeURIComponent).join('/');
-      const res = await fetch(url, { headers: { Authorization: b2.authToken } });
+      // Download auth token (query param) — required for private bucket + browser
+      const authRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_download_authorization', {
+        method: 'POST',
+        headers: {
+          Authorization: b2.authToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          bucketId: b2.bucketId,
+          fileNamePrefix: fileName,
+          validDurationInSeconds: 3600
+        })
+      });
+      const authData = await authRes.json().catch(() => ({}));
+      if (!authRes.ok) throw new Error(authData.message || 'Download auth failed');
+      const path = fileName.split('/').map(encodeURIComponent).join('/');
+      const url = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path +
+        '?Authorization=' + encodeURIComponent(authData.authorizationToken);
+      const res = await b2Fetch(url, { method: 'GET', binary: true });
       if (!res.ok) throw new Error('Download failed (' + res.status + ')');
       const blob = await res.blob();
       const a = document.createElement('a');
@@ -4987,7 +5090,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
       a.click();
       setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
     } catch (e) {
-      setStatus('Download: ' + (e.message || e), false);
+      setStatus('Download: ' + explainFetchError(e), false);
     }
   }
 
@@ -4995,7 +5098,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     if (!fileId) return;
     try {
       await authorizeB2();
-      const res = await fetch(b2.apiUrl + '/b2api/v2/b2_delete_file_version', {
+      const res = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_delete_file_version', {
         method: 'POST',
         headers: {
           Authorization: b2.authToken,
@@ -5007,13 +5110,13 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
       if (!res.ok) throw new Error(data.message || 'Delete failed');
       await refreshCloudFiles();
     } catch (e) {
-      setStatus('Delete: ' + (e.message || e), false);
+      setStatus('Delete: ' + explainFetchError(e), false);
     }
   }
 
   async function uploadOne(file) {
     await authorizeB2();
-    const upRes = await fetch(b2.apiUrl + '/b2api/v2/b2_get_upload_url', {
+    const upRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_upload_url', {
       method: 'POST',
       headers: {
         Authorization: b2.authToken,
@@ -5025,12 +5128,12 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     if (!upRes.ok) throw new Error(up.message || 'Upload URL failed');
 
     const buf = await file.arrayBuffer();
-    // SHA1 of content
     const hashBuf = await crypto.subtle.digest('SHA-1', buf);
     const sha1 = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const safeName = file.name.replace(/[\\\\]/g, '_');
 
-    const safeName = file.name.replace(/[\\]/g, '_');
-    const res = await fetch(up.uploadUrl, {
+    // Upload URL is single-use host — go via proxy if set (handles CORS)
+    const res = await b2Fetch(up.uploadUrl, {
       method: 'POST',
       headers: {
         Authorization: up.authorizationToken,
@@ -5059,7 +5162,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
       await refreshCloudFiles();
     } catch (e) {
       if (prog) prog.textContent = '';
-      setStatus('Upload: ' + (e.message || e), false);
+      setStatus('Upload: ' + explainFetchError(e), false);
     }
   };
 
@@ -5110,6 +5213,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     loadSettingsFromFirebase();
   }
 })();
+
 
 </script>
 </body>
