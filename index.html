@@ -2984,15 +2984,20 @@ body.cat-world-active .cat-mode-bar{display:block}
                 fpBtn.addEventListener('contextmenu', e => e.preventDefault());
             }
 
-            // ---- Show helpful message ----
+            // ---- Auto fingerprint on open if registered in Firebase ----
             getFirebaseFpIds().then(ids => {
-                if (!adminUnlocked && ids && ids.length) {
-                    setGateStatus('👆 Tap FINGERPRINT to login, or hold 10s for code.', true);
-                } else if (!adminUnlocked) {
-                    setGateStatus('ℹ️ No fingerprint found. Hold 10s to use admin code.', false);
+                if (adminUnlocked) return;
+                if (ids && ids.length) {
+                    setGateStatus('🔐 Fingerprint found — opening scanner…', true);
+                    // slight delay so gate UI paints first (WebAuthn needs visible page)
+                    setTimeout(function() {
+                        if (!adminUnlocked) tryFingerprintLogin();
+                    }, 450);
+                } else {
+                    setGateStatus('ℹ️ No fingerprint found. Hold FINGERPRINT 10s for code.', false);
                 }
             }).catch(() => {
-                setGateStatus('⚠️ Could not check fingerprints. Use code (hold 10s).', false);
+                setGateStatus('⚠️ Could not check fingerprints. Hold 10s for code.', false);
             });
         }
         // ---- end fixed init ----
@@ -5856,7 +5861,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             }
           );
 
-        // ===== PREVIEW BUTTONS (FIXED: only one preview at a time) =====
+        // ===== PREVIEW BUTTONS (toggle same file = hide) =====
         box.querySelectorAll('[data-exp-id]').forEach(btn => {
           btn.addEventListener('click', async function(e) {
             e.stopPropagation();
@@ -5864,16 +5869,26 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             const fileId = this.getAttribute('data-exp-id');
             const fileName = this.getAttribute('data-exp-name');
             const row = this.closest('.cloud-file-row');
-            
-            // Remove any existing preview drawer in this row (toggle)
-            let drawer = row.querySelector('.cloud-preview-drawer');
-            if (drawer) { drawer.remove(); return; }
-            
-            // Also remove any other open drawers (only one preview at a time)
+            if (!row) return;
+
+            // Drawer is inserted as next sibling of the row (not a child)
+            const next = row.nextElementSibling;
+            const isOpenHere = next && next.classList && next.classList.contains('cloud-preview-drawer')
+              && next.getAttribute('data-preview-for') === fileId;
+
+            // Close all open previews first
             document.querySelectorAll('.cloud-preview-drawer').forEach(d => d.remove());
+
+            // Same file tapped again → only hide (toggle off)
+            if (isOpenHere) {
+              this.setAttribute('aria-expanded', 'false');
+              return;
+            }
+            this.setAttribute('aria-expanded', 'true');
             
-            drawer = document.createElement('div');
+            const drawer = document.createElement('div');
             drawer.className = 'cloud-preview-drawer';
+            drawer.setAttribute('data-preview-for', fileId || fileName || '');
             drawer.style.cssText = 'width:100%;padding:12px 0;border-top:1px solid var(--glass-border);';
             drawer.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">Loading preview...</div>';
             row.after(drawer);
