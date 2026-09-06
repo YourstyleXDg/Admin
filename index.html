@@ -1782,6 +1782,13 @@
 body.cat-world-active .cat-mode-bar{display:block}
 .cat-mode-bar label{display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer;color:var(--text-main)}
 
+/* Fingerprint button holding state */
+#gateFpBtn.holding {
+    background: rgba(255, 200, 0, 0.3) !important;
+    color: #fff !important;
+    box-shadow: 0 0 20px rgba(255, 200, 0, 0.5);
+}
+
 </style>
 </head>
 <body>
@@ -2879,53 +2886,83 @@ body.cat-world-active .cat-mode-bar{display:block}
             bind(document.getElementById('btnAddFp'), function() { registerAdminFingerprint(); });
         }
 
+        // ===== FIXED INIT ADMIN GATE =====
         function initAdminGate() {
             const g = document.getElementById('adminGate');
             if (adminUnlocked && g) {
                 g.classList.add('hidden');
+                return;
             }
+
             const fpBtn = document.getElementById('gateFpBtn');
             const codeBtn = document.getElementById('gateCodeBtn');
             const codeIn = document.getElementById('gateCodeInput');
+
             if (codeBtn) codeBtn.onclick = () => tryCodeLogin();
             if (codeIn) codeIn.addEventListener('keydown', e => { if (e.key === 'Enter') tryCodeLogin(); });
 
-            // Secret: hold FINGERPRINT 10s → reveal code block
+            // ---- FINGERPRINT BUTTON: TAP = FINGERPRINT, HOLD 10s = CODE ----
             if (fpBtn) {
                 let holdTimer = null;
                 let holdFired = false;
-                const clearHold = () => { if (holdTimer) { clearTimeout(holdTimer);
-                        holdTimer = null; } };
-                const startHold = (e) => {
+
+                const clearHold = () => {
+                    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+                    fpBtn.classList.remove('holding');
+                    fpBtn.style.background = 'var(--accent)';
+                    fpBtn.style.color = '#000';
+                    fpBtn.textContent = 'FINGERPRINT';
+                };
+
+                const startHold = () => {
                     holdFired = false;
                     clearHold();
+                    fpBtn.classList.add('holding');
+                    fpBtn.style.background = 'rgba(255,200,0,0.3)';
+                    fpBtn.textContent = 'HOLD 10s...';
                     holdTimer = setTimeout(() => {
                         holdFired = true;
                         const wrap = document.getElementById('gateCodeWrap');
                         if (wrap) wrap.classList.add('show');
-                        setGateStatus('Code entry unlocked', true);
+                        setGateStatus('✅ Code entry unlocked (hold 10s).', true);
+                        fpBtn.style.background = 'var(--accent)';
+                        fpBtn.textContent = 'CODE UNLOCKED';
+                        setTimeout(() => {
+                            fpBtn.textContent = 'FINGERPRINT';
+                            fpBtn.style.background = 'var(--accent)';
+                        }, 2000);
                     }, 10000);
                 };
-                const endHold = (e) => {
+
+                const endHold = () => {
                     clearHold();
-                    if (!holdFired) tryFingerprintLogin();
+                    if (!holdFired) {
+                        // short tap → fingerprint
+                        tryFingerprintLogin();
+                    }
                 };
+
+                // Use pointer events for both desktop & mobile
                 fpBtn.addEventListener('pointerdown', startHold);
                 fpBtn.addEventListener('pointerup', endHold);
                 fpBtn.addEventListener('pointerleave', clearHold);
                 fpBtn.addEventListener('pointercancel', clearHold);
-                // prevent long-press context menu
                 fpBtn.addEventListener('contextmenu', e => e.preventDefault());
             }
 
-            getFirebaseFpIds().then(function(ids) {
+            // ---- Show helpful message ----
+            getFirebaseFpIds().then(ids => {
                 if (!adminUnlocked && ids && ids.length) {
-                    setTimeout(function() { tryFingerprintLogin(); }, 500);
+                    setGateStatus('👆 Tap FINGERPRINT to login, or hold 10s for code.', true);
+                } else if (!adminUnlocked) {
+                    setGateStatus('ℹ️ No fingerprint found. Hold 10s to use admin code.', false);
                 }
-            }).catch(function() {});
-            setTimeout(() => { renderFpList();
-                renderFaceList(); }, 600);
+            }).catch(() => {
+                setGateStatus('⚠️ Could not check fingerprints. Use code (hold 10s).', false);
+            });
         }
+        // ---- end fixed init ----
+
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAdminGate);
         else initAdminGate();
 
@@ -7000,3 +7037,6 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   }
 
 })();
+    </script>
+</body>
+</html>
