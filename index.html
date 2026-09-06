@@ -4795,6 +4795,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
 (function(){
   const B2_AUTH = 'https://api.backblazeb2.com/b2api/v2/b2_authorize_account';
   const QUOTA_DEFAULT_GB = 10;
+
   let b2 = {
     keyId: '',
     appKey: '',
@@ -4812,62 +4813,122 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     const el = document.getElementById('cloudConnStatus');
     if (!el) return;
     el.textContent = msg || '';
-    el.style.color = ok === false ? 'var(--error)' : (ok ? 'var(--accent)' : 'var(--text-dim)');
+    el.style.color =
+      ok === false ? 'var(--error)' :
+      ok ? 'var(--accent)' :
+      'var(--text-dim)';
   }
 
   function formatBytes(n) {
     n = Number(n) || 0;
     if (n < 1024) return n + ' B';
-    if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
-    if (n < 1073741824) return (n/1048576).toFixed(2) + ' MB';
-    return (n/1073741824).toFixed(2) + ' GB';
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+    if (n < 1073741824) return (n / 1048576).toFixed(2) + ' MB';
+    return (n / 1073741824).toFixed(2) + ' GB';
   }
 
   function paintUsage(usedBytes) {
-    const quota = (Number(b2.quotaGb) || QUOTA_DEFAULT_GB) * 1073741824;
+    const quota =
+      (Number(b2.quotaGb) || QUOTA_DEFAULT_GB) * 1073741824;
+
     const used = Math.max(0, Number(usedBytes) || 0);
     const free = Math.max(0, quota - used);
     const pct = Math.min(100, (used / quota) * 100);
+
     const bar = document.getElementById('cloudUsedBar');
     const usedL = document.getElementById('cloudUsedLabel');
     const freeL = document.getElementById('cloudFreeLabel');
     const qL = document.getElementById('cloudQuotaLabel');
+
     if (bar) bar.style.width = pct.toFixed(1) + '%';
     if (usedL) usedL.textContent = formatBytes(used) + ' used';
     if (freeL) freeL.textContent = 'Free: ' + formatBytes(free);
-    if (qL) qL.textContent = 'Quota: ' + (Number(b2.quotaGb) || QUOTA_DEFAULT_GB) + ' GB';
+    if (qL)
+      qL.textContent =
+        'Quota: ' +
+        (Number(b2.quotaGb) || QUOTA_DEFAULT_GB) +
+        ' GB';
   }
 
   function explainFetchError(e) {
     const m = String((e && e.message) || e || '');
+
     if (/failed to fetch|networkerror|load failed|cors/i.test(m)) {
-      return 'Failed to fetch = browser CORS block. B2 does not allow authorize from webpage directly. Add a free Cloudflare Worker URL in "CORS Proxy" (see steps in status), or host a tiny proxy.';
+      return 'Failed to fetch = browser CORS block. B2 does not allow authorize from webpage directly. Add a free Cloudflare Worker URL in "CORS Proxy" or host a tiny proxy.';
     }
+
     return m;
   }
 
-  /** proxyUrl if set: POST {path, method, headers, bodyB64?} → {status, json, text} */
+  // =========================================================
+  // B2 FETCH + SAFE LARGE FILE BASE64 CONVERSION
+  // =========================================================
+
   async function b2Fetch(url, opts) {
     opts = opts || {};
+
     const method = opts.method || 'GET';
     const headers = opts.headers || {};
-    let body = opts.body;
+    const body = opts.body;
 
     if (b2.proxyUrl && b2.proxyUrl.trim()) {
+
       const proxy = b2.proxyUrl.replace(/\/$/, '');
       let bodyB64 = null;
+
       if (body != null) {
+
         if (typeof body === 'string') {
-          bodyB64 = btoa(unescape(encodeURIComponent(body)));
-        } else if (body instanceof ArrayBuffer) {
-          bodyB64 = btoa(String.fromCharCode.apply(null, new Uint8Array(body)));
-        } else if (body instanceof Uint8Array) {
-          bodyB64 = btoa(String.fromCharCode.apply(null, body));
+
+          bodyB64 = btoa(
+            unescape(
+              encodeURIComponent(body)
+            )
+          );
+
+        } else if (
+          body instanceof ArrayBuffer ||
+          body instanceof Uint8Array
+        ) {
+
+          // ===================================================
+          // SAFE CHUNKING FOR LARGE FILES
+          // Prevents Maximum call stack size exceeded
+          // ===================================================
+
+          const uintArray =
+            body instanceof ArrayBuffer
+              ? new Uint8Array(body)
+              : body;
+
+          const chunkSize = 0x8000; // 32 KB
+          const chunks = [];
+
+          for (
+            let i = 0;
+            i < uintArray.length;
+            i += chunkSize
+          ) {
+            chunks.push(
+              String.fromCharCode.apply(
+                null,
+                uintArray.subarray(
+                  i,
+                  i + chunkSize
+                )
+              )
+            );
+          }
+
+          bodyB64 = btoa(chunks.join(''));
         }
       }
+
       const res = await fetch(proxy, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           url: url,
           method: method,
@@ -4876,345 +4937,1154 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
           isBinaryResponse: !!opts.binary
         })
       });
+
       const pack = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(pack.error || pack.message || ('Proxy HTTP ' + res.status));
+
+      if (!res.ok) {
+        throw new Error(
+          pack.error ||
+          pack.message ||
+          ('Proxy HTTP ' + res.status)
+        );
+      }
+
       return {
-        ok: pack.status >= 200 && pack.status < 300,
+        ok:
+          pack.status >= 200 &&
+          pack.status < 300,
+
         status: pack.status,
+
         json: async () => pack.json || {},
+
         text: async () => pack.text || '',
+
         blob: async () => {
+
           if (pack.bodyB64) {
+
             const bin = atob(pack.bodyB64);
             const arr = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+
+            for (
+              let i = 0;
+              i < bin.length;
+              i++
+            ) {
+              arr[i] = bin.charCodeAt(i);
+            }
+
             return new Blob([arr]);
           }
+
           return new Blob();
         }
       };
     }
 
-    // Direct (often fails on authorize due to B2 CORS policy)
+    // Direct request
     try {
-      const res = await fetch(url, { method: method, headers: headers, body: body });
-      return res;
+
+      return await fetch(url, {
+        method: method,
+        headers: headers,
+        body: body
+      });
+
     } catch (e) {
+
       e.message = explainFetchError(e);
       throw e;
     }
   }
 
+  // =========================================================
+  // LOAD SETTINGS
+  // =========================================================
+
   async function loadSettingsFromFirebase() {
+
     try {
-      const snap = await get(ref(db, 'settings/b2'));
+
+      const snap = await get(
+        ref(db, 'settings/b2')
+      );
+
       if (snap.exists()) {
+
         const v = snap.val() || {};
-        if (v.keyId) b2.keyId = String(v.keyId);
-        if (v.appKey) b2.appKey = String(v.appKey);
-        if (v.bucketName) b2.bucketName = String(v.bucketName);
-        if (v.bucketId) b2.bucketId = String(v.bucketId);
-        if (v.quotaGb) b2.quotaGb = Number(v.quotaGb) || QUOTA_DEFAULT_GB;
-        if (v.proxyUrl) b2.proxyUrl = String(v.proxyUrl);
+
+        if (v.keyId)
+          b2.keyId = String(v.keyId);
+
+        if (v.appKey)
+          b2.appKey = String(v.appKey);
+
+        if (v.bucketName)
+          b2.bucketName = String(v.bucketName);
+
+        if (v.bucketId)
+          b2.bucketId = String(v.bucketId);
+
+        if (v.quotaGb)
+          b2.quotaGb =
+            Number(v.quotaGb) ||
+            QUOTA_DEFAULT_GB;
+
+        if (v.proxyUrl)
+          b2.proxyUrl =
+            String(v.proxyUrl);
       }
-    } catch (e) { console.warn('b2 settings load', e); }
+
+    } catch (e) {
+      console.warn(
+        'b2 settings load',
+        e
+      );
+    }
+
     try {
-      const ki = document.getElementById('b2KeyId');
-      const ak = document.getElementById('b2AppKey');
-      const bn = document.getElementById('b2BucketName');
-      const bi = document.getElementById('b2BucketId');
-      const qg = document.getElementById('b2QuotaGb');
-      const pu = document.getElementById('b2ProxyUrl');
-      if (ki) ki.value = b2.keyId || '';
-      if (ak) ak.value = b2.appKey || '';
-      if (bn) bn.value = b2.bucketName || 'DGXEN-storage';
-      if (bi) bi.value = b2.bucketId || '';
-      if (qg) qg.value = b2.quotaGb || QUOTA_DEFAULT_GB;
-      if (pu) pu.value = b2.proxyUrl || '';
+
+      const ki =
+        document.getElementById('b2KeyId');
+
+      const ak =
+        document.getElementById('b2AppKey');
+
+      const bn =
+        document.getElementById('b2BucketName');
+
+      const bi =
+        document.getElementById('b2BucketId');
+
+      const qg =
+        document.getElementById('b2QuotaGb');
+
+      const pu =
+        document.getElementById('b2ProxyUrl');
+
+      if (ki)
+        ki.value = b2.keyId || '';
+
+      if (ak)
+        ak.value = b2.appKey || '';
+
+      if (bn)
+        bn.value =
+          b2.bucketName ||
+          'DGXEN-storage';
+
+      if (bi)
+        bi.value =
+          b2.bucketId || '';
+
+      if (qg)
+        qg.value =
+          b2.quotaGb ||
+          QUOTA_DEFAULT_GB;
+
+      if (pu)
+        pu.value =
+          b2.proxyUrl || '';
+
     } catch (e) {}
   }
 
+  // =========================================================
+  // SAVE SETTINGS
+  // =========================================================
+
   window.saveB2Settings = async function() {
-    b2.keyId = (document.getElementById('b2KeyId') && document.getElementById('b2KeyId').value || '').trim();
-    b2.appKey = (document.getElementById('b2AppKey') && document.getElementById('b2AppKey').value || '').trim();
-    b2.bucketName = (document.getElementById('b2BucketName') && document.getElementById('b2BucketName').value || '').trim() || 'DGXEN-storage';
-    b2.bucketId = (document.getElementById('b2BucketId') && document.getElementById('b2BucketId').value || '').trim();
-    b2.quotaGb = Number(document.getElementById('b2QuotaGb') && document.getElementById('b2QuotaGb').value) || QUOTA_DEFAULT_GB;
-    b2.proxyUrl = (document.getElementById('b2ProxyUrl') && document.getElementById('b2ProxyUrl').value || '').trim();
+
+    b2.keyId =
+      (
+        document.getElementById('b2KeyId')
+          ?.value || ''
+      ).trim();
+
+    b2.appKey =
+      (
+        document.getElementById('b2AppKey')
+          ?.value || ''
+      ).trim();
+
+    b2.bucketName =
+      (
+        document.getElementById('b2BucketName')
+          ?.value || ''
+      ).trim() ||
+      'DGXEN-storage';
+
+    b2.bucketId =
+      (
+        document.getElementById('b2BucketId')
+          ?.value || ''
+      ).trim();
+
+    b2.quotaGb =
+      Number(
+        document.getElementById('b2QuotaGb')
+          ?.value
+      ) ||
+      QUOTA_DEFAULT_GB;
+
+    b2.proxyUrl =
+      (
+        document.getElementById('b2ProxyUrl')
+          ?.value || ''
+      ).trim();
+
     b2.authToken = '';
     b2.authAt = 0;
+
     if (!b2.keyId || !b2.appKey) {
-      setStatus('Key ID + Application Key required.', false);
+
+      setStatus(
+        'Key ID + Application Key required.',
+        false
+      );
+
       return;
     }
+
     try {
-      await set(ref(db, 'settings/b2'), {
-        keyId: b2.keyId,
-        appKey: b2.appKey,
-        bucketName: b2.bucketName,
-        bucketId: b2.bucketId,
-        quotaGb: b2.quotaGb,
-        proxyUrl: b2.proxyUrl,
-        updatedAt: Date.now()
-      });
+
+      await set(
+        ref(db, 'settings/b2'),
+        {
+          keyId: b2.keyId,
+          appKey: b2.appKey,
+          bucketName: b2.bucketName,
+          bucketId: b2.bucketId,
+          quotaGb: b2.quotaGb,
+          proxyUrl: b2.proxyUrl,
+          updatedAt: Date.now()
+        }
+      );
+
     } catch (e) {
-      setStatus('Firebase save failed — still trying connect…', false);
+
+      setStatus(
+        'Firebase save failed — still trying connect…',
+        false
+      );
     }
+
     try {
+
       await authorizeB2(true);
-      setStatus(b2.proxyUrl ? 'Connected via proxy.' : 'Connected to B2.', true);
+
+      setStatus(
+        b2.proxyUrl
+          ? 'Connected via proxy.'
+          : 'Connected to B2.',
+        true
+      );
+
       await refreshCloudFiles();
+
     } catch (e) {
-      setStatus(explainFetchError(e), false);
+
+      setStatus(
+        explainFetchError(e),
+        false
+      );
     }
   };
 
+  // =========================================================
+  // AUTHORIZE
+  // =========================================================
+
   async function authorizeB2(force) {
-    if (!force && b2.authToken && (Date.now() - b2.authAt) < 20 * 60 * 1000) return b2;
-    if (!b2.keyId || !b2.appKey) throw new Error('Add B2 keys in connection settings');
-    const basic = btoa(b2.keyId + ':' + b2.appKey);
+
+    if (
+      !force &&
+      b2.authToken &&
+      Date.now() - b2.authAt <
+        20 * 60 * 1000
+    ) {
+      return b2;
+    }
+
+    if (!b2.keyId || !b2.appKey) {
+      throw new Error(
+        'Add B2 keys in connection settings'
+      );
+    }
+
+    const basic = btoa(
+      b2.keyId + ':' + b2.appKey
+    );
+
     let res;
+
     try {
-      res = await b2Fetch(B2_AUTH, {
-        method: 'GET',
-        headers: { Authorization: 'Basic ' + basic }
-      });
+
+      res = await b2Fetch(
+        B2_AUTH,
+        {
+          method: 'GET',
+          headers: {
+            Authorization:
+              'Basic ' + basic
+          }
+        }
+      );
+
     } catch (e) {
-      throw new Error(explainFetchError(e));
+
+      throw new Error(
+        explainFetchError(e)
+      );
     }
-    const data = await res.json().catch(() => ({}));
+
+    const data =
+      await res.json().catch(
+        () => ({})
+      );
+
     if (!res.ok) {
-      throw new Error(data.message || data.code || ('Auth failed HTTP ' + res.status + ' — check Key ID / App Key'));
+
+      throw new Error(
+        data.message ||
+        data.code ||
+        (
+          'Auth failed HTTP ' +
+          res.status +
+          ' — check Key ID / App Key'
+        )
+      );
     }
-    b2.authToken = data.authorizationToken;
-    b2.apiUrl = data.apiUrl;
-    b2.downloadUrl = data.downloadUrl;
+
+    b2.authToken =
+      data.authorizationToken;
+
+    b2.apiUrl =
+      data.apiUrl;
+
+    b2.downloadUrl =
+      data.downloadUrl;
+
     b2.authAt = Date.now();
-    if (data.allowed && data.allowed.bucketId) b2.bucketId = data.allowed.bucketId;
+
+    if (
+      data.allowed &&
+      data.allowed.bucketId
+    ) {
+      b2.bucketId =
+        data.allowed.bucketId;
+    }
+
     return b2;
   }
 
+  // =========================================================
+  // LIST FILES
+  // =========================================================
+
   async function listAllFiles() {
+
     await authorizeB2();
+
     let start = null;
     const files = [];
+
     do {
-      const body = { bucketId: b2.bucketId, maxFileCount: 1000 };
-      if (start) body.startFileName = start;
-      const res = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_list_file_names', {
-        method: 'POST',
-        headers: {
-          Authorization: b2.authToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || 'List failed');
-      (data.files || []).forEach(f => files.push(f));
-      start = data.nextFileName || null;
+
+      const body = {
+        bucketId: b2.bucketId,
+        maxFileCount: 1000
+      };
+
+      if (start)
+        body.startFileName = start;
+
+      const res = await b2Fetch(
+        b2.apiUrl +
+        '/b2api/v2/b2_list_file_names',
+        {
+          method: 'POST',
+          headers: {
+            Authorization:
+              b2.authToken,
+            'Content-Type':
+              'application/json'
+          },
+          body:
+            JSON.stringify(body)
+        }
+      );
+
+      const data =
+        await res.json().catch(
+          () => ({})
+        );
+
+      if (!res.ok)
+        throw new Error(
+          data.message ||
+          'List failed'
+        );
+
+      (data.files || [])
+        .forEach(f =>
+          files.push(f)
+        );
+
+      start =
+        data.nextFileName ||
+        null;
+
     } while (start);
+
     return files;
   }
 
+  // =========================================================
+  // REFRESH CLOUD FILES
+  // =========================================================
+
   window.refreshCloudFiles = async function() {
-    const box = document.getElementById('cloudFileList');
-    if (box) box.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-weight:700;">Loading…</div>';
+
+    const box =
+      document.getElementById(
+        'cloudFileList'
+      );
+
+    if (box) {
+
+      box.innerHTML =
+        '<div style="padding:12px;color:var(--text-dim);font-weight:700;">Loading…</div>';
+    }
+
     try {
+
       await loadSettingsFromFirebase();
+
       if (!b2.keyId || !b2.appKey) {
-        if (box) box.innerHTML = '<div style="padding:14px;color:var(--text-dim);font-weight:700;">Add keys + SAVE & CONNECT</div>';
+
+        if (box) {
+
+          box.innerHTML =
+            '<div style="padding:14px;color:var(--text-dim);font-weight:700;">Add keys + SAVE & CONNECT</div>';
+        }
+
         return;
       }
-      const files = await listAllFiles();
+
+      const files =
+        await listAllFiles();
+
       let used = 0;
-      files.forEach(f => { used += Number(f.contentLength) || 0; });
+
+      files.forEach(f => {
+        used +=
+          Number(f.contentLength) || 0;
+      });
+
       paintUsage(used);
-      if (!box) return;
+
+      if (!box)
+        return;
+
       if (!files.length) {
-        box.innerHTML = '<div style="padding:14px;color:var(--text-dim);font-weight:700;">No files yet.</div>';
+
+        box.innerHTML =
+          '<div style="padding:14px;color:var(--text-dim);font-weight:700;">No files yet.</div>';
+
         return;
       }
-      box.innerHTML = files.map(f => {
-        const name = String(f.fileName || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-        const size = formatBytes(f.contentLength);
-        const fid = String(f.fileId || '').replace(/"/g, '&quot;');
-        return '<div class="cloud-file-row">' +
-          '<div class="name">' + name + '<div class="meta">' + size + '</div></div>' +
-          '<button class="btn" type="button" style="background:rgba(92,200,255,.15);color:#5cc8ff;" data-dl-name="' + name + '" data-dl-id="' + fid + '">DL</button>' +
-          '<button class="btn" type="button" style="background:rgba(255,59,48,.15);color:var(--error);" data-del-name="' + name + '" data-del-id="' + fid + '">DEL</button>' +
-          '</div>';
-      }).join('');
-      box.querySelectorAll('[data-dl-name]').forEach(btn => {
-        btn.addEventListener('click', () => downloadCloudFile(btn.getAttribute('data-dl-name'), btn.getAttribute('data-dl-id')));
-      });
-      box.querySelectorAll('[data-del-name]').forEach(btn => {
-        btn.addEventListener('click', () => deleteCloudFile(btn.getAttribute('data-del-name'), btn.getAttribute('data-del-id')));
-      });
-      setStatus('Files synced.', true);
+
+      box.innerHTML =
+        files.map(f => {
+
+          const name =
+            String(
+              f.fileName || ''
+            )
+              .replace(
+                /"/g,
+                '&quot;'
+              )
+              .replace(
+                /</g,
+                '&lt;'
+              );
+
+          const size =
+            formatBytes(
+              f.contentLength
+            );
+
+          const fid =
+            String(
+              f.fileId || ''
+            )
+              .replace(
+                /"/g,
+                '&quot;'
+              );
+
+          return (
+            '<div class="cloud-file-row">' +
+
+            '<div class="name">' +
+            name +
+            '<div class="meta">' +
+            size +
+            '</div></div>' +
+
+            '<button class="btn" type="button" style="background:rgba(92,200,255,.15);color:#5cc8ff;" data-dl-name="' +
+            name +
+            '" data-dl-id="' +
+            fid +
+            '">DL</button>' +
+
+            '<button class="btn" type="button" style="background:rgba(255,59,48,.15);color:var(--error);" data-del-name="' +
+            name +
+            '" data-del-id="' +
+            fid +
+            '">DEL</button>' +
+
+            '</div>'
+          );
+
+        }).join('');
+
+      box
+        .querySelectorAll(
+          '[data-dl-name]'
+        )
+        .forEach(btn => {
+
+          btn.addEventListener(
+            'click',
+            () =>
+              downloadCloudFile(
+                btn.getAttribute(
+                  'data-dl-name'
+                ),
+                btn.getAttribute(
+                  'data-dl-id'
+                )
+              )
+          );
+        });
+
+      box
+        .querySelectorAll(
+          '[data-del-name]'
+        )
+        .forEach(btn => {
+
+          btn.addEventListener(
+            'click',
+            () =>
+              deleteCloudFile(
+                btn.getAttribute(
+                  'data-del-name'
+                ),
+                btn.getAttribute(
+                  'data-del-id'
+                )
+              )
+          );
+        });
+
+      setStatus(
+        'Files synced.',
+        true
+      );
+
     } catch (e) {
-      if (box) box.innerHTML = '<div style="padding:14px;color:var(--error);font-weight:700;">' + explainFetchError(e) + '</div>';
-      setStatus(explainFetchError(e), false);
+
+      const msg =
+        explainFetchError(e);
+
+      if (box) {
+
+        box.innerHTML =
+          '<div style="padding:14px;color:var(--error);font-weight:700;">' +
+          msg +
+          '</div>';
+      }
+
+      setStatus(
+        msg,
+        false
+      );
+
       paintUsage(0);
     }
   };
 
-  async function downloadCloudFile(fileName, fileId) {
+  // =========================================================
+  // DOWNLOAD
+  // =========================================================
+
+  async function downloadCloudFile(
+    fileName,
+    fileId
+  ) {
+
     try {
+
       await authorizeB2();
-      // Download auth token (query param) — required for private bucket + browser
-      const authRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_download_authorization', {
-        method: 'POST',
-        headers: {
-          Authorization: b2.authToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          bucketId: b2.bucketId,
-          fileNamePrefix: fileName,
-          validDurationInSeconds: 3600
-        })
-      });
-      const authData = await authRes.json().catch(() => ({}));
-      if (!authRes.ok) throw new Error(authData.message || 'Download auth failed');
-      const path = fileName.split('/').map(encodeURIComponent).join('/');
-      const url = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path +
-        '?Authorization=' + encodeURIComponent(authData.authorizationToken);
-      const res = await b2Fetch(url, { method: 'GET', binary: true });
-      if (!res.ok) throw new Error('Download failed (' + res.status + ')');
-      const blob = await res.blob();
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = fileName.split('/').pop() || 'download';
+
+      const authRes =
+        await b2Fetch(
+          b2.apiUrl +
+          '/b2api/v2/b2_get_download_authorization',
+          {
+            method: 'POST',
+            headers: {
+              Authorization:
+                b2.authToken,
+              'Content-Type':
+                'application/json'
+            },
+            body:
+              JSON.stringify({
+                bucketId:
+                  b2.bucketId,
+                fileNamePrefix:
+                  fileName,
+                validDurationInSeconds:
+                  3600
+              })
+          }
+        );
+
+      const authData =
+        await authRes.json().catch(
+          () => ({})
+        );
+
+      if (!authRes.ok) {
+
+        throw new Error(
+          authData.message ||
+          'Download auth failed'
+        );
+      }
+
+      const path =
+        fileName
+          .split('/')
+          .map(
+            encodeURIComponent
+          )
+          .join('/');
+
+      const url =
+        b2.downloadUrl +
+        '/file/' +
+        encodeURIComponent(
+          b2.bucketName
+        ) +
+        '/' +
+        path +
+        '?Authorization=' +
+        encodeURIComponent(
+          authData.authorizationToken
+        );
+
+      const res =
+        await b2Fetch(
+          url,
+          {
+            method: 'GET',
+            binary: true
+          }
+        );
+
+      if (!res.ok) {
+
+        throw new Error(
+          'Download failed (' +
+          res.status +
+          ')'
+        );
+      }
+
+      const blob =
+        await res.blob();
+
+      const a =
+        document.createElement('a');
+
+      a.href =
+        URL.createObjectURL(blob);
+
+      a.download =
+        fileName.split('/').pop() ||
+        'download';
+
       document.body.appendChild(a);
+
       a.click();
-      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+
+      setTimeout(() => {
+
+        URL.revokeObjectURL(
+          a.href
+        );
+
+        a.remove();
+
+      }, 2000);
+
     } catch (e) {
-      setStatus('Download: ' + explainFetchError(e), false);
+
+      setStatus(
+        'Download: ' +
+        explainFetchError(e),
+        false
+      );
     }
   }
 
-  async function deleteCloudFile(fileName, fileId) {
-    if (!fileId) return;
+  // =========================================================
+  // DELETE
+  // =========================================================
+
+  async function deleteCloudFile(
+    fileName,
+    fileId
+  ) {
+
+    if (!fileId)
+      return;
+
     try {
+
       await authorizeB2();
-      const res = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_delete_file_version', {
-        method: 'POST',
-        headers: {
-          Authorization: b2.authToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ fileName: fileName, fileId: fileId })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || 'Delete failed');
+
+      const res =
+        await b2Fetch(
+          b2.apiUrl +
+          '/b2api/v2/b2_delete_file_version',
+          {
+            method: 'POST',
+            headers: {
+              Authorization:
+                b2.authToken,
+              'Content-Type':
+                'application/json'
+            },
+            body:
+              JSON.stringify({
+                fileName:
+                  fileName,
+                fileId:
+                  fileId
+              })
+          }
+        );
+
+      const data =
+        await res.json().catch(
+          () => ({})
+        );
+
+      if (!res.ok) {
+
+        throw new Error(
+          data.message ||
+          'Delete failed'
+        );
+      }
+
       await refreshCloudFiles();
+
     } catch (e) {
-      setStatus('Delete: ' + explainFetchError(e), false);
+
+      setStatus(
+        'Delete: ' +
+        explainFetchError(e),
+        false
+      );
     }
   }
+
+  // =========================================================
+  // UPLOAD ONE FILE
+  // =========================================================
 
   async function uploadOne(file) {
+
     await authorizeB2();
-    const upRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_upload_url', {
-      method: 'POST',
-      headers: {
-        Authorization: b2.authToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ bucketId: b2.bucketId })
-    });
-    const up = await upRes.json().catch(() => ({}));
-    if (!upRes.ok) throw new Error(up.message || 'Upload URL failed');
 
-    const buf = await file.arrayBuffer();
-    const hashBuf = await crypto.subtle.digest('SHA-1', buf);
-    const sha1 = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
-    const safeName = file.name.replace(/[\\\\]/g, '_');
+    const upRes =
+      await b2Fetch(
+        b2.apiUrl +
+        '/b2api/v2/b2_get_upload_url',
+        {
+          method: 'POST',
+          headers: {
+            Authorization:
+              b2.authToken,
+            'Content-Type':
+              'application/json'
+          },
+          body:
+            JSON.stringify({
+              bucketId:
+                b2.bucketId
+            })
+        }
+      );
 
-    // Upload URL is single-use host — go via proxy if set (handles CORS)
-    const res = await b2Fetch(up.uploadUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: up.authorizationToken,
-        'X-Bz-File-Name': encodeURIComponent(safeName).replace(/%2F/g, '/'),
-        'Content-Type': file.type || 'b2/x-auto',
-        'Content-Length': String(buf.byteLength),
-        'X-Bz-Content-Sha1': sha1
-      },
-      body: buf
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.message || ('Upload HTTP ' + res.status));
+    const up =
+      await upRes.json().catch(
+        () => ({})
+      );
+
+    if (!upRes.ok) {
+
+      throw new Error(
+        up.message ||
+        'Upload URL failed'
+      );
+    }
+
+    const buf =
+      await file.arrayBuffer();
+
+    const hashBuf =
+      await crypto.subtle.digest(
+        'SHA-1',
+        buf
+      );
+
+    const sha1 =
+      Array.from(
+        new Uint8Array(hashBuf)
+      )
+        .map(
+          b =>
+            b.toString(16)
+             .padStart(2, '0')
+        )
+        .join('');
+
+    const safeName =
+      file.name.replace(
+        /[\\]/g,
+        '_'
+      );
+
+    const res =
+      await b2Fetch(
+        up.uploadUrl,
+        {
+          method: 'POST',
+          headers: {
+            Authorization:
+              up.authorizationToken,
+
+            'X-Bz-File-Name':
+              encodeURIComponent(
+                safeName
+              ).replace(
+                /%2F/g,
+                '/'
+              ),
+
+            'Content-Type':
+              file.type ||
+              'b2/x-auto',
+
+            'Content-Length':
+              String(
+                buf.byteLength
+              ),
+
+            'X-Bz-Content-Sha1':
+              sha1
+          },
+
+          body: buf
+        }
+      );
+
+    const data =
+      await res.json().catch(
+        () => ({})
+      );
+
+    if (!res.ok) {
+
+      throw new Error(
+        data.message ||
+        (
+          'Upload HTTP ' +
+          res.status
+        )
+      );
+    }
+
     return data;
   }
 
-  window.uploadCloudFiles = async function(fileList) {
-    const files = Array.from(fileList || []);
-    if (!files.length) return;
-    const prog = document.getElementById('cloudUploadProgress');
-    try {
-      for (let i = 0; i < files.length; i++) {
-        if (prog) prog.textContent = 'Uploading ' + (i + 1) + '/' + files.length + ': ' + files[i].name;
-        await uploadOne(files[i]);
-      }
-      if (prog) prog.textContent = 'Upload complete.';
-      await refreshCloudFiles();
-    } catch (e) {
-      if (prog) prog.textContent = '';
-      setStatus('Upload: ' + explainFetchError(e), false);
-    }
-  };
+  // =========================================================
+  // UPLOAD MULTIPLE FILES
+  // =========================================================
 
-  window.toggleCloudPanel = function(force) {
-    const p = document.getElementById('cloudPanel');
-    const bd = document.getElementById('cloudPanelBackdrop');
-    if (!p) return;
-    const open = force === false ? false : (force === true ? true : !p.classList.contains('open'));
-    if (open) {
-      p.classList.remove('closing');
-      p.classList.add('open');
-      if (bd) bd.classList.add('open');
-      loadSettingsFromFirebase().then(() => {
-        if (b2.keyId && b2.appKey) refreshCloudFiles();
-        else setStatus('Paste Application Key → SAVE & CONNECT', null);
-      });
-    } else {
-      p.classList.add('closing');
-      if (bd) bd.classList.remove('open');
-      setTimeout(() => { p.classList.remove('open', 'closing'); }, 380);
-    }
-  };
+  window.uploadCloudFiles =
+    async function(fileList) {
+
+      const files =
+        Array.from(
+          fileList || []
+        );
+
+      if (!files.length)
+        return;
+
+      const prog =
+        document.getElementById(
+          'cloudUploadProgress'
+        );
+
+      try {
+
+        for (
+          let i = 0;
+          i < files.length;
+          i++
+        ) {
+
+          if (prog) {
+
+            prog.textContent =
+              'Uploading ' +
+              (i + 1) +
+              '/' +
+              files.length +
+              ': ' +
+              files[i].name;
+          }
+
+          await uploadOne(
+            files[i]
+          );
+        }
+
+        if (prog)
+          prog.textContent =
+            'Upload complete.';
+
+        await refreshCloudFiles();
+
+      } catch (e) {
+
+        if (prog)
+          prog.textContent = '';
+
+        setStatus(
+          'Upload: ' +
+          explainFetchError(e),
+          false
+        );
+      }
+    };
+
+  // =========================================================
+  // TOGGLE CLOUD PANEL
+  // =========================================================
+
+  window.toggleCloudPanel =
+    function(force) {
+
+      const p =
+        document.getElementById(
+          'cloudPanel'
+        );
+
+      const bd =
+        document.getElementById(
+          'cloudPanelBackdrop'
+        );
+
+      if (!p)
+        return;
+
+      const open =
+        force === false
+          ? false
+          : force === true
+            ? true
+            : !p.classList.contains(
+                'open'
+              );
+
+      if (open) {
+
+        p.classList.remove(
+          'closing'
+        );
+
+        p.classList.add(
+          'open'
+        );
+
+        if (bd)
+          bd.classList.add(
+            'open'
+          );
+
+        loadSettingsFromFirebase()
+          .then(() => {
+
+            if (
+              b2.keyId &&
+              b2.appKey
+            ) {
+
+              refreshCloudFiles();
+
+            } else {
+
+              setStatus(
+                'Paste Application Key → SAVE & CONNECT',
+                null
+              );
+            }
+          });
+
+      } else {
+
+        p.classList.add(
+          'closing'
+        );
+
+        if (bd)
+          bd.classList.remove(
+            'open'
+          );
+
+        setTimeout(() => {
+
+          p.classList.remove(
+            'open',
+            'closing'
+          );
+
+        }, 380);
+      }
+    };
+
+  // =========================================================
+  // UPLOAD UI
+  // =========================================================
 
   function bindUploadUI() {
-    const zone = document.getElementById('cloudUploadZone');
-    const input = document.getElementById('cloudFileInput');
-    if (!zone || !input) return;
-    zone.addEventListener('click', () => input.click());
-    input.addEventListener('change', () => {
-      if (input.files && input.files.length) uploadCloudFiles(input.files);
-      input.value = '';
-    });
-    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
-    zone.addEventListener('drop', e => {
-      e.preventDefault();
-      zone.classList.remove('drag');
-      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
-        uploadCloudFiles(e.dataTransfer.files);
+
+    const zone =
+      document.getElementById(
+        'cloudUploadZone'
+      );
+
+    const input =
+      document.getElementById(
+        'cloudFileInput'
+      );
+
+    if (!zone || !input)
+      return;
+
+    zone.addEventListener(
+      'click',
+      () => input.click()
+    );
+
+    input.addEventListener(
+      'change',
+      () => {
+
+        if (
+          input.files &&
+          input.files.length
+        ) {
+
+          uploadCloudFiles(
+            input.files
+          );
+        }
+
+        input.value = '';
       }
-    });
+    );
+
+    zone.addEventListener(
+      'dragover',
+      e => {
+
+        e.preventDefault();
+
+        zone.classList.add(
+          'drag'
+        );
+      }
+    );
+
+    zone.addEventListener(
+      'dragleave',
+      () =>
+        zone.classList.remove(
+          'drag'
+        )
+    );
+
+    zone.addEventListener(
+      'drop',
+      e => {
+
+        e.preventDefault();
+
+        zone.classList.remove(
+          'drag'
+        );
+
+        if (
+          e.dataTransfer &&
+          e.dataTransfer.files &&
+          e.dataTransfer.files.length
+        ) {
+
+          uploadCloudFiles(
+            e.dataTransfer.files
+          );
+        }
+      }
+    );
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => { bindUploadUI(); loadSettingsFromFirebase(); });
+  // =========================================================
+  // INIT
+  // =========================================================
+
+  if (
+    document.readyState ===
+    'loading'
+  ) {
+
+    document.addEventListener(
+      'DOMContentLoaded',
+      () => {
+
+        bindUploadUI();
+        loadSettingsFromFirebase();
+
+      }
+    );
+
   } else {
+
     bindUploadUI();
     loadSettingsFromFirebase();
   }
+
 })();
-
-
-</script>
-</body>
-</html>
