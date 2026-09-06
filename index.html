@@ -1339,6 +1339,134 @@
             margin-top: 10px;
         }
 
+
+        /* Cloud FAB (next to Security) */
+        .cloud-fab {
+            position: fixed;
+            bottom: 35px;
+            left: 92px;
+            z-index: 100;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 150, 255, 0.12);
+            border: 1px solid rgba(0, 180, 255, 0.45);
+            color: #5cc8ff;
+            cursor: pointer;
+            box-shadow: 0 10px 28px rgba(0, 150, 255, 0.2);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transition: transform .25s, background .25s;
+        }
+        .cloud-fab:hover {
+            transform: scale(1.1);
+            background: #5cc8ff;
+            color: #000;
+        }
+        .cloud-fab svg {
+            width: 22px;
+            height: 22px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        #cloudPanel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 121;
+            width: 560px;
+            max-width: 100%;
+            overflow: auto;
+            display: none;
+            padding: 36px 28px 50px;
+            border-radius: 28px 0 0 28px;
+            border-left: 1px solid var(--glass-border);
+            box-shadow: -30px 0 80px rgba(0, 0, 0, 0.45);
+            background: var(--glass-bg);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+        }
+        #cloudPanel.open {
+            display: block;
+            animation: secPanelIn .4s cubic-bezier(.16, 1, .3, 1) forwards;
+        }
+        #cloudPanel.closing {
+            display: block;
+            animation: secPanelOut .4s cubic-bezier(.4, 0, .2, 1) forwards;
+        }
+        #cloudPanelBackdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 120;
+            background: rgba(0,0,0,.45);
+            display: none;
+        }
+        #cloudPanelBackdrop.open { display: block; }
+        .cloud-stat-bar {
+            height: 10px;
+            border-radius: 99px;
+            background: rgba(150,150,150,.2);
+            overflow: hidden;
+            margin: 10px 0 6px;
+        }
+        .cloud-stat-bar > i {
+            display: block;
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #5cc8ff, var(--accent));
+            border-radius: 99px;
+            transition: width .4s ease;
+        }
+        .cloud-file-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--glass-border);
+            font-size: 13px;
+        }
+        .cloud-file-row .name {
+            flex: 1;
+            font-weight: 700;
+            word-break: break-all;
+            color: var(--text-main);
+        }
+        .cloud-file-row .meta {
+            color: var(--text-dim);
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .cloud-file-row button {
+            padding: 8px 12px;
+            font-size: 11px;
+            border-radius: 10px;
+        }
+        .cloud-upload-zone {
+            border: 1.5px dashed rgba(92,200,255,.45);
+            border-radius: 16px;
+            padding: 22px 16px;
+            text-align: center;
+            color: var(--text-dim);
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            margin: 14px 0;
+            transition: border-color .2s, background .2s;
+        }
+        .cloud-upload-zone:hover, .cloud-upload-zone.drag {
+            border-color: #5cc8ff;
+            background: rgba(92,200,255,.08);
+            color: var(--text-main);
+        }
+
         /* Security FAB + panel */
         .sec-fab {
             position: fixed;
@@ -1976,6 +2104,61 @@ body.cat-world-active .cat-mode-bar{display:block}
             <div id="adminLoginLogList" class="mk-list" style="max-height:min(55vh,480px);overflow:auto;padding:10px 0;"></div>
             <button class="btn" type="button" style="margin-top:12px;background:var(--error);color:#fff;width:100%;padding:16px;" onclick="clearAdminLoginHistory()">CLEAR HISTORY (FP + CODE)</button>
         </div>
+    </div>
+
+
+    <button type="button" class="cloud-fab" id="cloudFab" title="Cloud Storage" onclick="toggleCloudPanel()">
+        <svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+    </button>
+    <div id="cloudPanelBackdrop" onclick="toggleCloudPanel(false)"></div>
+    <div id="cloudPanel" class="glass-panel">
+        <button type="button" class="sec-panel-close" onclick="toggleCloudPanel(false)" aria-label="Close">×</button>
+        <h2 style="color:#5cc8ff;font-size:24px;margin:0 0 8px;font-weight:900;">Cloud Storage</h2>
+        <p style="color:var(--text-dim);font-size:13px;margin:0 0 16px;line-height:1.5;">Backblaze B2 — upload / download files. Keys save in Firebase (not in this chat).</p>
+
+        <div style="padding:14px 16px;border-radius:16px;border:1px solid var(--glass-border);background:rgba(0,0,0,.15);margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <span style="font-size:12px;font-weight:800;color:var(--text-dim);letter-spacing:.5px;">STORAGE</span>
+                <span id="cloudUsedLabel" style="font-size:12px;font-weight:800;color:var(--text-main);">—</span>
+            </div>
+            <div class="cloud-stat-bar"><i id="cloudUsedBar"></i></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--text-dim);">
+                <span id="cloudFreeLabel">Free: —</span>
+                <span id="cloudQuotaLabel">Quota: 10 GB</span>
+            </div>
+        </div>
+
+        <details style="margin-bottom:14px;">
+            <summary style="cursor:pointer;font-weight:800;font-size:13px;color:var(--text-main);">B2 connection settings</summary>
+            <div style="margin-top:12px;">
+                <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Key ID</label>
+                <input type="text" id="b2KeyId" placeholder="0056…" style="width:100%;margin:4px 0 10px;" autocomplete="off">
+                <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Application Key</label>
+                <input type="password" id="b2AppKey" placeholder="Paste application key" style="width:100%;margin:4px 0 10px;" autocomplete="off">
+                <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Bucket name</label>
+                <input type="text" id="b2BucketName" value="DGXEN-storage" style="width:100%;margin:4px 0 10px;" autocomplete="off">
+                <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Bucket ID</label>
+                <input type="text" id="b2BucketId" value="46433635305c7b6aac0b0111" style="width:100%;margin:4px 0 10px;" autocomplete="off">
+                <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Quota (GB)</label>
+                <input type="number" id="b2QuotaGb" value="10" min="1" style="width:100%;margin:4px 0 10px;">
+                <div class="input-group" style="margin:0;">
+                    <button class="btn" type="button" style="background:#5cc8ff;color:#000;width:100%;" onclick="saveB2Settings()">SAVE & CONNECT</button>
+                </div>
+                <p id="cloudConnStatus" style="font-size:12px;font-weight:700;color:var(--text-dim);margin-top:8px;min-height:18px;"></p>
+            </div>
+        </details>
+
+        <div class="cloud-upload-zone" id="cloudUploadZone">
+            Tap or drop files to upload
+            <input type="file" id="cloudFileInput" multiple style="display:none;">
+        </div>
+        <div id="cloudUploadProgress" style="font-size:12px;font-weight:700;color:#5cc8ff;min-height:18px;margin-bottom:8px;"></div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0;">
+            <span style="font-size:14px;font-weight:800;">Files</span>
+            <button class="btn" type="button" style="padding:8px 14px;font-size:11px;" onclick="refreshCloudFiles()">REFRESH</button>
+        </div>
+        <div id="cloudFileList" class="mk-list" style="max-height:min(50vh,420px);overflow:auto;"></div>
     </div>
 
     <button class="info-btn" onclick="openGuideModal()">i</button>
@@ -4603,6 +4786,331 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 showConfirm('Cleared', 'Broadcast popup disabled.', null);
             } catch (e) { showConfirm('Error', e.message || String(e), null); }
         };
-    </script>
+    
+
+// ===== BACKBLAZE B2 CLOUD =====
+(function(){
+  const B2_AUTH = 'https://api.backblazeb2.com/b2api/v2/b2_authorize_account';
+  const QUOTA_DEFAULT_GB = 10;
+  let b2 = {
+    keyId: '',
+    appKey: '',
+    bucketName: 'DGXEN-storage',
+    bucketId: '46433635305c7b6aac0b0111',
+    quotaGb: QUOTA_DEFAULT_GB,
+    authToken: '',
+    apiUrl: '',
+    downloadUrl: '',
+    authAt: 0
+  };
+
+  function setStatus(msg, ok) {
+    const el = document.getElementById('cloudConnStatus');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.style.color = ok === false ? 'var(--error)' : (ok ? 'var(--accent)' : 'var(--text-dim)');
+  }
+
+  function formatBytes(n) {
+    n = Number(n) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
+    if (n < 1073741824) return (n/1048576).toFixed(2) + ' MB';
+    return (n/1073741824).toFixed(2) + ' GB';
+  }
+
+  function paintUsage(usedBytes) {
+    const quota = (Number(b2.quotaGb) || QUOTA_DEFAULT_GB) * 1073741824;
+    const used = Math.max(0, Number(usedBytes) || 0);
+    const free = Math.max(0, quota - used);
+    const pct = Math.min(100, (used / quota) * 100);
+    const bar = document.getElementById('cloudUsedBar');
+    const usedL = document.getElementById('cloudUsedLabel');
+    const freeL = document.getElementById('cloudFreeLabel');
+    const qL = document.getElementById('cloudQuotaLabel');
+    if (bar) bar.style.width = pct.toFixed(1) + '%';
+    if (usedL) usedL.textContent = formatBytes(used) + ' used';
+    if (freeL) freeL.textContent = 'Free: ' + formatBytes(free);
+    if (qL) qL.textContent = 'Quota: ' + (Number(b2.quotaGb) || QUOTA_DEFAULT_GB) + ' GB';
+  }
+
+  async function loadSettingsFromFirebase() {
+    try {
+      const snap = await get(ref(db, 'settings/b2'));
+      if (snap.exists()) {
+        const v = snap.val() || {};
+        if (v.keyId) b2.keyId = String(v.keyId);
+        if (v.appKey) b2.appKey = String(v.appKey);
+        if (v.bucketName) b2.bucketName = String(v.bucketName);
+        if (v.bucketId) b2.bucketId = String(v.bucketId);
+        if (v.quotaGb) b2.quotaGb = Number(v.quotaGb) || QUOTA_DEFAULT_GB;
+      }
+    } catch (e) { console.warn('b2 settings load', e); }
+    try {
+      const ki = document.getElementById('b2KeyId');
+      const ak = document.getElementById('b2AppKey');
+      const bn = document.getElementById('b2BucketName');
+      const bi = document.getElementById('b2BucketId');
+      const qg = document.getElementById('b2QuotaGb');
+      if (ki) ki.value = b2.keyId || '';
+      if (ak) ak.value = b2.appKey || '';
+      if (bn) bn.value = b2.bucketName || 'DGXEN-storage';
+      if (bi) bi.value = b2.bucketId || '';
+      if (qg) qg.value = b2.quotaGb || QUOTA_DEFAULT_GB;
+    } catch (e) {}
+  }
+
+  window.saveB2Settings = async function() {
+    b2.keyId = (document.getElementById('b2KeyId') && document.getElementById('b2KeyId').value || '').trim();
+    b2.appKey = (document.getElementById('b2AppKey') && document.getElementById('b2AppKey').value || '').trim();
+    b2.bucketName = (document.getElementById('b2BucketName') && document.getElementById('b2BucketName').value || '').trim() || 'DGXEN-storage';
+    b2.bucketId = (document.getElementById('b2BucketId') && document.getElementById('b2BucketId').value || '').trim();
+    b2.quotaGb = Number(document.getElementById('b2QuotaGb') && document.getElementById('b2QuotaGb').value) || QUOTA_DEFAULT_GB;
+    b2.authToken = '';
+    b2.authAt = 0;
+    if (!b2.keyId || !b2.appKey) {
+      setStatus('Key ID + Application Key required.', false);
+      return;
+    }
+    try {
+      await set(ref(db, 'settings/b2'), {
+        keyId: b2.keyId,
+        appKey: b2.appKey,
+        bucketName: b2.bucketName,
+        bucketId: b2.bucketId,
+        quotaGb: b2.quotaGb,
+        updatedAt: Date.now()
+      });
+    } catch (e) {
+      setStatus('Saved locally only (Firebase write failed).', false);
+    }
+    try {
+      await authorizeB2(true);
+      setStatus('Connected to B2.', true);
+      await refreshCloudFiles();
+    } catch (e) {
+      setStatus('Connect failed: ' + (e.message || e), false);
+    }
+  };
+
+  async function authorizeB2(force) {
+    if (!force && b2.authToken && (Date.now() - b2.authAt) < 20 * 60 * 1000) return b2;
+    if (!b2.keyId || !b2.appKey) throw new Error('Add B2 keys in connection settings');
+    const basic = btoa(b2.keyId + ':' + b2.appKey);
+    const res = await fetch(B2_AUTH, {
+      method: 'GET',
+      headers: { Authorization: 'Basic ' + basic }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || data.code || ('Auth HTTP ' + res.status));
+    b2.authToken = data.authorizationToken;
+    b2.apiUrl = data.apiUrl;
+    b2.downloadUrl = data.downloadUrl;
+    b2.authAt = Date.now();
+    if (data.allowed && data.allowed.bucketId) b2.bucketId = data.allowed.bucketId;
+    return b2;
+  }
+
+  async function listAllFiles() {
+    await authorizeB2();
+    let start = null;
+    const files = [];
+    do {
+      const body = { bucketId: b2.bucketId, maxFileCount: 1000 };
+      if (start) body.startFileName = start;
+      const res = await fetch(b2.apiUrl + '/b2api/v2/b2_list_file_names', {
+        method: 'POST',
+        headers: {
+          Authorization: b2.authToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'List failed');
+      (data.files || []).forEach(f => files.push(f));
+      start = data.nextFileName || null;
+    } while (start);
+    return files;
+  }
+
+  window.refreshCloudFiles = async function() {
+    const box = document.getElementById('cloudFileList');
+    if (box) box.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-weight:700;">Loading…</div>';
+    try {
+      await loadSettingsFromFirebase();
+      const files = await listAllFiles();
+      let used = 0;
+      files.forEach(f => { used += Number(f.contentLength) || 0; });
+      paintUsage(used);
+      if (!box) return;
+      if (!files.length) {
+        box.innerHTML = '<div style="padding:14px;color:var(--text-dim);font-weight:700;">No files yet.</div>';
+        return;
+      }
+      box.innerHTML = files.map(f => {
+        const name = String(f.fileName || '').replace(/"/g, '&quot;');
+        const size = formatBytes(f.contentLength);
+        const fid = String(f.fileId || '').replace(/"/g, '&quot;');
+        return '<div class="cloud-file-row">' +
+          '<div class="name">' + name + '<div class="meta">' + size + '</div></div>' +
+          '<button class="btn" type="button" style="background:rgba(92,200,255,.15);color:#5cc8ff;" data-dl-name="' + name + '" data-dl-id="' + fid + '">DL</button>' +
+          '<button class="btn" type="button" style="background:rgba(255,59,48,.15);color:var(--error);" data-del-name="' + name + '" data-del-id="' + fid + '">DEL</button>' +
+          '</div>';
+      }).join('');
+      box.querySelectorAll('[data-dl-name]').forEach(btn => {
+        btn.addEventListener('click', () => downloadCloudFile(btn.getAttribute('data-dl-name'), btn.getAttribute('data-dl-id')));
+      });
+      box.querySelectorAll('[data-del-name]').forEach(btn => {
+        btn.addEventListener('click', () => deleteCloudFile(btn.getAttribute('data-del-name'), btn.getAttribute('data-del-id')));
+      });
+      setStatus('Files synced.', true);
+    } catch (e) {
+      if (box) box.innerHTML = '<div style="padding:14px;color:var(--error);font-weight:700;">' + (e.message || e) + '</div>';
+      setStatus(String(e.message || e), false);
+      paintUsage(0);
+    }
+  };
+
+  async function downloadCloudFile(fileName, fileId) {
+    try {
+      await authorizeB2();
+      // Private bucket: authorized download by name
+      const url = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + fileName.split('/').map(encodeURIComponent).join('/');
+      const res = await fetch(url, { headers: { Authorization: b2.authToken } });
+      if (!res.ok) throw new Error('Download failed (' + res.status + ')');
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName.split('/').pop() || 'download';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    } catch (e) {
+      setStatus('Download: ' + (e.message || e), false);
+    }
+  }
+
+  async function deleteCloudFile(fileName, fileId) {
+    if (!fileId) return;
+    try {
+      await authorizeB2();
+      const res = await fetch(b2.apiUrl + '/b2api/v2/b2_delete_file_version', {
+        method: 'POST',
+        headers: {
+          Authorization: b2.authToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ fileName: fileName, fileId: fileId })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Delete failed');
+      await refreshCloudFiles();
+    } catch (e) {
+      setStatus('Delete: ' + (e.message || e), false);
+    }
+  }
+
+  async function uploadOne(file) {
+    await authorizeB2();
+    const upRes = await fetch(b2.apiUrl + '/b2api/v2/b2_get_upload_url', {
+      method: 'POST',
+      headers: {
+        Authorization: b2.authToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ bucketId: b2.bucketId })
+    });
+    const up = await upRes.json().catch(() => ({}));
+    if (!upRes.ok) throw new Error(up.message || 'Upload URL failed');
+
+    const buf = await file.arrayBuffer();
+    // SHA1 of content
+    const hashBuf = await crypto.subtle.digest('SHA-1', buf);
+    const sha1 = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+    const safeName = file.name.replace(/[\\]/g, '_');
+    const res = await fetch(up.uploadUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: up.authorizationToken,
+        'X-Bz-File-Name': encodeURIComponent(safeName).replace(/%2F/g, '/'),
+        'Content-Type': file.type || 'b2/x-auto',
+        'Content-Length': String(buf.byteLength),
+        'X-Bz-Content-Sha1': sha1
+      },
+      body: buf
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || ('Upload HTTP ' + res.status));
+    return data;
+  }
+
+  window.uploadCloudFiles = async function(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    const prog = document.getElementById('cloudUploadProgress');
+    try {
+      for (let i = 0; i < files.length; i++) {
+        if (prog) prog.textContent = 'Uploading ' + (i + 1) + '/' + files.length + ': ' + files[i].name;
+        await uploadOne(files[i]);
+      }
+      if (prog) prog.textContent = 'Upload complete.';
+      await refreshCloudFiles();
+    } catch (e) {
+      if (prog) prog.textContent = '';
+      setStatus('Upload: ' + (e.message || e), false);
+    }
+  };
+
+  window.toggleCloudPanel = function(force) {
+    const p = document.getElementById('cloudPanel');
+    const bd = document.getElementById('cloudPanelBackdrop');
+    if (!p) return;
+    const open = force === false ? false : (force === true ? true : !p.classList.contains('open'));
+    if (open) {
+      p.classList.remove('closing');
+      p.classList.add('open');
+      if (bd) bd.classList.add('open');
+      loadSettingsFromFirebase().then(() => {
+        if (b2.keyId && b2.appKey) refreshCloudFiles();
+        else setStatus('Paste Application Key → SAVE & CONNECT', null);
+      });
+    } else {
+      p.classList.add('closing');
+      if (bd) bd.classList.remove('open');
+      setTimeout(() => { p.classList.remove('open', 'closing'); }, 380);
+    }
+  };
+
+  function bindUploadUI() {
+    const zone = document.getElementById('cloudUploadZone');
+    const input = document.getElementById('cloudFileInput');
+    if (!zone || !input) return;
+    zone.addEventListener('click', () => input.click());
+    input.addEventListener('change', () => {
+      if (input.files && input.files.length) uploadCloudFiles(input.files);
+      input.value = '';
+    });
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('drag');
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        uploadCloudFiles(e.dataTransfer.files);
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { bindUploadUI(); loadSettingsFromFirebase(); });
+  } else {
+    bindUploadUI();
+    loadSettingsFromFirebase();
+  }
+})();
+
+</script>
 </body>
 </html>
