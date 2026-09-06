@@ -4796,6 +4796,17 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   const B2_AUTH = 'https://api.backblazeb2.com/b2api/v2/b2_authorize_account';
   const QUOTA_DEFAULT_GB = 10;
 
+  // =========================================================
+  // DIRECT BINARY UPLOAD SETTINGS
+  // =========================================================
+
+  // 10 MiB per part.
+  // Only one part is held in memory at a time for large files.
+  const B2_PART_SIZE = 10 * 1024 * 1024;
+
+  // Files above 10 MiB use Large File API.
+  const B2_LARGE_FILE_THRESHOLD = 10 * 1024 * 1024;
+
   let b2 = {
     keyId: '',
     appKey: '',
@@ -4809,99 +4820,199 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     authAt: 0
   };
 
+  // =========================================================
+  // STATUS
+  // =========================================================
+
   function setStatus(msg, ok) {
     const el = document.getElementById('cloudConnStatus');
     if (!el) return;
+
     el.textContent = msg || '';
+
     el.style.color =
       ok === false ? 'var(--error)' :
       ok ? 'var(--accent)' :
       'var(--text-dim)';
   }
 
+  // =========================================================
+  // FORMAT BYTES
+  // =========================================================
+
   function formatBytes(n) {
     n = Number(n) || 0;
-    if (n < 1024) return n + ' B';
-    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
-    if (n < 1073741824) return (n / 1048576).toFixed(2) + ' MB';
+
+    if (n < 1024)
+      return n + ' B';
+
+    if (n < 1048576)
+      return (n / 1024).toFixed(1) + ' KB';
+
+    if (n < 1073741824)
+      return (n / 1048576).toFixed(2) + ' MB';
+
     return (n / 1073741824).toFixed(2) + ' GB';
   }
 
+  // =========================================================
+  // USAGE
+  // =========================================================
+
   function paintUsage(usedBytes) {
     const quota =
-      (Number(b2.quotaGb) || QUOTA_DEFAULT_GB) * 1073741824;
+      (Number(b2.quotaGb) || QUOTA_DEFAULT_GB) *
+      1073741824;
 
-    const used = Math.max(0, Number(usedBytes) || 0);
-    const free = Math.max(0, quota - used);
-    const pct = Math.min(100, (used / quota) * 100);
+    const used =
+      Math.max(
+        0,
+        Number(usedBytes) || 0
+      );
 
-    const bar = document.getElementById('cloudUsedBar');
-    const usedL = document.getElementById('cloudUsedLabel');
-    const freeL = document.getElementById('cloudFreeLabel');
-    const qL = document.getElementById('cloudQuotaLabel');
+    const free =
+      Math.max(
+        0,
+        quota - used
+      );
 
-    if (bar) bar.style.width = pct.toFixed(1) + '%';
-    if (usedL) usedL.textContent = formatBytes(used) + ' used';
-    if (freeL) freeL.textContent = 'Free: ' + formatBytes(free);
+    const pct =
+      Math.min(
+        100,
+        (used / quota) * 100
+      );
+
+    const bar =
+      document.getElementById(
+        'cloudUsedBar'
+      );
+
+    const usedL =
+      document.getElementById(
+        'cloudUsedLabel'
+      );
+
+    const freeL =
+      document.getElementById(
+        'cloudFreeLabel'
+      );
+
+    const qL =
+      document.getElementById(
+        'cloudQuotaLabel'
+      );
+
+    if (bar)
+      bar.style.width =
+        pct.toFixed(1) + '%';
+
+    if (usedL)
+      usedL.textContent =
+        formatBytes(used) + ' used';
+
+    if (freeL)
+      freeL.textContent =
+        'Free: ' + formatBytes(free);
+
     if (qL)
       qL.textContent =
         'Quota: ' +
-        (Number(b2.quotaGb) || QUOTA_DEFAULT_GB) +
+        (Number(b2.quotaGb) ||
+          QUOTA_DEFAULT_GB) +
         ' GB';
   }
 
-  function explainFetchError(e) {
-    const m = String((e && e.message) || e || '');
+  // =========================================================
+  // ERROR EXPLANATION
+  // =========================================================
 
-    if (/failed to fetch|networkerror|load failed|cors/i.test(m)) {
-      return 'Failed to fetch = browser CORS block. B2 does not allow authorize from webpage directly. Add a free Cloudflare Worker URL in "CORS Proxy" or host a tiny proxy.';
+  function explainFetchError(e) {
+    const m =
+      String(
+        (e && e.message) ||
+        e ||
+        ''
+      );
+
+    if (
+      /failed to fetch|networkerror|load failed|cors/i
+        .test(m)
+    ) {
+      return 'Failed to fetch = browser CORS/network block. Check B2 CORS rules for direct browser uploads.';
     }
 
     return m;
   }
 
   // =========================================================
-  // B2 FETCH + SAFE LARGE FILE BASE64 CONVERSION
+  // B2 FETCH
+  //
+  // IMPORTANT:
+  // This function is ONLY for B2 API/JSON operations.
+  //
+  // Actual file bytes DO NOT use this function anymore.
   // =========================================================
 
   async function b2Fetch(url, opts) {
     opts = opts || {};
 
-    const method = opts.method || 'GET';
-    const headers = opts.headers || {};
-    const body = opts.body;
+    const method =
+      opts.method || 'GET';
 
-    if (b2.proxyUrl && b2.proxyUrl.trim()) {
+    const headers =
+      opts.headers || {};
 
-      const proxy = b2.proxyUrl.replace(/\/$/, '');
+    const body =
+      opts.body;
+
+    // -------------------------------------------------------
+    // Proxy mode
+    // Used for authorization/API requests.
+    // -------------------------------------------------------
+
+    if (
+      b2.proxyUrl &&
+      b2.proxyUrl.trim()
+    ) {
+
+      const proxy =
+        b2.proxyUrl.replace(
+          /\/$/,
+          ''
+        );
+
       let bodyB64 = null;
 
       if (body != null) {
 
-        if (typeof body === 'string') {
+        if (
+          typeof body === 'string'
+        ) {
 
-          bodyB64 = btoa(
-            unescape(
-              encodeURIComponent(body)
-            )
-          );
+          bodyB64 =
+            btoa(
+              unescape(
+                encodeURIComponent(
+                  body
+                )
+              )
+            );
 
         } else if (
           body instanceof ArrayBuffer ||
           body instanceof Uint8Array
         ) {
 
-          // ===================================================
-          // SAFE CHUNKING FOR LARGE FILES
-          // Prevents Maximum call stack size exceeded
-          // ===================================================
-
+          // Safe chunked conversion.
+          // This remains here only for API calls.
           const uintArray =
             body instanceof ArrayBuffer
               ? new Uint8Array(body)
               : body;
 
-          const chunkSize = 0x8000; // 32 KB
+          const chunkSize =
+            0x8000;
+
           const chunks = [];
 
           for (
@@ -4909,6 +5020,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             i < uintArray.length;
             i += chunkSize
           ) {
+
             chunks.push(
               String.fromCharCode.apply(
                 null,
@@ -4920,31 +5032,51 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             );
           }
 
-          bodyB64 = btoa(chunks.join(''));
+          bodyB64 =
+            btoa(
+              chunks.join('')
+            );
         }
       }
 
-      const res = await fetch(proxy, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          url: url,
-          method: method,
-          headers: headers,
-          bodyB64: bodyB64,
-          isBinaryResponse: !!opts.binary
-        })
-      });
+      const res =
+        await fetch(
+          proxy,
+          {
+            method: 'POST',
 
-      const pack = await res.json().catch(() => ({}));
+            headers: {
+              'Content-Type':
+                'application/json'
+            },
+
+            body:
+              JSON.stringify({
+                url: url,
+                method: method,
+                headers: headers,
+                bodyB64: bodyB64,
+                isBinaryResponse:
+                  !!opts.binary
+              })
+          }
+        );
+
+      const pack =
+        await res.json()
+          .catch(
+            () => ({})
+          );
 
       if (!res.ok) {
+
         throw new Error(
           pack.error ||
           pack.message ||
-          ('Proxy HTTP ' + res.status)
+          (
+            'Proxy HTTP ' +
+            res.status
+          )
         );
       }
 
@@ -4953,49 +5085,111 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
           pack.status >= 200 &&
           pack.status < 300,
 
-        status: pack.status,
+        status:
+          pack.status,
 
-        json: async () => pack.json || {},
+        json:
+          async () =>
+            pack.json || {},
 
-        text: async () => pack.text || '',
+        text:
+          async () =>
+            pack.text || '',
 
-        blob: async () => {
+        blob:
+          async () => {
 
-          if (pack.bodyB64) {
-
-            const bin = atob(pack.bodyB64);
-            const arr = new Uint8Array(bin.length);
-
-            for (
-              let i = 0;
-              i < bin.length;
-              i++
+            if (
+              pack.bodyB64
             ) {
-              arr[i] = bin.charCodeAt(i);
+
+              const bin =
+                atob(
+                  pack.bodyB64
+                );
+
+              const arr =
+                new Uint8Array(
+                  bin.length
+                );
+
+              for (
+                let i = 0;
+                i < bin.length;
+                i++
+              ) {
+                arr[i] =
+                  bin.charCodeAt(i);
+              }
+
+              return new Blob([
+                arr
+              ]);
             }
 
-            return new Blob([arr]);
+            return new Blob();
           }
-
-          return new Blob();
-        }
       };
     }
 
-    // Direct request
+    // -------------------------------------------------------
+    // Direct API request
+    // -------------------------------------------------------
+
     try {
 
-      return await fetch(url, {
-        method: method,
-        headers: headers,
-        body: body
-      });
+      return await fetch(
+        url,
+        {
+          method: method,
+          headers: headers,
+          body: body
+        }
+      );
 
     } catch (e) {
 
-      e.message = explainFetchError(e);
+      e.message =
+        explainFetchError(e);
+
       throw e;
     }
+  }
+
+  // =========================================================
+  // SHA-1 HELPER
+  // =========================================================
+
+  async function sha1Hex(data) {
+
+    const hash =
+      await crypto.subtle.digest(
+        'SHA-1',
+        data
+      );
+
+    return Array.from(
+      new Uint8Array(hash)
+    )
+      .map(
+        b =>
+          b.toString(16)
+           .padStart(2, '0')
+      )
+      .join('');
+  }
+
+  // =========================================================
+  // B2 FILE NAME ENCODING
+  // =========================================================
+
+  function encodeB2FileName(name) {
+    return encodeURIComponent(
+      name
+    ).replace(
+      /%2F/g,
+      '/'
+    );
   }
 
   // =========================================================
@@ -5006,25 +5200,34 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
 
     try {
 
-      const snap = await get(
-        ref(db, 'settings/b2')
-      );
+      const snap =
+        await get(
+          ref(
+            db,
+            'settings/b2'
+          )
+        );
 
       if (snap.exists()) {
 
-        const v = snap.val() || {};
+        const v =
+          snap.val() || {};
 
         if (v.keyId)
-          b2.keyId = String(v.keyId);
+          b2.keyId =
+            String(v.keyId);
 
         if (v.appKey)
-          b2.appKey = String(v.appKey);
+          b2.appKey =
+            String(v.appKey);
 
         if (v.bucketName)
-          b2.bucketName = String(v.bucketName);
+          b2.bucketName =
+            String(v.bucketName);
 
         if (v.bucketId)
-          b2.bucketId = String(v.bucketId);
+          b2.bucketId =
+            String(v.bucketId);
 
         if (v.quotaGb)
           b2.quotaGb =
@@ -5037,6 +5240,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
       }
 
     } catch (e) {
+
       console.warn(
         'b2 settings load',
         e
@@ -5046,28 +5250,42 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     try {
 
       const ki =
-        document.getElementById('b2KeyId');
+        document.getElementById(
+          'b2KeyId'
+        );
 
       const ak =
-        document.getElementById('b2AppKey');
+        document.getElementById(
+          'b2AppKey'
+        );
 
       const bn =
-        document.getElementById('b2BucketName');
+        document.getElementById(
+          'b2BucketName'
+        );
 
       const bi =
-        document.getElementById('b2BucketId');
+        document.getElementById(
+          'b2BucketId'
+        );
 
       const qg =
-        document.getElementById('b2QuotaGb');
+        document.getElementById(
+          'b2QuotaGb'
+        );
 
       const pu =
-        document.getElementById('b2ProxyUrl');
+        document.getElementById(
+          'b2ProxyUrl'
+        );
 
       if (ki)
-        ki.value = b2.keyId || '';
+        ki.value =
+          b2.keyId || '';
 
       if (ak)
-        ak.value = b2.appKey || '';
+        ak.value =
+          b2.appKey || '';
 
       if (bn)
         bn.value =
@@ -5094,106 +5312,132 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   // SAVE SETTINGS
   // =========================================================
 
-  window.saveB2Settings = async function() {
+  window.saveB2Settings =
+    async function() {
 
-    b2.keyId =
-      (
-        document.getElementById('b2KeyId')
-          ?.value || ''
-      ).trim();
+      b2.keyId =
+        (
+          document.getElementById(
+            'b2KeyId'
+          )?.value || ''
+        ).trim();
 
-    b2.appKey =
-      (
-        document.getElementById('b2AppKey')
-          ?.value || ''
-      ).trim();
+      b2.appKey =
+        (
+          document.getElementById(
+            'b2AppKey'
+          )?.value || ''
+        ).trim();
 
-    b2.bucketName =
-      (
-        document.getElementById('b2BucketName')
-          ?.value || ''
-      ).trim() ||
-      'DGXEN-storage';
+      b2.bucketName =
+        (
+          document.getElementById(
+            'b2BucketName'
+          )?.value || ''
+        ).trim() ||
+        'DGXEN-storage';
 
-    b2.bucketId =
-      (
-        document.getElementById('b2BucketId')
-          ?.value || ''
-      ).trim();
+      b2.bucketId =
+        (
+          document.getElementById(
+            'b2BucketId'
+          )?.value || ''
+        ).trim();
 
-    b2.quotaGb =
-      Number(
-        document.getElementById('b2QuotaGb')
-          ?.value
-      ) ||
-      QUOTA_DEFAULT_GB;
+      b2.quotaGb =
+        Number(
+          document.getElementById(
+            'b2QuotaGb'
+          )?.value
+        ) ||
+        QUOTA_DEFAULT_GB;
 
-    b2.proxyUrl =
-      (
-        document.getElementById('b2ProxyUrl')
-          ?.value || ''
-      ).trim();
+      b2.proxyUrl =
+        (
+          document.getElementById(
+            'b2ProxyUrl'
+          )?.value || ''
+        ).trim();
 
-    b2.authToken = '';
-    b2.authAt = 0;
+      b2.authToken = '';
+      b2.authAt = 0;
 
-    if (!b2.keyId || !b2.appKey) {
+      if (
+        !b2.keyId ||
+        !b2.appKey
+      ) {
 
-      setStatus(
-        'Key ID + Application Key required.',
-        false
-      );
+        setStatus(
+          'Key ID + Application Key required.',
+          false
+        );
 
-      return;
-    }
+        return;
+      }
 
-    try {
+      try {
 
-      await set(
-        ref(db, 'settings/b2'),
-        {
-          keyId: b2.keyId,
-          appKey: b2.appKey,
-          bucketName: b2.bucketName,
-          bucketId: b2.bucketId,
-          quotaGb: b2.quotaGb,
-          proxyUrl: b2.proxyUrl,
-          updatedAt: Date.now()
-        }
-      );
+        await set(
+          ref(
+            db,
+            'settings/b2'
+          ),
+          {
+            keyId:
+              b2.keyId,
 
-    } catch (e) {
+            appKey:
+              b2.appKey,
 
-      setStatus(
-        'Firebase save failed — still trying connect…',
-        false
-      );
-    }
+            bucketName:
+              b2.bucketName,
 
-    try {
+            bucketId:
+              b2.bucketId,
 
-      await authorizeB2(true);
+            quotaGb:
+              b2.quotaGb,
 
-      setStatus(
-        b2.proxyUrl
-          ? 'Connected via proxy.'
-          : 'Connected to B2.',
-        true
-      );
+            proxyUrl:
+              b2.proxyUrl,
 
-      await refreshCloudFiles();
+            updatedAt:
+              Date.now()
+          }
+        );
 
-    } catch (e) {
+      } catch (e) {
 
-      setStatus(
-        explainFetchError(e),
-        false
-      );
-    }
-  };
+        setStatus(
+          'Firebase save failed — still trying connect…',
+          false
+        );
+      }
+
+      try {
+
+        await authorizeB2(true);
+
+        setStatus(
+          b2.proxyUrl
+            ? 'Connected via proxy.'
+            : 'Connected to B2.',
+          true
+        );
+
+        await refreshCloudFiles();
+
+      } catch (e) {
+
+        setStatus(
+          explainFetchError(e),
+          false
+        );
+      }
+    };
 
   // =========================================================
-  // AUTHORIZE
+  // AUTHORIZE B2
   // =========================================================
 
   async function authorizeB2(force) {
@@ -5201,36 +5445,47 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     if (
       !force &&
       b2.authToken &&
-      Date.now() - b2.authAt <
+      Date.now() -
+        b2.authAt <
         20 * 60 * 1000
     ) {
       return b2;
     }
 
-    if (!b2.keyId || !b2.appKey) {
+    if (
+      !b2.keyId ||
+      !b2.appKey
+    ) {
+
       throw new Error(
         'Add B2 keys in connection settings'
       );
     }
 
-    const basic = btoa(
-      b2.keyId + ':' + b2.appKey
-    );
+    const basic =
+      btoa(
+        b2.keyId +
+        ':' +
+        b2.appKey
+      );
 
     let res;
 
     try {
 
-      res = await b2Fetch(
-        B2_AUTH,
-        {
-          method: 'GET',
-          headers: {
-            Authorization:
-              'Basic ' + basic
+      res =
+        await b2Fetch(
+          B2_AUTH,
+          {
+            method: 'GET',
+
+            headers: {
+              Authorization:
+                'Basic ' +
+                basic
+            }
           }
-        }
-      );
+        );
 
     } catch (e) {
 
@@ -5240,9 +5495,10 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     }
 
     const data =
-      await res.json().catch(
-        () => ({})
-      );
+      await res.json()
+        .catch(
+          () => ({})
+        );
 
     if (!res.ok) {
 
@@ -5266,12 +5522,14 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     b2.downloadUrl =
       data.downloadUrl;
 
-    b2.authAt = Date.now();
+    b2.authAt =
+      Date.now();
 
     if (
       data.allowed &&
       data.allowed.bucketId
     ) {
+
       b2.bucketId =
         data.allowed.bucketId;
     }
@@ -5280,7 +5538,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   }
 
   // =========================================================
-  // LIST FILES
+  // LIST ALL FILES
   // =========================================================
 
   async function listAllFiles() {
@@ -5293,33 +5551,44 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     do {
 
       const body = {
-        bucketId: b2.bucketId,
-        maxFileCount: 1000
+        bucketId:
+          b2.bucketId,
+
+        maxFileCount:
+          1000
       };
 
       if (start)
-        body.startFileName = start;
+        body.startFileName =
+          start;
 
-      const res = await b2Fetch(
-        b2.apiUrl +
-        '/b2api/v2/b2_list_file_names',
-        {
-          method: 'POST',
-          headers: {
-            Authorization:
-              b2.authToken,
-            'Content-Type':
-              'application/json'
-          },
-          body:
-            JSON.stringify(body)
-        }
-      );
+      const res =
+        await b2Fetch(
+          b2.apiUrl +
+          '/b2api/v2/b2_list_file_names',
+          {
+            method: 'POST',
+
+            headers: {
+              Authorization:
+                b2.authToken,
+
+              'Content-Type':
+                'application/json'
+            },
+
+            body:
+              JSON.stringify(
+                body
+              )
+          }
+        );
 
       const data =
-        await res.json().catch(
-          () => ({})
-        );
+        await res.json()
+          .catch(
+            () => ({})
+          );
 
       if (!res.ok)
         throw new Error(
@@ -5328,8 +5597,9 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         );
 
       (data.files || [])
-        .forEach(f =>
-          files.push(f)
+        .forEach(
+          f =>
+            files.push(f)
         );
 
       start =
@@ -5345,179 +5615,199 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   // REFRESH CLOUD FILES
   // =========================================================
 
-  window.refreshCloudFiles = async function() {
+  window.refreshCloudFiles =
+    async function() {
 
-    const box =
-      document.getElementById(
-        'cloudFileList'
-      );
-
-    if (box) {
-
-      box.innerHTML =
-        '<div style="padding:12px;color:var(--text-dim);font-weight:700;">Loading…</div>';
-    }
-
-    try {
-
-      await loadSettingsFromFirebase();
-
-      if (!b2.keyId || !b2.appKey) {
-
-        if (box) {
-
-          box.innerHTML =
-            '<div style="padding:14px;color:var(--text-dim);font-weight:700;">Add keys + SAVE & CONNECT</div>';
-        }
-
-        return;
-      }
-
-      const files =
-        await listAllFiles();
-
-      let used = 0;
-
-      files.forEach(f => {
-        used +=
-          Number(f.contentLength) || 0;
-      });
-
-      paintUsage(used);
-
-      if (!box)
-        return;
-
-      if (!files.length) {
-
-        box.innerHTML =
-          '<div style="padding:14px;color:var(--text-dim);font-weight:700;">No files yet.</div>';
-
-        return;
-      }
-
-      box.innerHTML =
-        files.map(f => {
-
-          const name =
-            String(
-              f.fileName || ''
-            )
-              .replace(
-                /"/g,
-                '&quot;'
-              )
-              .replace(
-                /</g,
-                '&lt;'
-              );
-
-          const size =
-            formatBytes(
-              f.contentLength
-            );
-
-          const fid =
-            String(
-              f.fileId || ''
-            )
-              .replace(
-                /"/g,
-                '&quot;'
-              );
-
-          return (
-            '<div class="cloud-file-row">' +
-
-            '<div class="name">' +
-            name +
-            '<div class="meta">' +
-            size +
-            '</div></div>' +
-
-            '<button class="btn" type="button" style="background:rgba(92,200,255,.15);color:#5cc8ff;" data-dl-name="' +
-            name +
-            '" data-dl-id="' +
-            fid +
-            '">DL</button>' +
-
-            '<button class="btn" type="button" style="background:rgba(255,59,48,.15);color:var(--error);" data-del-name="' +
-            name +
-            '" data-del-id="' +
-            fid +
-            '">DEL</button>' +
-
-            '</div>'
-          );
-
-        }).join('');
-
-      box
-        .querySelectorAll(
-          '[data-dl-name]'
-        )
-        .forEach(btn => {
-
-          btn.addEventListener(
-            'click',
-            () =>
-              downloadCloudFile(
-                btn.getAttribute(
-                  'data-dl-name'
-                ),
-                btn.getAttribute(
-                  'data-dl-id'
-                )
-              )
-          );
-        });
-
-      box
-        .querySelectorAll(
-          '[data-del-name]'
-        )
-        .forEach(btn => {
-
-          btn.addEventListener(
-            'click',
-            () =>
-              deleteCloudFile(
-                btn.getAttribute(
-                  'data-del-name'
-                ),
-                btn.getAttribute(
-                  'data-del-id'
-                )
-              )
-          );
-        });
-
-      setStatus(
-        'Files synced.',
-        true
-      );
-
-    } catch (e) {
-
-      const msg =
-        explainFetchError(e);
+      const box =
+        document.getElementById(
+          'cloudFileList'
+        );
 
       if (box) {
 
         box.innerHTML =
-          '<div style="padding:14px;color:var(--error);font-weight:700;">' +
-          msg +
-          '</div>';
+          '<div style="padding:12px;color:var(--text-dim);font-weight:700;">Loading…</div>';
       }
 
-      setStatus(
-        msg,
-        false
-      );
+      try {
 
-      paintUsage(0);
-    }
-  };
+        await loadSettingsFromFirebase();
+
+        if (
+          !b2.keyId ||
+          !b2.appKey
+        ) {
+
+          if (box) {
+
+            box.innerHTML =
+              '<div style="padding:14px;color:var(--text-dim);font-weight:700;">Add keys + SAVE & CONNECT</div>';
+          }
+
+          return;
+        }
+
+        const files =
+          await listAllFiles();
+
+        let used = 0;
+
+        files.forEach(
+          f => {
+            used +=
+              Number(
+                f.contentLength
+              ) || 0;
+          }
+        );
+
+        paintUsage(
+          used
+        );
+
+        if (!box)
+          return;
+
+        if (!files.length) {
+
+          box.innerHTML =
+            '<div style="padding:14px;color:var(--text-dim);font-weight:700;">No files yet.</div>';
+
+          return;
+        }
+
+        box.innerHTML =
+          files
+            .map(
+              f => {
+
+                const name =
+                  String(
+                    f.fileName || ''
+                  )
+                    .replace(
+                      /"/g,
+                      '&quot;'
+                    )
+                    .replace(
+                      /</g,
+                      '&lt;'
+                    );
+
+                const size =
+                  formatBytes(
+                    f.contentLength
+                  );
+
+                const fid =
+                  String(
+                    f.fileId || ''
+                  )
+                    .replace(
+                      /"/g,
+                      '&quot;'
+                    );
+
+                return (
+                  '<div class="cloud-file-row">' +
+
+                  '<div class="name">' +
+                  name +
+
+                  '<div class="meta">' +
+                  size +
+                  '</div>' +
+
+                  '</div>' +
+
+                  '<button class="btn" type="button" style="background:rgba(92,200,255,.15);color:#5cc8ff;" data-dl-name="' +
+                  name +
+                  '" data-dl-id="' +
+                  fid +
+                  '">DL</button>' +
+
+                  '<button class="btn" type="button" style="background:rgba(255,59,48,.15);color:var(--error);" data-del-name="' +
+                  name +
+                  '" data-del-id="' +
+                  fid +
+                  '">DEL</button>' +
+
+                  '</div>'
+                );
+              }
+            )
+            .join('');
+
+        box
+          .querySelectorAll(
+            '[data-dl-name]'
+          )
+          .forEach(
+            btn => {
+
+              btn.addEventListener(
+                'click',
+                () =>
+                  downloadCloudFile(
+                    btn.getAttribute(
+                      'data-dl-name'
+                    ),
+                    btn.getAttribute(
+                      'data-dl-id'
+                    )
+                  )
+              );
+            }
+          );
+
+        box
+          .querySelectorAll(
+            '[data-del-name]'
+          )
+          .forEach(
+            btn => {
+
+              btn.addEventListener(
+                'click',
+                () =>
+                  deleteCloudFile(
+                    btn.getAttribute(
+                      'data-del-name'
+                    ),
+                    btn.getAttribute(
+                      'data-del-id'
+                    )
+                  )
+              );
+            }
+          );
+
+        setStatus(
+          'Files synced.',
+          true
+        );
+
+      } catch (e) {
+
+        const msg =
+          explainFetchError(e);
+
+        if (box) {
+
+          box.innerHTML =
+            '<div style="padding:14px;color:var(--error);font-weight:700;">' +
+            msg +
+            '</div>';
+        }
+
+        setStatus(
+          msg,
+          false
+        );
+
+        paintUsage(0);
+      }
+    };
 
   // =========================================================
   // DOWNLOAD
@@ -5538,18 +5828,23 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
           '/b2api/v2/b2_get_download_authorization',
           {
             method: 'POST',
+
             headers: {
               Authorization:
                 b2.authToken,
+
               'Content-Type':
                 'application/json'
             },
+
             body:
               JSON.stringify({
                 bucketId:
                   b2.bucketId,
+
                 fileNamePrefix:
                   fileName,
+
                 validDurationInSeconds:
                   3600
               })
@@ -5557,9 +5852,10 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         );
 
       const authData =
-        await authRes.json().catch(
-          () => ({})
-        );
+        await authRes.json()
+          .catch(
+            () => ({})
+          );
 
       if (!authRes.ok) {
 
@@ -5612,28 +5908,39 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         await res.blob();
 
       const a =
-        document.createElement('a');
+        document.createElement(
+          'a'
+        );
 
       a.href =
-        URL.createObjectURL(blob);
+        URL.createObjectURL(
+          blob
+        );
 
       a.download =
-        fileName.split('/').pop() ||
+        fileName
+          .split('/')
+          .pop() ||
         'download';
 
-      document.body.appendChild(a);
+      document.body.appendChild(
+        a
+      );
 
       a.click();
 
-      setTimeout(() => {
+      setTimeout(
+        () => {
 
-        URL.revokeObjectURL(
-          a.href
-        );
+          URL.revokeObjectURL(
+            a.href
+          );
 
-        a.remove();
+          a.remove();
 
-      }, 2000);
+        },
+        2000
+      );
 
     } catch (e) {
 
@@ -5667,16 +5974,20 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
           '/b2api/v2/b2_delete_file_version',
           {
             method: 'POST',
+
             headers: {
               Authorization:
                 b2.authToken,
+
               'Content-Type':
                 'application/json'
             },
+
             body:
               JSON.stringify({
                 fileName:
                   fileName,
+
                 fileId:
                   fileId
               })
@@ -5684,9 +5995,10 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         );
 
       const data =
-        await res.json().catch(
-          () => ({})
-        );
+        await res.json()
+          .catch(
+            () => ({})
+          );
 
       if (!res.ok) {
 
@@ -5709,12 +6021,33 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   }
 
   // =========================================================
-  // UPLOAD ONE FILE
+  // SMALL FILE UPLOAD
+  //
+  // DIRECT:
+  // Browser -> Backblaze B2
+  //
+  // NO Base64
+  // NO Cloudflare proxy
   // =========================================================
 
-  async function uploadOne(file) {
+  async function uploadSmallFile(
+    file,
+    safeName,
+    progressCallback
+  ) {
+
+    console.log(
+      '[B2] Small upload:',
+      safeName,
+      formatBytes(file.size)
+    );
 
     await authorizeB2();
+
+    // -------------------------------------------------------
+    // Get B2 upload URL.
+    // This is only a JSON/API request.
+    // -------------------------------------------------------
 
     const upRes =
       await b2Fetch(
@@ -5722,12 +6055,15 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         '/b2api/v2/b2_get_upload_url',
         {
           method: 'POST',
+
           headers: {
             Authorization:
               b2.authToken,
+
             'Content-Type':
               'application/json'
           },
+
           body:
             JSON.stringify({
               bucketId:
@@ -5737,95 +6073,606 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
       );
 
     const up =
-      await upRes.json().catch(
-        () => ({})
-      );
+      await upRes.json()
+        .catch(
+          () => ({})
+        );
 
     if (!upRes.ok) {
 
       throw new Error(
         up.message ||
-        'Upload URL failed'
+        'Failed to get B2 upload URL'
       );
     }
+
+    if (
+      !up.uploadUrl ||
+      !up.authorizationToken
+    ) {
+
+      throw new Error(
+        'B2 returned invalid upload URL.'
+      );
+    }
+
+    // -------------------------------------------------------
+    // Read small file.
+    // Only files <= 10 MiB reach here.
+    // -------------------------------------------------------
 
     const buf =
       await file.arrayBuffer();
 
-    const hashBuf =
-      await crypto.subtle.digest(
-        'SHA-1',
+    // -------------------------------------------------------
+    // SHA-1
+    // -------------------------------------------------------
+
+    const sha1 =
+      await sha1Hex(
         buf
       );
 
-    const sha1 =
-      Array.from(
-        new Uint8Array(hashBuf)
-      )
-        .map(
-          b =>
-            b.toString(16)
-             .padStart(2, '0')
-        )
-        .join('');
-
-    const safeName =
-      file.name.replace(
-        /[\\]/g,
-        '_'
-      );
+    // -------------------------------------------------------
+    // DIRECT NATIVE FETCH
+    //
+    // RAW BINARY -> B2
+    //
+    // IMPORTANT:
+    // Content-Length is intentionally NOT manually set.
+    // Browser controls forbidden request headers.
+    // -------------------------------------------------------
 
     const res =
-      await b2Fetch(
+      await fetch(
         up.uploadUrl,
         {
           method: 'POST',
+
           headers: {
             Authorization:
               up.authorizationToken,
 
             'X-Bz-File-Name':
-              encodeURIComponent(
+              encodeB2FileName(
                 safeName
-              ).replace(
-                /%2F/g,
-                '/'
               ),
 
             'Content-Type':
               file.type ||
               'b2/x-auto',
 
-            'Content-Length':
-              String(
-                buf.byteLength
-              ),
-
             'X-Bz-Content-Sha1':
               sha1
           },
 
-          body: buf
+          body:
+            buf
         }
-      );
-
-    const data =
-      await res.json().catch(
-        () => ({})
       );
 
     if (!res.ok) {
 
+      const text =
+        await res.text()
+          .catch(
+            () => ''
+          );
+
       throw new Error(
-        data.message ||
-        (
-          'Upload HTTP ' +
-          res.status
-        )
+        'B2 upload failed: ' +
+        res.status +
+        ' ' +
+        text
       );
     }
 
-    return data;
+    const result =
+      await res.json()
+        .catch(
+          () => ({})
+        );
+
+    if (progressCallback)
+      progressCallback(
+        100
+      );
+
+    console.log(
+      '[B2] Small upload complete:',
+      result.fileName
+    );
+
+    return result;
+  }
+
+  // =========================================================
+  // LARGE FILE UPLOAD
+  //
+  // 10 MiB sequential chunks
+  //
+  // Browser memory:
+  // Only current chunk is loaded.
+  //
+  // File:
+  // 5 GB -> ~512 parts
+  // =========================================================
+
+  async function uploadLargeFile(
+    file,
+    safeName,
+    progressCallback
+  ) {
+
+    console.log(
+      '[B2] Large upload:',
+      safeName,
+      formatBytes(file.size)
+    );
+
+    await authorizeB2();
+
+    // -------------------------------------------------------
+    // Start large file
+    // -------------------------------------------------------
+
+    const startRes =
+      await b2Fetch(
+        b2.apiUrl +
+        '/b2api/v2/b2_start_large_file',
+        {
+          method: 'POST',
+
+          headers: {
+            Authorization:
+              b2.authToken,
+
+            'Content-Type':
+              'application/json'
+          },
+
+          body:
+            JSON.stringify({
+              bucketId:
+                b2.bucketId,
+
+              fileName:
+                safeName,
+
+              contentType:
+                file.type ||
+                'b2/x-auto'
+            })
+        }
+      );
+
+    const startData =
+      await startRes.json()
+        .catch(
+          () => ({})
+        );
+
+    if (!startRes.ok) {
+
+      throw new Error(
+        startData.message ||
+        'Failed to start large file'
+      );
+    }
+
+    const fileId =
+      startData.fileId;
+
+    if (!fileId) {
+
+      throw new Error(
+        'B2 did not return a fileId.'
+      );
+    }
+
+    // -------------------------------------------------------
+    // Number of parts
+    // -------------------------------------------------------
+
+    const totalParts =
+      Math.ceil(
+        file.size /
+        B2_PART_SIZE
+      );
+
+    console.log(
+      '[B2] Parts:',
+      totalParts
+    );
+
+    const partSha1Array = [];
+
+    let uploadedBytes = 0;
+
+    try {
+
+      // =====================================================
+      // SEQUENTIAL PART UPLOAD
+      // =====================================================
+
+      for (
+        let partNumber = 1;
+        partNumber <= totalParts;
+        partNumber++
+      ) {
+
+        const start =
+          (
+            partNumber - 1
+          ) *
+          B2_PART_SIZE;
+
+        const end =
+          Math.min(
+            start +
+              B2_PART_SIZE,
+            file.size
+          );
+
+        console.log(
+          '[B2] Part ' +
+          partNumber +
+          '/' +
+          totalParts +
+          ' preparing...'
+        );
+
+        // ---------------------------------------------------
+        // Only current part is read.
+        // ---------------------------------------------------
+
+        const chunk =
+          file.slice(
+            start,
+            end
+          );
+
+        const chunkBuf =
+          await chunk.arrayBuffer();
+
+        // ---------------------------------------------------
+        // SHA-1 of current part
+        // ---------------------------------------------------
+
+        const sha1 =
+          await sha1Hex(
+            chunkBuf
+          );
+
+        partSha1Array.push(
+          sha1
+        );
+
+        // ---------------------------------------------------
+        // Get upload-part URL
+        // ---------------------------------------------------
+
+        const urlRes =
+          await b2Fetch(
+            b2.apiUrl +
+            '/b2api/v2/b2_get_upload_part_url',
+            {
+              method: 'POST',
+
+              headers: {
+                Authorization:
+                  b2.authToken,
+
+                'Content-Type':
+                  'application/json'
+              },
+
+              body:
+                JSON.stringify({
+                  fileId:
+                    fileId
+                })
+            }
+          );
+
+        const urlData =
+          await urlRes.json()
+            .catch(
+              () => ({})
+            );
+
+        if (!urlRes.ok) {
+
+          throw new Error(
+            urlData.message ||
+            (
+              'Failed to get part URL ' +
+              partNumber
+            )
+          );
+        }
+
+        if (
+          !urlData.uploadUrl ||
+          !urlData.authorizationToken
+        ) {
+
+          throw new Error(
+            'Invalid B2 part upload URL.'
+          );
+        }
+
+        // ===================================================
+        // DIRECT RAW BINARY PART UPLOAD
+        //
+        // NO b2Fetch()
+        // NO Base64
+        // NO proxy
+        // ===================================================
+
+        const uploadRes =
+          await fetch(
+            urlData.uploadUrl,
+            {
+              method: 'POST',
+
+              headers: {
+                Authorization:
+                  urlData.authorizationToken,
+
+                'X-Bz-Part-Number':
+                  String(
+                    partNumber
+                  ),
+
+                'X-Bz-Content-Sha1':
+                  sha1
+              },
+
+              // RAW BINARY
+              body:
+                chunkBuf
+            }
+          );
+
+        if (!uploadRes.ok) {
+
+          const text =
+            await uploadRes.text()
+              .catch(
+                () => ''
+              );
+
+          throw new Error(
+            'Part ' +
+            partNumber +
+            ' upload failed: ' +
+            uploadRes.status +
+            ' ' +
+            text
+          );
+        }
+
+        // ---------------------------------------------------
+        // B2 confirms uploaded part.
+        // ---------------------------------------------------
+
+        await uploadRes.json()
+          .catch(
+            () => ({})
+          );
+
+        uploadedBytes =
+          end;
+
+        const percent =
+          Math.min(
+            100,
+            (
+              uploadedBytes /
+              file.size
+            ) * 100
+          );
+
+        if (progressCallback) {
+
+          progressCallback(
+            percent
+          );
+        }
+
+        console.log(
+          '[B2] Part ' +
+          partNumber +
+          '/' +
+          totalParts +
+          ' uploaded — ' +
+          percent.toFixed(1) +
+          '%'
+        );
+
+        // ---------------------------------------------------
+        // Give browser event loop / GC an opportunity.
+        // ---------------------------------------------------
+
+        await new Promise(
+          resolve =>
+            setTimeout(
+              resolve,
+              0
+            )
+        );
+      }
+
+      // =====================================================
+      // FINISH LARGE FILE
+      // =====================================================
+
+      console.log(
+        '[B2] All parts uploaded. Finishing...'
+      );
+
+      const finishRes =
+        await b2Fetch(
+          b2.apiUrl +
+          '/b2api/v2/b2_finish_large_file',
+          {
+            method: 'POST',
+
+            headers: {
+              Authorization:
+                b2.authToken,
+
+              'Content-Type':
+                'application/json'
+            },
+
+            body:
+              JSON.stringify({
+                fileId:
+                  fileId,
+
+                partSha1Array:
+                  partSha1Array
+              })
+          }
+        );
+
+      const finishData =
+        await finishRes.json()
+          .catch(
+            () => ({})
+          );
+
+      if (!finishRes.ok) {
+
+        throw new Error(
+          finishData.message ||
+          'Failed to finish large file'
+        );
+      }
+
+      if (progressCallback)
+        progressCallback(
+          100
+        );
+
+      console.log(
+        '[B2] Large upload complete:',
+        finishData.fileName
+      );
+
+      return finishData;
+
+    } catch (error) {
+
+      console.error(
+        '[B2] Large upload failed:',
+        error
+      );
+
+      // =====================================================
+      // CANCEL UNFINISHED LARGE FILE
+      // =====================================================
+
+      try {
+
+        await b2Fetch(
+          b2.apiUrl +
+          '/b2api/v2/b2_cancel_large_file',
+          {
+            method: 'POST',
+
+            headers: {
+              Authorization:
+                b2.authToken,
+
+              'Content-Type':
+                'application/json'
+            },
+
+            body:
+              JSON.stringify({
+                fileId:
+                  fileId
+              })
+          }
+        );
+
+        console.log(
+          '[B2] Unfinished large file cancelled.'
+        );
+
+      } catch (cancelError) {
+
+        console.warn(
+          '[B2] Could not cancel unfinished file:',
+          cancelError
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  // =========================================================
+  // SMART UPLOAD ROUTER
+  // =========================================================
+
+  async function uploadOne(
+    file,
+    progressCallback
+  ) {
+
+    if (!file)
+      throw new Error(
+        'Invalid file.'
+      );
+
+    if (
+      !file.size ||
+      file.size <= 0
+    ) {
+
+      throw new Error(
+        'File is empty.'
+      );
+    }
+
+    await authorizeB2();
+
+    const safeName =
+      file.name
+        .replace(
+          /[\\]/g,
+          '_'
+        );
+
+    // -------------------------------------------------------
+    // <= 10 MiB:
+    // Single B2 upload
+    //
+    // > 10 MiB:
+    // Large File API
+    // -------------------------------------------------------
+
+    if (
+      file.size <=
+      B2_LARGE_FILE_THRESHOLD
+    ) {
+
+      return await uploadSmallFile(
+        file,
+        safeName,
+        progressCallback
+      );
+    }
+
+    return await uploadLargeFile(
+      file,
+      safeName,
+      progressCallback
+    );
   }
 
   // =========================================================
@@ -5833,7 +6680,9 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   // =========================================================
 
   window.uploadCloudFiles =
-    async function(fileList) {
+    async function(
+      fileList
+    ) {
 
       const files =
         Array.from(
@@ -5848,13 +6697,18 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
           'cloudUploadProgress'
         );
 
-      try {
+      let completed = 0;
 
-        for (
-          let i = 0;
-          i < files.length;
-          i++
-        ) {
+      for (
+        let i = 0;
+        i < files.length;
+        i++
+      ) {
+
+        const file =
+          files[i];
+
+        try {
 
           if (prog) {
 
@@ -5864,31 +6718,78 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
               '/' +
               files.length +
               ': ' +
-              files[i].name;
+              file.name;
           }
 
           await uploadOne(
-            files[i]
+            file,
+            percent => {
+
+              if (prog) {
+
+                prog.textContent =
+                  'Uploading ' +
+                  (i + 1) +
+                  '/' +
+                  files.length +
+                  ': ' +
+                  file.name +
+                  ' — ' +
+                  percent.toFixed(1) +
+                  '%';
+              }
+
+              setStatus(
+                'Uploading ' +
+                file.name +
+                ' — ' +
+                percent.toFixed(1) +
+                '%',
+                null
+              );
+            }
+          );
+
+          completed++;
+
+          console.log(
+            '[B2] Upload complete:',
+            file.name
+          );
+
+          setStatus(
+            file.name +
+            ' uploaded successfully.',
+            true
+          );
+
+        } catch (e) {
+
+          console.error(
+            '[B2] Upload failed:',
+            file.name,
+            e
+          );
+
+          setStatus(
+            file.name +
+            ': ' +
+            explainFetchError(e),
+            false
           );
         }
-
-        if (prog)
-          prog.textContent =
-            'Upload complete.';
-
-        await refreshCloudFiles();
-
-      } catch (e) {
-
-        if (prog)
-          prog.textContent = '';
-
-        setStatus(
-          'Upload: ' +
-          explainFetchError(e),
-          false
-        );
       }
+
+      if (prog) {
+
+        prog.textContent =
+          completed +
+          '/' +
+          files.length +
+          ' file(s) uploaded.';
+      }
+
+      await refreshCloudFiles();
     };
 
   // =========================================================
@@ -5936,23 +6837,25 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
           );
 
         loadSettingsFromFirebase()
-          .then(() => {
+          .then(
+            () => {
 
-            if (
-              b2.keyId &&
-              b2.appKey
-            ) {
+              if (
+                b2.keyId &&
+                b2.appKey
+              ) {
 
-              refreshCloudFiles();
+                refreshCloudFiles();
 
-            } else {
+              } else {
 
-              setStatus(
-                'Paste Application Key → SAVE & CONNECT',
-                null
-              );
+                setStatus(
+                  'Paste Application Key → SAVE & CONNECT',
+                  null
+                );
+              }
             }
-          });
+          );
 
       } else {
 
@@ -5965,14 +6868,17 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             'open'
           );
 
-        setTimeout(() => {
+        setTimeout(
+          () => {
 
-          p.classList.remove(
-            'open',
-            'closing'
-          );
+            p.classList.remove(
+              'open',
+              'closing'
+            );
 
-        }, 380);
+          },
+          380
+        );
       }
     };
 
@@ -5992,12 +6898,16 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         'cloudFileInput'
       );
 
-    if (!zone || !input)
+    if (
+      !zone ||
+      !input
+    )
       return;
 
     zone.addEventListener(
       'click',
-      () => input.click()
+      () =>
+        input.click()
     );
 
     input.addEventListener(
@@ -6076,6 +6986,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
       () => {
 
         bindUploadUI();
+
         loadSettingsFromFirebase();
 
       }
@@ -6084,6 +6995,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   } else {
 
     bindUploadUI();
+
     loadSettingsFromFirebase();
   }
 
