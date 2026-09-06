@@ -264,23 +264,9 @@
         .mk-text { font-family: monospace; font-size: 14px; color: var(--text-main); font-weight: 800; letter-spacing: 0.5px; word-break: break-all; }
         
         .mk-usage { 
-            background: rgba(0,150,255,0.12); 
-            color: #3da5ff; 
-            padding: 6px 14px; 
-            border-radius: 20px; 
-            font-size: 13px; 
-            font-weight: 800; 
-            margin-left: 15px; 
-            border: 1px solid rgba(61,165,255,.35); 
-            display: inline-flex; 
-            align-items: center; 
-            gap: 6px; 
+            background: rgba(0,150,255,0.12); color: #3da5ff; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 800; margin-left: 15px; border: 1px solid rgba(61,165,255,.35); display: inline-flex; align-items: center; gap: 6px; 
         }
-        body.max-mode .mk-usage { 
-            background: rgba(0,150,255,0.12); 
-            color: #3da5ff; 
-            border-color: rgba(61,165,255,.35); 
-        }
+        body.max-mode .mk-usage { border-color: rgba(61,165,255,.35); }
 
         .mk-del { background: transparent; border: none; cursor: pointer; opacity: 0.5; color: var(--text-main); padding: 5px;}
         .mk-del:hover { transform: scale(1.3); opacity: 1; color: var(--error); filter: drop-shadow(0 0 10px rgba(255,0,0,0.6)); }
@@ -309,7 +295,7 @@
         @keyframes pulseSkeleton { 0% { opacity: 0.3; } 50% { opacity: 0.7; } 100% { opacity: 0.3; } }
 
         /* --- Modals --- */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); display: none; justify-content: center; align-items: center; z-index: 99999; animation: fadeInModal 0.4s ease; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); display: none; justify-content: center; align-items: center; z-index: 50000; animation: fadeInModal 0.4s ease; }
         @keyframes fadeInModal { from { opacity: 0; } to { opacity: 1; } }
         .modal { background: var(--glass-bg); backdrop-filter: blur(50px) saturate(200%); -webkit-backdrop-filter: blur(50px) saturate(200%); border: 1px solid var(--glass-border); border-top: 1px solid var(--glass-shine); border-left: 1px solid var(--glass-shine); border-radius: 40px; padding: 50px; width: 90%; max-width: 460px; text-align: center; box-shadow: 0 40px 100px rgba(0,0,0,0.8); transform: scale(0.85); opacity: 0; animation: scaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes scaleUp { to { transform: scale(1); opacity: 1; } }
@@ -478,47 +464,89 @@
             filter: grayscale(1);
         }
 
-
-.coming-card{position:relative;padding:22px 16px;min-height:88px;border-radius:20px;border:1px dashed rgba(150,150,150,0.18);background:rgba(150,150,150,0.04);pointer-events:auto;overflow:hidden;animation:pulseSkeleton 1.8s infinite ease-in-out}
-.coming-card::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(110deg,transparent 20%,rgba(255,255,255,0.06) 45%,transparent 70%);background-size:200% 100%;animation:comingShimmer 2.4s ease-in-out infinite}
-@keyframes comingShimmer{0%{background-position:120% 0}100%{background-position:-40% 0}}
-.coming-card .coming-label{font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-dim);opacity:.75;margin-bottom:10px}
-.coming-card .coming-id{font-family:monospace;font-size:12px;font-weight:700;color:var(--text-main);opacity:.55;word-break:break-all;line-height:1.4;cursor:pointer}
-.coming-card .coming-dots::after{content:"";animation:comingDots 1.4s steps(4,end) infinite}
-@keyframes comingDots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
-.coming-section-title{font-size:12px;font-weight:800;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin:0 0 12px;opacity:.8}
-
-
+/* Notice control — full width ABOVE expiry block */
+.notice-section{position:relative;margin-bottom:16px;z-index:30}
 .notice-chip{
   display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:14px;
-  border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--text-main);
-  font-weight:800;font-size:13px;cursor:pointer;letter-spacing:.3px;
+  border:1px solid var(--glass-border);background:var(--glass-bg);cursor:pointer;user-select:none;
+  color:var(--text-main);font-weight:900;font-size:12px;letter-spacing:.5px;text-transform:uppercase;
+  transition:transform .15s,border-color .2s,box-shadow .2s;
 }
 .notice-chip:hover{border-color:var(--accent);box-shadow:0 0 18px var(--accent-glow)}
 .notice-chip.active{border-color:var(--accent);background:rgba(0,255,136,.12);color:var(--accent)}
 .notice-chip svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.2}
 .notice-panel{
-  display:none;margin-top:14px;padding:18px;border-radius:18px;
-  border:1px solid var(--glass-border);background:rgba(0,0,0,.25);
+  display:none;margin-top:12px;width:100%;max-width:560px;padding:18px 16px;border-radius:18px;
+  border:1px solid var(--glass-border);background:var(--glass-bg);backdrop-filter:blur(24px);
+  box-shadow:0 20px 50px var(--shadow-color);animation:noticeIn .28s cubic-bezier(.22,1,.36,1);
 }
-.notice-panel.open{display:block;animation:slideUpFade .35s ease}
-.notice-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-.notice-row label{font-size:13px;font-weight:700;color:var(--text-dim)}
-.notice-panel textarea,.notice-panel input[type=text]{
-  width:100%;margin:8px 0 12px;padding:12px;border-radius:12px;
-  background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);
-  font-family:inherit;font-size:14px;
+.notice-panel.open{display:block}
+@keyframes noticeIn{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
+.notice-panel h3{margin:0 0 12px;font-size:15px;color:var(--accent)}
+.notice-panel .np-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;font-size:13px;font-weight:700}
+.notice-panel label.switch{position:relative;width:46px;height:26px;flex:none}
+.notice-panel label.switch input{opacity:0;width:0;height:0}
+.notice-panel label.switch span{position:absolute;inset:0;border-radius:26px;background:#444;transition:.2s}
+.notice-panel label.switch span:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;border-radius:50%;background:#fff;transition:.2s}
+.notice-panel label.switch input:checked+span{background:var(--accent)}
+.notice-panel label.switch input:checked+span:before{transform:translateX(20px)}
+.notice-panel textarea,.notice-panel input[type=number],.notice-panel input[type=text]{
+  width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--glass-border);
+  background:var(--input-bg);color:var(--text-main);font-size:13px;margin-bottom:10px;outline:none;
 }
 .notice-panel textarea{min-height:72px;resize:vertical}
-.notice-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.notice-panel .np-actions{display:flex;gap:8px;flex-wrap:wrap}
+.notice-panel .np-actions .btn{flex:1;min-width:100px;padding:10px 12px;font-size:12px}
 
 
-.switch{position:relative;display:inline-block;width:46px;height:26px;flex:none}
-.switch input{opacity:0;width:0;height:0}
-.switch span{position:absolute;cursor:pointer;inset:0;background:#444;border-radius:26px;transition:.25s}
-.switch span:before{content:"";position:absolute;height:20px;width:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.25s}
-.switch input:checked + span{background:var(--accent)}
-.switch input:checked + span:before{transform:translateX(20px)}
+#guideModal .guide-modal{
+  display:flex;flex-direction:column;max-height:min(82vh,720px)!important;
+  width:min(560px,92vw)!important;overflow:hidden;
+}
+#guideModal .guide-scroll{
+  overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;
+  max-height:min(58vh,520px);padding-right:6px;margin-top:8px;
+}
+
+
+/* Pending Get-Key users — skeleton illusion (not solid blocks) */
+.coming-card{
+  position:relative;padding:22px 16px;min-height:88px;border-radius:20px;
+  border:1px dashed rgba(150,150,150,0.18);
+  background:rgba(150,150,150,0.04);
+  pointer-events:auto;overflow:hidden;
+  animation:pulseSkeleton 1.8s infinite ease-in-out;
+}
+.coming-card::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(110deg,transparent 20%,rgba(255,255,255,0.06) 45%,transparent 70%);
+  background-size:200% 100%;animation:comingShimmer 2.4s ease-in-out infinite;
+}
+@keyframes comingShimmer{
+  0%{background-position:120% 0}
+  100%{background-position:-40% 0}
+}
+.coming-card .coming-label{
+  font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--text-dim);opacity:.75;margin-bottom:10px;
+}
+.coming-card .coming-id{
+  font-family:monospace;font-size:12px;font-weight:700;color:var(--text-main);
+  opacity:.55;word-break:break-all;line-height:1.4;cursor:pointer;
+}
+.coming-card .coming-dots::after{
+  content:"";animation:comingDots 1.4s steps(4,end) infinite;
+}
+@keyframes comingDots{
+  0%{content:""}
+  25%{content:"."}
+  50%{content:".."}
+  75%{content:"..."}
+}
+.coming-section-title{
+  font-size:12px;font-weight:800;color:var(--text-dim);letter-spacing:1px;
+  text-transform:uppercase;margin:0 0 12px;opacity:.8;
+}
 
 </style>
 </head>
@@ -565,7 +593,7 @@
 
     <!-- Sidebar with Premium SVGs -->
     <div class="sidebar glass-panel" style="border-radius: 0 35px 35px 0; border-left: none;">
-        <h1>DGXEN</h1>
+        <h1 id="dgxenLogoTitle">DGXEN</h1>
         <div class="nav-link active" onclick="switchTab('dashboard', this)" id="nav-dashboard">
             <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
             Dashboard
@@ -599,488 +627,6 @@
             System Reset
         </div>
     </div>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <div id="dashboard" class="tab-section active">
-            <div class="section-box glass-panel float-anim" style="border-color: rgba(0, 255, 136, 0.4); box-shadow: inset 0 0 40px rgba(0, 255, 136, 0.05), 0 25px 60px var(--shadow-color);">
-                <h2 style="color: var(--accent);">
-                    <svg style="width:28px; fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    Global Key Expiry Control
-                </h2>
-                <p>Set how many hours a normal user's generated key will remain valid. (e.g., 1.5 for 1.5 hours)</p>
-                <div class="input-group">
-                    <input type="number" id="expiryHoursInput" placeholder="Enter hours (e.g. 0.5 or 4)" min="0.01" step="any">
-                    <button class="btn" style="background: var(--accent); color: #000;" onclick="updateExpiryHours()">UPDATE EXPIRY</button>
-                </div>
-                <p style="margin-bottom: 0; font-size: 17px; font-weight: 700;">Current Expiry Time: <strong id="currentExpiryDisplay" style="color: var(--accent); font-size: 26px; margin: 0 10px;">...</strong> <strong style="color: var(--text-main);">Hours</strong></p>
-            </div>
-
-            
-            <div style="margin-bottom:18px;">
-              <button type="button" class="notice-chip" id="noticeChip" title="Notice" onclick="toggleNoticePanel()">
-                <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                Notice
-              </button>
-              <div class="notice-panel" id="noticePanel">
-                <div class="notice-row">
-                  <label>JOIN finger hint on login</label>
-                  <label class="switch"><input type="checkbox" id="noticeFingerToggle"><span></span></label>
-                </div>
-                <div class="notice-row">
-                  <label>Broadcast popup</label>
-                  <label class="switch"><input type="checkbox" id="noticeBroadcastToggle"><span></span></label>
-                </div>
-                <textarea id="noticeMessage" placeholder="Message shown at bottom of login screen..."></textarea>
-                <div class="notice-row">
-                  <label>Seconds</label>
-                  <input type="number" id="noticeSeconds" min="1" max="300" value="10" style="width:90px;margin:0;">
-                </div>
-                <div class="notice-row">
-                  <label>Custom tagline</label>
-                  <label class="switch"><input type="checkbox" id="noticeTaglineToggle"><span></span></label>
-                </div>
-                <input type="text" id="noticeTagline" placeholder="Custom tagline under DGXEN VIP">
-                <div class="notice-actions">
-                  <button type="button" class="btn" onclick="publishNotice()">UPDATE</button>
-                  <button type="button" class="btn" style="background:transparent;color:var(--text-dim);border:1px solid var(--glass-border);" onclick="clearBroadcast()">CLEAR POPUP</button>
-                </div>
-              </div>
-            </div>
-<div class="stats-grid">
-                <div class="stat-card glass-panel float-anim"><h3>Total Devices</h3><div class="val" id="stat-total">0</div></div>
-                <div class="stat-card glass-panel float-anim" style="cursor: pointer;" onclick="document.getElementById('nav-live-active').click()"><h3>Active Users</h3><div class="val green" id="stat-live-active">0</div></div>
-                <div class="stat-card glass-panel float-anim" style="cursor: pointer;" onclick="document.getElementById('nav-active-users').click()"><h3>Registered Users</h3><div class="val green" id="stat-active">0</div></div>
-                <div class="stat-card glass-panel float-anim" style="cursor: pointer;" onclick="document.getElementById('nav-banned-users').click()"><h3>Banned Users</h3><div class="val red" id="stat-banned">0</div></div>
-                <div class="stat-card glass-panel float-anim" style="cursor: pointer;" onclick="document.getElementById('nav-keys').click()"><h3>Active Master Keys</h3><div class="val" id="stat-keys">0</div></div>
-                <div class="stat-card glass-panel float-anim" style="cursor: pointer;" onclick="document.getElementById('nav-ban-keys').click()"><h3>Banned Normal Keys</h3><div class="val red" id="stat-banned-keys">0</div></div>
-                <div class="stat-card glass-panel float-anim" style="cursor: pointer;" onclick="document.getElementById('nav-share-logs') && document.getElementById('nav-share-logs').click()"><h3>Share Logs</h3><div class="val" id="stat-logs">0</div></div>
-            </div>
-        </div>
-
-        <div id="keys" class="tab-section">
-            <div class="section-box glass-panel float-anim">
-                <h2>Manage Master Keys</h2>
-                <p>Generate high-level master keys. Choose a type before adding.</p>
-
-                <!-- Key Type Selector -->
-                <div style="margin-bottom:18px;">
-                    <div style="font-size:13px;font-weight:700;color:var(--text-dim);margin-bottom:10px;">KEY TYPE</div>
-                    <div id="mkTypeSelector" style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <button type="button" class="btn mk-type-btn active" data-type="pure" onclick="selectMkType('pure')" style="padding:10px 16px;font-size:13px;border-radius:12px;">Unlimited</button>
-                        <button type="button" class="btn mk-type-btn" data-type="limited" onclick="selectMkType('limited')" style="padding:10px 16px;font-size:13px;border-radius:12px;background:rgba(150,150,150,0.12);color:var(--text-main);">Limited Uses</button>
-                        <button type="button" class="btn mk-type-btn" data-type="device" onclick="selectMkType('device')" style="padding:10px 16px;font-size:13px;border-radius:12px;background:rgba(150,150,150,0.12);color:var(--text-main);">Device Locked</button>
-                        <button type="button" class="btn mk-type-btn" data-type="time" onclick="selectMkType('time')" style="padding:10px 16px;font-size:13px;border-radius:12px;background:rgba(150,150,150,0.12);color:var(--text-main);">Time Limited</button>
-                        <button type="button" class="btn mk-type-btn" data-type="device_time" onclick="selectMkType('device_time')" style="padding:10px 16px;font-size:13px;border-radius:12px;background:rgba(150,150,150,0.12);color:var(--text-main);">Device + Time</button>
-                    </div>
-                </div>
-
-                <!-- Extra field (limited / device / time) -->
-                <div id="mkExtraWrap" style="display:none;margin-bottom:14px;">
-                    <div style="display: flex; gap: 15px; align-items: stretch; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 200px;">
-                            <input type="text" id="mkExtraInput" placeholder="" style="width:100%;">
-                            <div id="mkTimeWrap" style="display:none;margin-top:12px;">
-                                <div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Expires (date + time, seconds allowed)</div>
-                                <input type="datetime-local" id="mkExpiresInput" step="1" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
-                            </div>
-                        </div>
-                        <div id="deviceRequestsWrapper" style="display: none;">
-                            <div style="font-size:11px;font-weight:800;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;">Recent Device IDs</div>
-                            <div class="device-id-box" id="deviceRequestsBox">
-                                <div style="font-size:11px; color:var(--text-dim); text-align:center; padding:10px;">Loading...</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <input type="text" id="masterKeyInput" placeholder="Add new master key (e.g., DGXEN-VIP-1)">
-                    <button class="btn" onclick="addMasterKey()">ADD KEY</button>
-                </div>
-                <div class="mk-list" id="masterKeysList"></div>
-            </div>
-        </div>
-
-        <div id="ban-keys" class="tab-section">
-            <div class="section-box glass-panel float-anim" style="border-color: rgba(255, 59, 48, 0.4);">
-                <h2 style="color: var(--error);">Ban Key</h2>
-                <div class="input-group">
-                    <input type="text" id="keyToBanInput" placeholder="Paste key" style="font-family: monospace; text-transform: uppercase;">
-                    <button class="btn" style="background: var(--error); color: white;" onclick="openKeyBanModal()">BAN KEY</button>
-                </div>
-                <div class="mk-list" id="bannedKeysList"></div>
-            </div>
-        </div>
-
-        <div id="live-active" class="tab-section">
-            <div class="section-box" style="padding: 0; background: transparent; border: none; box-shadow: none;">
-                <h2 style="margin-bottom: 30px; font-size: 28px; color: var(--accent);">Active Users (Live Keys)</h2>
-                <p style="color:var(--text-dim);margin-bottom:20px;">Users who currently have a valid non-expired key.</p>
-                <div class="user-grid" id="liveActiveUserList"></div>
-            </div>
-        </div>
-
-        <div id="active-users" class="tab-section">
-            <div class="section-box" style="padding: 0; background: transparent; border: none; box-shadow: none;">
-                <h2 style="margin-bottom: 30px; font-size: 28px;">Registered Users</h2>
-                <div id="pendingComingWrap" style="display:none;margin-bottom:22px;">
-                    <div class="coming-section-title">Incoming · Get Key tapped</div>
-                    <div class="user-grid" id="pendingComingList"></div>
-                </div>
-                <div class="user-grid" id="activeUserList"></div>
-            </div>
-        </div>
-
-        <div id="banned-users" class="tab-section">
-            <div class="section-box" style="padding: 0; background: transparent; border: none; box-shadow: none;">
-                <h2 style="color: var(--error); margin-bottom: 30px; font-size: 28px;">Banned Devices Database</h2>
-                <div class="user-grid" id="bannedUserList"></div>
-            </div>
-        </div>
-
-        <div id="share-logs" class="tab-section">
-            <div class="section-box glass-panel float-anim">
-                <h2 style="color: var(--accent); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-                    <span>Key Share / Re-use Attempts</span>
-                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                        <button class="btn" style="background:var(--accent);color:#000;padding:10px 18px;font-size:13px;" onclick="toggleUserSearchBox()">SEARCH USER</button>
-                        <button class="btn" style="background:var(--error);color:white;padding:10px 20px;font-size:13px;" onclick="clearAllShareLogs()">CLEAR ALL LOGS</button>
-                    </div>
-                </h2>
-                <p>Shows when a bound key was tried on a second device (sharing detected).</p>
-                <div id="userSearchBox" style="display:none;margin:0 0 18px;padding:16px 18px;border-radius:16px;border:1px solid var(--glass-border);background:rgba(150,150,150,0.06);">
-                    <div style="font-size:13px;font-weight:700;color:var(--text-dim);margin-bottom:10px;">Enter device ID (native / fingerprint ID — not app UUID)</div>
-                    <div class="input-group" style="margin-bottom:12px;">
-                        <input type="text" id="userSearchDeviceInput" placeholder="Paste device ID here..." autocomplete="off" spellcheck="false">
-                        <button class="btn" style="padding:14px 22px;font-size:13px;" onclick="searchUserByDeviceId()">FIND</button>
-                    </div>
-                    <div id="userSearchResult" style="font-size:14px;font-weight:700;min-height:22px;color:var(--text-main);"></div>
-                </div>
-                <div class="mk-list" id="shareLogsList"></div>
-            </div>
-        </div>
-
-        <!-- Security moved to FAB (bottom-left) -->
-
-        <div id="reset-device" class="tab-section">
-            <div class="section-box glass-panel float-anim">
-                <h2 style="display: flex; align-items: center;">
-                    <span>Unbind Device</span>
-                    <svg class="header-info-icon" onclick="openUnbindInfo()" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                </h2>
-                <div class="input-group">
-                    <input type="text" id="resetIdInput" placeholder="Device ID">
-                    <button class="btn" style="background: var(--warn); color: black;" onclick="resetDevice()">UNBIND</button>
-                </div>
-            </div>
-
-            <div class="section-box glass-panel float-anim" style="border-color: rgba(255, 59, 48, 0.45);">
-                <h2 style="color: var(--error); font-size:20px;">Global Kill Switch</h2>
-                <p style="margin-bottom:16px;">When <strong>ON</strong>, every online player app receives <em>Critical shutdown</em> and force-closes in <strong>10 seconds</strong>. Turn OFF to stop new kills (already closed apps stay closed).</p>
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 16px;border-radius:14px;border:1px solid var(--glass-border);background:rgba(255,59,48,0.08);">
-                    <div style="flex:1;min-width:180px;">
-                        <div style="font-weight:800;font-size:14px;" id="globalKillLabel">Status: OFF</div>
-                        <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">Requires 2 confirmations + fingerprint</div>
-                    </div>
-                    <label style="position:relative;display:inline-block;width:56px;height:32px;cursor:pointer;">
-                        <input type="checkbox" id="globalKillToggle" style="opacity:0;width:0;height:0;" onchange="onGlobalKillToggle(this)">
-                        <span id="globalKillSlider" style="position:absolute;inset:0;background:#444;border-radius:32px;transition:.25s;"></span>
-                        <span id="globalKillKnob" style="position:absolute;height:26px;width:26px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.25s;"></span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="section-box glass-panel float-anim" style="border-color: rgba(255, 59, 48, 0.5); background: linear-gradient(135deg, rgba(255, 59, 48, 0.1), transparent);">
-                <h2 style="color: var(--error);">
-                    <svg style="width:28px; fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                    Danger Zone: Website / Database Reset
-                </h2>
-                <p>This will completely delete <strong>EVERYTHING</strong> in the database. The entire admin panel will start fresh.</p>
-                <button class="btn" style="background: var(--error); color: white; width: 100%; margin-top: 15px;" onclick="startFactoryReset()">WIPE ENTIRE DATABASE (FACTORY RESET)</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- FLOATING INFO BUTTON -->
-    
-<button type="button" class="sec-fab" id="secFab" title="Security" onclick="toggleSecurityPanel()">
-  <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-</button>
-<div id="securityPanelBackdrop" onclick="toggleSecurityPanel(false)"></div>
-<div id="securityPanel" class="glass-panel">
-  <button type="button" class="sec-panel-close" onclick="toggleSecurityPanel(false)" aria-label="Close">×</button>
-  <h2 style="color:var(--accent);font-size:26px;margin:0 0 10px;font-weight:900;">Admin Security</h2>
-  <p style="font-size:14px;color:var(--text-dim);margin:0 0 18px;line-height:1.55;">Only <b>existing</b> admin fingerprint (or code) can add more. Hold ADD FINGERPRINT <b>10s</b> to reveal code box.</p>
-  <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Fingerprint</label>
-  <div class="input-group" style="margin-bottom:10px;">
-    <button class="btn" id="btnAddFp" type="button" style="background:var(--accent);color:#000;">ADD FINGERPRINT</button>
-  </div>
-  <div id="fpList" class="mk-list" style="margin-top:6px;"></div>
-  <div id="secCodeHoldBox" style="display:none;margin:12px 0;padding:14px;border-radius:14px;border:1px dashed var(--glass-border);background:rgba(150,150,150,0.08);">
-    <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Change admin code</label>
-    <div class="input-group" style="margin-bottom:0;">
-      <input type="text" id="adminCodeNew" placeholder="New admin code" autocomplete="off">
-      <button class="btn" type="button" onclick="changeAdminCode()">SAVE</button>
-    </div>
-  </div>
-  <p id="secStatus" style="font-size:13px;font-weight:700;color:var(--text-dim);margin-top:10px;min-height:20px;"></p>
-  <div id="adminLogToggle" onclick="toggleAdminLoginLog()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:18px 0;margin-top:20px;border-top:1px solid var(--glass-border);">
-    <span style="font-size:16px;font-weight:800;color:var(--text-main);">Admin login history</span>
-    <svg id="adminLogArrow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform .25s;color:var(--text-dim);"><polyline points="6 9 12 15 18 9"></polyline></svg>
-  </div>
-  <div id="adminLoginLogBody" style="display:none;">
-    <div id="adminLoginLogList" class="mk-list" style="max-height:min(55vh,480px);overflow:auto;padding:10px 0;"></div>
-    <button class="btn" type="button" style="margin-top:12px;background:var(--error);color:#fff;width:100%;padding:16px;" onclick="clearAdminLoginHistory()">CLEAR HISTORY (FP + CODE)</button>
-  </div>
-</div>
-
-    <button class="info-btn" onclick="openGuideModal()">i</button>
-
-    <!-- CUSTOM CONFIRMATION MODAL -->
-    <div class="modal-overlay" id="confirmActionModal">
-        <div class="modal">
-            <h2 id="confirmActionTitle" style="color: var(--error);">Confirm Action</h2>
-            <p id="confirmActionDesc">Are you sure you want to proceed?</p>
-            <div class="modal-btns">
-                <button class="btn-confirm" onclick="executeConfirm()">CONFIRM</button>
-                <button class="btn-cancel" onclick="closeModals()">CANCEL</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- UNBIND INFO MODAL -->
-    <div class="modal-overlay" id="unbindInfoModal">
-        <div class="modal">
-            <h2 style="color: var(--accent);">Device Unbind Info</h2>
-            <p style="text-align: left; margin-bottom: 15px;"><strong>What it does:</strong> Completely removes a user's Device ID from the database, freeing up their slot.</p>
-            <p style="text-align: left;"><strong>When to use this:</strong><br>- When a legitimate user changes their phone.<br>- When they factory reset their device.<br>- If they are stuck on a "Device Already Registered" error and need a fresh start.</p>
-            <button class="btn-full bg-green" style="margin-top: 25px;" onclick="closeModals()">GOT IT</button>
-        </div>
-    </div>
-
-    <!-- MODERN DESIGNED GUIDE / DOWNLOAD MODAL -->
-    <div class="modal-overlay" id="guideModal">
-        <div class="modal guide-modal">
-            
-            <div style="text-align: center; margin-bottom: 25px;">
-                <h2 style="color: var(--accent); margin-bottom: 5px; font-size: 26px; letter-spacing: 1px;">DGXEN</h2>
-                <div style="color: var(--text-dim); font-size: 14px;">System Control Panel</div>
-            </div>
-
-            <!-- TABS -->
-            <div class="modal-tabs">
-                <div class="m-tab active" onclick="switchGuideTab('manual', this)">
-                    <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg> 
-                    System Manual
-                </div>
-                <div class="m-tab" onclick="switchGuideTab('downloads', this)">
-                    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> 
-                    Download Modules
-                </div>
-            </div>
-
-            <!-- TAB CONTENT: MANUAL -->
-            <div id="tab-manual" class="m-content active">
-                <p style="margin-bottom: 20px; color: var(--text-dim); font-size: 14px;">Important system rules, security behaviour and tips.</p>
-
-                <div class="acc-item active" id="acc-man-1">
-                    <div class="acc-header" onclick="toggleAccordion('acc-man-1')">
-                        One Key = One Device (Multi-login Prevention)
-                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                    <div class="acc-body">
-                        <ul class="check-list">
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> The first device that successfully unlocks a key permanently binds it.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Any other device trying the same key is blocked with “This key is already used on another device”.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Works for both normal DGXEN- keys and Master Keys.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Same device can log in again without increasing usage count.</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="acc-item" id="acc-man-auth">
-                    <div class="acc-header" onclick="toggleAccordion('acc-man-auth')">
-                        Admin Login Secret (Code Entry)
-                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                    <div class="acc-body">
-                        <ul class="check-list">
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> On the Admin Access screen, the code field is <b>hidden</b> by default.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Secret:</b> press and <b>hold the FINGERPRINT button for 10 seconds</b> — the admin code entry will appear.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> A short tap on FINGERPRINT still runs normal fingerprint unlock.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Prefer fingerprint when enrolled. Code is fallback (hold FINGERPRINT 10s).</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="acc-item" id="acc-man-2">
-                    <div class="acc-header" onclick="toggleAccordion('acc-man-2')">
-                        Share Logs & Key Banning
-                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                    <div class="acc-body">
-                        <ul class="check-list">
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> When a second device tries a bound key, a log is created automatically.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Logs show: Generator Name → sended key to → Receiver (or unknown user).</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Use <b>BAN KEY</b> to blacklist that key. It appears in Banned Normal Keys.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Click <b>KEY BANNED</b> again to unban the key.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Banned keys show “Banned: …” on the login screen (not a device ban).</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="acc-item" id="acc-man-3">
-                    <div class="acc-header" onclick="toggleAccordion('acc-man-3')">
-                        Master Keys Behaviour
-                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                    <div class="acc-body">
-                        <ul class="check-list">
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> First device binds the master key and increments usage once.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Same device can reuse the master key without extra count.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Deleting a master key in admin also wipes its usage and device tracking.</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="acc-item" id="acc-man-4">
-                    <div class="acc-header" onclick="toggleAccordion('acc-man-4')">
-                        Active Users vs Registered Users
-                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                    <div class="acc-body">
-                        <ul class="check-list">
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Active Users</b> = currently have a live (non-expired) key. Live countdown is shown on the right.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Registered Users</b> = all non-banned devices that ever registered.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Click any name / ID / key to copy it instantly.</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="acc-item" id="acc-man-5">
-                    <div class="acc-header" onclick="toggleAccordion('acc-man-5')">
-                        Tips & Best Practices
-                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                    <div class="acc-body">
-                        <ul class="check-list">
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Always hard-refresh (Ctrl+Shift+R) after updating login or admin files.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Use the top Refresh button or enable Auto Sync for live data.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> If a legitimate user changes phone, use System Reset → Unbind Device.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Clear old Share Logs with the CLEAR ALL LOGS button when needed.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <strong>Key device track auto-cleanup:</strong> when a user generates a new key on the same account, the old key’s device-track entry is deleted automatically so Firebase does not fill with expired keys.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <strong>Global Kill</strong> (System Reset tab): turns on a network-wide critical shutdown — all online apps show “Critical shutdown” and close in 10s. Needs double confirm + fingerprint.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Master keys should be kept private — they still follow the one-device rule.</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TAB CONTENT: DOWNLOADS (ACCORDION STYLE) -->
-            <div id="tab-downloads" class="m-content">
-                <p style="margin-bottom: 20px; color: var(--text-dim); font-size: 14px;">Download core module components for local integration. Offline bundles are fully updated.</p>
-                
-                <!-- Category 1: Admin Panel -->
-                <div class="acc-item" id="acc-admin">
-                    <div class="acc-header" onclick="toggleAccordion('acc-admin')">
-                        Admin Panel System
-                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                    <div class="acc-body">
-                        <div class="dl-file-row">
-                            <span class="dl-file-name">index.html (Current Web)</span>
-                            <button class="btn dl-btn-small" onclick="downloadSpecificFile('index', this)">DL</button>
-                        </div>
-                        <div class="dl-file-row">
-                            <span class="dl-file-name">manifest.json</span>
-                            <button class="btn dl-btn-small" onclick="downloadSpecificFile('manifest', this)">DL</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Category 2: Generator Logic -->
-                <div class="acc-item" id="acc-gen">
-                    <div class="acc-header" onclick="toggleAccordion('acc-gen')">
-                        Key Generator Logic
-                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                    <div class="acc-body">
-                        <div class="dl-file-row">
-                            <span class="dl-file-name">index.html (Generator Core)</span>
-                            <button class="btn dl-btn-small" onclick="downloadSpecificFile('gen_index', this)">DL</button>
-                        </div>
-                        <div class="dl-file-row">
-                            <span class="dl-file-name">steps.html (Key Web)</span>
-                            <button class="btn dl-btn-small" onclick="downloadSpecificFile('steps', this)">DL</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Category 3: Auth System (Injected/App Assets) -->
-                <div class="acc-item" id="acc-auth">
-                    <div class="acc-header" onclick="toggleAccordion('acc-auth')">
-                        Authentication Module
-                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                    <div class="acc-body">
-                        <div class="dl-file-row">
-                            <span class="dl-file-name">login.html (Offline/App Asset)</span>
-                            <button class="btn dl-btn-small" onclick="downloadSpecificFile('login_github', this)">DL</button>
-                        </div>
-                        <div class="dl-file-row">
-                            <span class="dl-file-name">Auth.smali (Hook Core)</span>
-                            <button class="btn dl-btn-small" onclick="downloadSpecificFile('auth_smali', this)">DL</button>
-                        </div>
-                        <div class="dl-file-row">
-                            <span class="dl-file-name">Hook.smali (Invoke Trigger)</span>
-                            <button class="btn dl-btn-small" onclick="downloadSpecificFile('hook_smali', this)">DL</button>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            <button class="btn-full bg-green" style="margin-top: 10px;" onclick="closeModals()">CLOSE PANEL</button>
-        </div>
-    </div>
-
-    <!-- MODALS -->
-    <div class="modal-overlay" id="banModal">
-        <div class="modal">
-            <h2>Ban User</h2>
-            <p>Enter a custom reason for this ban (User will see this).</p>
-            <input type="text" id="banReasonInput" placeholder="e.g., Suspicious activity detected." style="width: 100%; margin-bottom: 0;">
-            <div class="modal-btns">
-                <button class="btn-confirm" onclick="window.confirmBan()">CONFIRM BAN</button>
-                <button class="btn-cancel" onclick="closeModals()">CANCEL</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="keyBanModal">
-        <div class="modal">
-            <h2 style="color: var(--error);">Ban Key</h2>
-            <p style="margin-bottom: 10px;">Key: <br><span id="keyBanTarget" style="color: var(--accent); font-family: monospace; font-size: 19px; font-weight: 800; display: inline-block; margin-top: 10px;"></span></p>
-            <input type="text" id="keyBanReasonInput" placeholder="e.g., Key was shared publicly." style="width: 100%; margin-top: 15px;">
-            <div class="modal-btns">
-                <button class="btn-confirm" onclick="window.confirmKeyBan()">CONFIRM BAN</button>
-                <button class="btn-cancel" onclick="closeModals()">CANCEL</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="resetModal">
-        <div class="modal">
-            <h2 id="resetModalTitle" style="color: var(--error);">⚠️ Factory Reset</h2>
-            <p id="resetModalDesc">Are you sure you want to wipe everything?</p>
-            <div class="modal-btns">
-                <button class="btn-confirm" id="resetConfirmBtn">CONFIRM</button>
-                <button class="btn-cancel" onclick="closeModals()">CANCEL</button>
-            </div>
-        </div>
-    </div>
-
 <!-- Firebase SDK & Logic -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -1089,7 +635,7 @@
     const firebaseConfig = { databaseURL: "https://login-pass-1a196-default-rtdb.firebaseio.com/" };
     const app = initializeApp(firebaseConfig);
     
-const db = getDatabase(app);
+    const db = getDatabase(app);
 
     // ========== ADMIN GATE (fingerprint + code) ==========
 
@@ -1150,18 +696,23 @@ const db = getDatabase(app);
         el.textContent = msg || '';
     }
 
+    // FIX 1: STRICT ADMINGATE HIDE
     function unlockAdmin(method) {
         adminUnlocked = true;
         sessionStorage.setItem('dgxen_admin_unlocked', '1');
         const g = document.getElementById('adminGate');
         if (g) {
             g.classList.add('hidden');
+            g.style.setProperty('display', 'none', 'important');
+            g.style.setProperty('pointer-events', 'none', 'important');
+            g.style.setProperty('visibility', 'hidden', 'important');
         }
         stopGateCamera();
         try { logAdminLogin(method || 'unknown'); } catch (e) {}
         renderFpList(); renderFaceList();
         try { renderAdminLoginLog(); } catch (e) {}
     }
+
     async function logAdminLogin(method) {
         try {
             await push(ref(db, 'settings/adminGate/loginHistory'), {
@@ -1270,10 +821,9 @@ const db = getDatabase(app);
             const snap = await get(ref(db, 'settings/adminGate/code'));
             if (snap.exists() && String(snap.val()).trim()) real = String(snap.val()).trim();
         } catch (e) {}
-        // Accept stored code OR the hardcoded default (so default always works)
+        // Accept stored code OR the hardcoded default
         if (code === real || code === DEFAULT_ADMIN_CODE) {
             try {
-                // If default code was used, force-sync it into Firebase so it stays valid
                 const toStore = (code === DEFAULT_ADMIN_CODE) ? DEFAULT_ADMIN_CODE : real;
                 await set(ref(db, 'settings/adminGate/code'), toStore);
             } catch (e) {}
@@ -1281,129 +831,11 @@ const db = getDatabase(app);
         } else setGateStatus('Wrong code.');
     }
 
-    // --- Face helpers (browser FaceDetector + simple embedding fallback) ---
-    async function detectOneFace(videoEl) {
-        if (!videoEl || videoEl.readyState < 2) throw new Error('Camera not ready');
-        const w = videoEl.videoWidth, h = videoEl.videoHeight;
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(videoEl, 0, 0);
-        let box = null;
-        if (window.FaceDetector) {
-            const fd = new FaceDetector({ fastMode: false, maxDetectedFaces: 1 });
-            const faces = await fd.detect(canvas);
-            if (faces && faces.length) box = faces[0].boundingBox;
-        }
-        if (!box) {
-            // fallback assumed center — still enforce timing, weaker geometry
-            box = { x: w * 0.3, y: h * 0.2, width: w * 0.4, height: h * 0.5 };
-        }
-        const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
-        const ratio = box.width / Math.max(1, box.height);
-        // Frontal face: roughly square-ish, not narrow side profile
-        if (ratio < 0.55 || ratio > 1.35) throw new Error('Face the screen — no side face');
-        if (box.width < w * 0.16 || box.height < h * 0.16) throw new Error('Move closer — look at the screen');
-        if (Math.abs(cx - w / 2) > w * 0.22 || Math.abs(cy - h / 2) > h * 0.25) throw new Error('Center your face on screen');
-        // "Eyes open / looking" heuristic: upper third of face must have enough bright variance (open eyes)
-        const sx = Math.max(0, box.x|0), sy = Math.max(0, box.y|0);
-        const sw = Math.min(w - sx, box.width|0), sh = Math.min(h - sy, box.height|0);
-        const eyeBand = ctx.getImageData(sx, sy, Math.max(1, sw), Math.max(1, Math.floor(sh * 0.45)));
-        let sum = 0, sum2 = 0, n = 0;
-        for (let i = 0; i < eyeBand.data.length; i += 16) {
-            const lum = (eyeBand.data[i] * 3 + eyeBand.data[i+1] * 6 + eyeBand.data[i+2]) / 10;
-            sum += lum; sum2 += lum * lum; n++;
-        }
-        const mean = sum / Math.max(1, n);
-        const variance = sum2 / Math.max(1, n) - mean * mean;
-        if (variance < 180) throw new Error('Eyes open and look at the screen');
-        const faceImg = ctx.getImageData(sx, sy, Math.max(1, sw), Math.max(1, sh));
-        return { embed: embedFromImageData(faceImg), box, cx, cy };
-    }
-
-    async function captureFaceDescriptor(videoEl) {
-        // Must look ahead continuously for ~1 second (no closed eyes / side face)
-        const needMs = 1000;
-        const start = Date.now();
-        const embeds = [];
-        let lastCx = null, lastCy = null;
-        while (Date.now() - start < needMs) {
-            const { embed, cx, cy } = await detectOneFace(videoEl);
-            if (lastCx != null) {
-                if (Math.abs(cx - lastCx) > videoEl.videoWidth * 0.08 || Math.abs(cy - lastCy) > videoEl.videoHeight * 0.08) {
-                    throw new Error('Hold still — look straight for 1 second');
-                }
-            }
-            lastCx = cx; lastCy = cy;
-            embeds.push(embed);
-            await new Promise(r => setTimeout(r, 120));
-        }
-        if (embeds.length < 3) throw new Error('Look at the screen for a full second');
-        // average embedding
-        const avg = embeds[0].map((_, i) => {
-            let s = 0;
-            embeds.forEach(e => s += e[i]);
-            return +(s / embeds.length).toFixed(6);
-        });
-        return avg;
-    }
-
-    function embedFromImageData(img) {
-        const d = img.data;
-        const bins = new Array(64).fill(0);
-        let n = 0;
-        for (let i = 0; i < d.length; i += 16) {
-            const r = d[i], g = d[i+1], b = d[i+2];
-            const lum = (r * 3 + g * 6 + b) / 10;
-            const bi = Math.min(63, Math.floor(lum / 4));
-            bins[bi] += 1;
-            n++;
-        }
-        if (n) for (let i = 0; i < bins.length; i++) bins[i] = +(bins[i] / n).toFixed(6);
-        return bins;
-    }
-
-    function faceDistance(a, b) {
-        if (!a || !b || a.length !== b.length) return 99;
-        let s = 0;
-        for (let i = 0; i < a.length; i++) {
-            const d = a[i] - b[i];
-            s += d * d;
-        }
-        return Math.sqrt(s);
-    }
-
-    async function startCamera(videoId) {
-        const v = document.getElementById(videoId);
-        if (!v) throw new Error('No video element');
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-        v.srcObject = stream;
-        v.style.display = 'block';
-        await v.play();
-        return v;
-    }
-
-    async function tryFaceLogin() {
-        setGateStatus('Face unlock removed.');
-    }
-
-    async function hasEnrolledFaces() {
-        try {
-            const snap = await get(ref(db, 'settings/adminGate/faces'));
-            return snap.exists() && Object.keys(snap.val() || {}).length > 0;
-        } catch (e) { return false; }
-    }
     async function verifyExistingFingerprint() {
-        if (!window.PublicKeyCredential) return false;
+        const ids = getLocalFpIds();
+        if (!ids.length || !window.PublicKeyCredential) return false;
         try {
-            const ids = await getFirebaseFpIds();
-            if (!ids.length) return false;
-            setLocalFpIds(ids);
-            const allow = [];
-            for (let i = 0; i < ids.length; i++) {
-                try { allow.push({ type: 'public-key', id: base64ToBuffer(ids[i]) }); } catch (e) {}
-            }
-            if (!allow.length) return false;
+            const allow = ids.map(id => ({ type: 'public-key', id: base64ToBuffer(id) }));
             const assertion = await navigator.credentials.get({
                 publicKey: {
                     challenge: crypto.getRandomValues(new Uint8Array(32)),
@@ -1412,30 +844,10 @@ const db = getDatabase(app);
                     allowCredentials: allow
                 }
             });
-            if (!assertion) return false;
-            let usedId = '';
-            try { usedId = bufferToBase64(assertion.rawId); } catch (e) {}
-            return !!(usedId && ids.indexOf(usedId) !== -1);
+            return !!assertion;
         } catch (e) { return false; }
     }
-    async function verifyExistingFace() {
-        try {
-            const facesSnap = await get(ref(db, 'settings/adminGate/faces'));
-            if (!facesSnap.exists()) return false;
-            const faces = facesSnap.val() || {};
-            const v = await startCamera('secFaceVideo');
-            await new Promise(r => setTimeout(r, 500));
-            const desc = await captureFaceDescriptor(v);
-            if (v.srcObject) v.srcObject.getTracks().forEach(t => t.stop());
-            v.style.display = 'none';
-            let best = 99;
-            for (const id in faces) {
-                const f = faces[id];
-                if (f && f.descriptor) best = Math.min(best, faceDistance(desc, f.descriptor));
-            }
-            return best < 0.32;
-        } catch (e) { return false; }
-    }
+    
     async function ensureAdminIdentity(stEl) {
         const fbIds = await getFirebaseFpIds();
         if (fbIds.length > 0) {
@@ -1478,37 +890,48 @@ const db = getDatabase(app);
             });
             if (!cred) return;
             const id = bufferToBase64(cred.rawId);
-            const safe = String(id).split('').map(function(ch){ return ('.$[]#/'.indexOf(ch)>=0) ? '_' : ch; }).join('');
+            const safe = String(id).split('').map(function(ch){
+                return ('.$[]#/'.indexOf(ch)>=0) ? '_' : ch;
+            }).join('');
+            
             let uaData = null;
             try {
                 if (navigator.userAgentData) {
-                    uaData = { mobile: !!navigator.userAgentData.mobile, platform: navigator.userAgentData.platform || '', brands: (navigator.userAgentData.brands || []).map(function(b){ return b.brand + ' ' + b.version; }) };
+                    uaData = {
+                        mobile: !!navigator.userAgentData.mobile,
+                        platform: navigator.userAgentData.platform || '',
+                        brands: (navigator.userAgentData.brands || []).map(b => (b.brand + ' ' + b.version))
+                    };
                 }
             } catch (e) {}
             const fpRecord = {
-                id: id, createdAt: Date.now(), updatedAt: Date.now(),
+                id: id,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
                 userAgent: (navigator.userAgent || '').slice(0, 180),
-                platform: navigator.platform || '', language: navigator.language || '',
+                platform: navigator.platform || '',
+                language: navigator.language || '',
                 languages: (navigator.languages || []).slice(0, 5).join(','),
-                vendor: navigator.vendor || '', hardwareConcurrency: navigator.hardwareConcurrency || 0,
-                deviceMemory: navigator.deviceMemory || null, maxTouchPoints: navigator.maxTouchPoints || 0,
-                screen: (screen.width||0)+'x'+(screen.height||0)+'@'+(window.devicePixelRatio||1),
+                vendor: navigator.vendor || '',
+                hardwareConcurrency: navigator.hardwareConcurrency || 0,
+                deviceMemory: navigator.deviceMemory || null,
+                maxTouchPoints: navigator.maxTouchPoints || 0,
+                screen: (screen.width || 0) + 'x' + (screen.height || 0) + '@' + (window.devicePixelRatio || 1),
                 timezone: (Intl.DateTimeFormat().resolvedOptions().timeZone || ''),
-                origin: location.origin || '', host: location.host || '', colorDepth: screen.colorDepth || 0,
-                uaData: uaData, note: 'admin-webauthn'
+                origin: location.origin || '',
+                host: location.host || '',
+                colorDepth: screen.colorDepth || 0,
+                uaData: uaData,
+                note: 'admin-webauthn'
             };
             await set(ref(db, 'settings/adminGate/fingerprints/' + safe), fpRecord);
-            setLocalFpIds(await getFirebaseFpIds());
+            const synced = await getFirebaseFpIds();
+            setLocalFpIds(synced);
             renderFpList();
             if (st) { st.style.color = 'var(--accent)'; st.textContent = 'Fingerprint saved to Firebase.'; }
         } catch (e) {
             if (st) { st.style.color = 'var(--error)'; st.textContent = 'Could not register: ' + (e.message || e); }
         }
-    };
-
-    window.enrollAdminFace = async function() {
-        const st = document.getElementById('secStatus');
-        if (st) { st.style.color = 'var(--error)'; st.textContent = 'Face system removed.'; }
     };
 
     window.changeAdminCode = async function() {
@@ -1532,7 +955,6 @@ const db = getDatabase(app);
         const box = document.getElementById('fpList');
         if (!box) return;
         const ids = getLocalFpIds();
-        // also try firebase list
         get(ref(db, 'settings/adminGate/fingerprints')).then(snap => {
             const rows = [];
             const seen = new Set();
@@ -1556,26 +978,7 @@ const db = getDatabase(app);
         });
     }
 
-    function renderFaceList() {
-        const box = document.getElementById('faceList');
-        if (!box) return;
-        get(ref(db, 'settings/adminGate/faces')).then(snap => {
-            if (!snap.exists()) {
-                box.innerHTML = '<div style="color:var(--text-dim);padding:12px;">No faces enrolled.</div>';
-                return;
-            }
-            const data = snap.val();
-            box.innerHTML = Object.keys(data).map(id => {
-                const f = data[id] || {};
-                return `<div class="mk-item"><div style="font-size:13px;font-weight:700;">Face ID ${f.primary ? '(primary admin)' : ''}
-                    <div style="font-size:11px;color:var(--text-dim);font-family:monospace;word-break:break-all;margin-top:4px;">${id}</div>
-                    <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Delete only via Firebase</div>
-                </div></div>`;
-            }).join('');
-        }).catch(() => {
-            box.innerHTML = '<div style="color:var(--text-dim);padding:12px;">Could not load faces.</div>';
-        });
-    }
+    function renderFaceList() {} // Deprecated face features
 
     window.toggleSecurityPanel = function(force) {
         const p = document.getElementById('securityPanel');
@@ -1587,10 +990,9 @@ const db = getDatabase(app);
             p.classList.remove('closing');
             if (bd) bd.classList.add('open');
             p.classList.add('open');
-            renderFpList(); renderFaceList();
+            renderFpList();
             try { renderAdminLoginLog(); } catch(e) {}
             setupSecHoldButtons();
-            // face unlock removed
         } else if (isOpen) {
             p.classList.add('closing'); p.classList.remove('open');
             setTimeout(function(){ p.classList.remove('closing'); if (bd) bd.classList.remove('open'); }, 400);
@@ -1624,6 +1026,9 @@ const db = getDatabase(app);
         const g = document.getElementById('adminGate');
         if (adminUnlocked && g) {
             g.classList.add('hidden');
+            g.style.setProperty('display', 'none', 'important');
+            g.style.setProperty('pointer-events', 'none', 'important');
+            g.style.setProperty('visibility', 'hidden', 'important');
         }
         const fpBtn = document.getElementById('gateFpBtn');
         const codeBtn = document.getElementById('gateCodeBtn');
@@ -1631,7 +1036,6 @@ const db = getDatabase(app);
         if (codeBtn) codeBtn.onclick = () => tryCodeLogin();
         if (codeIn) codeIn.addEventListener('keydown', e => { if (e.key === 'Enter') tryCodeLogin(); });
 
-        // Secret: hold FINGERPRINT 10s → reveal code block
         if (fpBtn) {
             let holdTimer = null;
             let holdFired = false;
@@ -1654,7 +1058,6 @@ const db = getDatabase(app);
             fpBtn.addEventListener('pointerup', endHold);
             fpBtn.addEventListener('pointerleave', clearHold);
             fpBtn.addEventListener('pointercancel', clearHold);
-            // prevent long-press context menu
             fpBtn.addEventListener('contextmenu', e => e.preventDefault());
         }
 
@@ -1669,47 +1072,111 @@ const db = getDatabase(app);
     else initAdminGate();
 
 
-
     let currentBanUserId = null;
     let pendingKeyToBan = null;
     let mkUsageData = {};
     let resetStep = 0;
     let pendingConfirmAction = null; 
 
-    // --- POPULATE DEVICE ID LIST FOR MASTER KEYS FROM DEVICEREQUESTS ---
-    onValue(ref(db, 'deviceRequests'), (snap) => {
-        window.__pendingDeviceReqs = snap.exists() ? (snap.val() || {}) : {};
-        try { renderPendingComing(); } catch(e) {}
-        const box = document.getElementById('deviceRequestsBox');
-        if(!box) return;
-        box.innerHTML = '';
-        if(snap.exists()){
-            const reqs = snap.val();
-            const sorted = Object.values(reqs).sort((a,b) => b.time - a.time);
-            const seen = new Set();
-            
-            sorted.forEach(req => {
-                if (!seen.has(req.deviceId)) {
-                    seen.add(req.deviceId);
-                    const div = document.createElement('div');
-                    div.className = 'device-id-item';
-                    div.textContent = req.deviceId;
-                    div.title = "Requested: " + new Date(req.time).toLocaleString();
-                    div.onclick = () => {
-                        navigator.clipboard.writeText(req.deviceId);
-                        const input = document.getElementById('mkExtraInput');
-                        if(input) input.value = req.deviceId; // Auto-fill the input
-                        const old = div.textContent;
-                        div.textContent = 'Copied!';
-                        setTimeout(() => div.textContent = old, 1000);
-                    };
-                    box.appendChild(div);
-                }
-            });
-        } else {
-            box.innerHTML = '<div style="font-size:11px; color:var(--text-dim); text-align:center; padding:20px 10px;">No requests yet</div>';
+    // --- PENDING GET-KEY ILLUSION ---
+    window.__pendingDeviceReqs = {};
+    window.__registeredIdSet = new Set();
+
+    function normId(s){
+      return String(s||'').trim().toLowerCase().replace(/\s+/g,'');
+    }
+
+    function rebuildRegisteredIdSet(usersMap){
+      const set=new Set();
+      if(usersMap){
+        for(const uid in usersMap){
+          const u=usersMap[uid]||{};
+          [uid,u.deviceId,u.fingerprint,u.lastDeviceId,u.androidId,u.lastLoginDevice].forEach(x=>{
+            const n=normId(x);
+            if(n) set.add(n);
+          });
         }
-    });
+      }
+      window.__registeredIdSet=set;
+    }
+
+    function renderPendingComing(){
+      const wrap=document.getElementById('pendingComingWrap');
+      const list=document.getElementById('pendingComingList');
+      if(!wrap||!list) return;
+      const reqs=window.__pendingDeviceReqs||{};
+      const reg=window.__registeredIdSet||new Set();
+      const items=[];
+      const seen=new Set();
+      const now=Date.now();
+      Object.keys(reqs).forEach(k=>{
+        const r=reqs[k]||{};
+        const id=String(r.deviceId||k||'').trim();
+        if(!id) return;
+        const n=normId(id);
+        if(seen.has(n)) return;
+        seen.add(n);
+        if(reg.has(n)) return; // already registered — hide illusion
+        const exp=Number(r.expiresAt||0);
+        const t=Number(r.time)||0;
+        if(exp && now>exp) return;
+        if(!exp && t && (now-t)>12*60*1000) return;
+        items.push({id, time:t, localId:r.localId||r.localStorageId||''});
+      });
+      items.sort((a,b)=>b.time-a.time);
+      if(!items.length){
+        wrap.style.display='none';
+        list.innerHTML='';
+        return;
+      }
+      wrap.style.display='block';
+      list.innerHTML=items.map((it,i)=>{
+        const delay=(i%4)*0.25;
+        const extra=it.localId && normId(it.localId)!==normId(it.id)
+          ? `<div class="coming-id copyable" style="margin-top:6px;opacity:.4;font-size:11px;" data-copy="${String(it.localId).replace(/"/g,'&quot;')}" title="Click to copy local id">local: ${it.localId}</div>`
+          : '';
+        return `<div class="coming-card" style="animation-delay:${delay}s">
+          <div class="coming-label">User is coming<span class="coming-dots"></span></div>
+          <div class="coming-id copyable" data-copy="${String(it.id).replace(/"/g,'&quot;')}" title="Click to copy device id">${it.id}</div>
+          ${extra}
+        </div>`;
+      }).join('');
+    }
+
+    try{
+      onValue(ref(db,'deviceRequests'), (snap)=>{
+        window.__pendingDeviceReqs = snap.exists() ? (snap.val()||{}) : {};
+        // keep existing master-key deviceRequestsBox population
+        const box=document.getElementById('deviceRequestsBox');
+        if(box){
+          box.innerHTML='';
+          if(snap.exists()){
+            const sorted=Object.values(snap.val()).sort((a,b)=>(b.time||0)-(a.time||0));
+            const seen=new Set();
+            sorted.forEach(req=>{
+              const did=req.deviceId;
+              if(!did||seen.has(did)) return;
+              seen.add(did);
+              const div=document.createElement('div');
+              div.className='device-id-item';
+              div.textContent=did;
+              div.title='Requested: '+new Date(req.time||Date.now()).toLocaleString();
+              div.onclick=()=>{
+                try{navigator.clipboard.writeText(did)}catch(e){}
+                const input=document.getElementById('mkExtraInput');
+                if(input) input.value=did;
+                const old=div.textContent; div.textContent='Copied!';
+                setTimeout(()=>div.textContent=old,1000);
+              };
+              box.appendChild(div);
+            });
+          } else {
+            box.innerHTML='<div style="font-size:11px; color:var(--text-dim); text-align:center; padding:20px 10px;">No requests yet</div>';
+          }
+        }
+        renderPendingComing();
+      });
+    }catch(e){ console.warn('deviceRequests listen', e); }
 
     // --- TAB SWITCHER FOR GUIDE MODAL ---
     window.switchGuideTab = function(tabName, el) {
@@ -1719,13 +1186,12 @@ const db = getDatabase(app);
         document.getElementById('tab-' + tabName).classList.add('active');
     };
 
-    // --- ACCORDION TOGGLER ---
     window.toggleAccordion = function(id) {
         const item = document.getElementById(id);
         item.classList.toggle('active');
     };
 
-    // --- PURE SAFE DOWNLOAD SYSTEM (NO DOM INJECTIONS) ---
+    // --- DOWNLOAD SYSTEM ---
     function triggerDownload(blob, fileName, btnElement, originalText) {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1733,17 +1199,14 @@ const db = getDatabase(app);
         a.href = url;
         a.download = fileName;
         document.body.appendChild(a);
-        
         setTimeout(() => {
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
-            
             btnElement.innerText = "DONE!";
             btnElement.style.background = "rgba(0,255,136,0.2)";
             btnElement.style.color = "var(--accent)";
             btnElement.style.borderColor = "var(--accent)";
-            
             setTimeout(() => {
                 btnElement.innerText = originalText;
                 btnElement.style.opacity = "1";
@@ -1754,18 +1217,15 @@ const db = getDatabase(app);
             }, 2000);
         }, 100);
     }
-
     
-window.downloadSpecificFile = async function(fileId, btnElement) {
+    window.downloadSpecificFile = async function(fileId, btnElement) {
         const originalText = btnElement.innerText;
         btnElement.innerText = "WAIT...";
         btnElement.style.opacity = "0.7";
         btnElement.style.pointerEvents = "none";
-        
         try {
             let content = "";
             let finalName = "";
-
             if (fileId === 'index') {
                 content = document.documentElement.outerHTML; 
                 finalName = "index.html";
@@ -1789,7 +1249,6 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
                 let fetchName = "";
                 if (fileId === 'manifest') fetchName = "manifest.json";
                 else if (fileId === 'steps') fetchName = "steps.html";
-                
                 if(fetchName) {
                     const response = await fetch('./' + fetchName);
                     if (!response.ok) {
@@ -1798,28 +1257,23 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
                              if(!res2.ok) throw new Error("File missing");
                              content = await res2.text();
                              finalName = fetchName;
-                        } else {
-                             throw new Error("File missing on server");
-                        }
+                        } else { throw new Error("File missing on server"); }
                     } else {
                         content = await response.text();
                         finalName = fetchName;
                     }
                 }
             }
-
             if(content) {
                 const blob = new Blob([content], { type: finalName.endsWith('.smali') ? 'text/plain;charset=utf-8' : 'text/html;charset=utf-8' });
                 triggerDownload(blob, finalName, btnElement, originalText);
             }
-
         } catch (error) {
             console.error(error);
             btnElement.innerText = "N/A";
             btnElement.style.background = "rgba(255,59,48,0.2)";
             btnElement.style.color = "var(--error)";
             btnElement.style.borderColor = "var(--error)";
-            
             setTimeout(() => {
                 btnElement.innerText = originalText;
                 btnElement.style.opacity = "1";
@@ -1831,47 +1285,46 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         }
     };
 
-    // --- PASTE FIX: PAUSE FLOAT ANIMATION ON FOCUS ---
+    // --- FLOAT ANIMATION FIX ---
     document.addEventListener('focusin', (e) => {
-        if (e.target.matches('input[type="text"], input[type="number"]')) {
+        if (e.target.matches('input[type="text"], input[type="number"], input[type="password"]')) {
             const floatParent = e.target.closest('.float-anim');
             if (floatParent) floatParent.style.animationPlayState = 'paused';
         }
     });
     document.addEventListener('focusout', (e) => {
-        if (e.target.matches('input[type="text"], input[type="number"]')) {
+        if (e.target.matches('input[type="text"], input[type="number"], input[type="password"]')) {
             const floatParent = e.target.closest('.float-anim');
             if (floatParent) floatParent.style.animationPlayState = 'running';
         }
     });
 
-    // BUTTON RIPPLE EFFECT
+    // --- FIX 2: STRICT COPY-HANDLER ---
     document.addEventListener('click', function(e) {
-        // Click-to-copy for any .copyable element or data-copy attribute
         // Never treat buttons as copy targets (fixes dead BAN on Chrome)
         if (!e.target.closest('button, a, input, select, textarea, .btn, .btn-full, .btn-confirm, .btn-cancel, .mk-del, .nav-link')) {
-        const copyEl = e.target.closest('.copyable, [data-copy]');
-        if (copyEl) {
-            const text = copyEl.getAttribute('data-copy') || copyEl.textContent.trim();
-            if (text) {
-                navigator.clipboard.writeText(text).then(() => {
-                    const old = copyEl.textContent;
-                    copyEl.textContent = 'Copied!';
-                    setTimeout(() => { copyEl.textContent = old; }, 900);
-                }).catch(() => {
-                    const ta = document.createElement('textarea');
-                    ta.value = text;
-                    document.body.appendChild(ta);
-                    ta.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(ta);
-                });
+            const copyEl = e.target.closest('.copyable, [data-copy]');
+            if (copyEl) {
+                const text = copyEl.getAttribute('data-copy') || copyEl.textContent.trim();
+                if (text) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        const old = copyEl.textContent;
+                        copyEl.textContent = 'Copied!';
+                        setTimeout(() => { copyEl.textContent = old; }, 900);
+                    }).catch(() => {
+                        const ta = document.createElement('textarea');
+                        ta.value = text;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                    });
+                }
+                return;
             }
-            return;
-        }
         }
 
-        const target = e.target.closest('.btn, .btn-full, .mk-del, .trash-btn, .nav-link, .dynamic-island, .auto-notch, .manual-refresh-btn, .m-tab, .acc-header');
+        const target = e.target.closest('.btn, .btn-full, .mk-del, .trash-btn, .nav-link, .dynamic-island, .auto-notch, .manual-refresh-btn, .m-tab, .acc-header, .notice-chip');
         if (!target) return;
         const rect = target.getBoundingClientRect();
         const ripple = document.createElement('span');
@@ -1881,18 +1334,15 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         ripple.style.left = `${e.clientX - rect.left - radius}px`;
         ripple.style.top = `${e.clientY - rect.top - radius}px`;
         ripple.classList.add('click-ripple');
-        
         const existing = target.querySelector('.click-ripple');
         if(existing) existing.remove();
-        
         target.appendChild(ripple);
         setTimeout(() => ripple.remove(), 600); 
     });
 
-    // SMOOTH THEME CYCLE
+    // --- THEME CYCLE ---
     const themes = ['light', 'dark', 'max'];
     let currentThemeIndex = 0;
-
     const iconPaths = {
         'dark': '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
         'light': '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>',
@@ -1901,30 +1351,22 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
 
     window.cycleTheme = function(e) {
         if(document.querySelector('.theme-wave')) return; 
-
         const nextThemeIndex = (currentThemeIndex + 1) % themes.length;
         const nextTheme = themes[nextThemeIndex];
-        
         const waveColor = nextTheme === 'light' ? '#f2f2f7' : (nextTheme === 'max' ? '#01060e' : '#050507');
-
         let wave = document.createElement('div');
         wave.className = 'theme-wave';
         wave.style.background = waveColor;
-
         const rect = e.currentTarget.getBoundingClientRect();
         wave.style.top = (rect.top + rect.height / 2 - 5) + 'px';
         wave.style.left = (rect.left + rect.width / 2 - 5) + 'px';
-
         document.body.appendChild(wave);
-        
         requestAnimationFrame(() => { wave.style.transform = 'scale(400)'; });
-
         setTimeout(() => {
             currentThemeIndex = nextThemeIndex;
             applyTheme(themes[currentThemeIndex]);
             wave.style.opacity = '0'; 
         }, 500);
-
         setTimeout(() => { wave.remove(); }, 1200);
     }
 
@@ -1932,9 +1374,7 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         const body = document.body;
         const themeText = document.getElementById('themeText');
         const themeIcon = document.getElementById('themeIcon');
-        
         body.classList.remove('light-mode', 'max-mode');
-        
         if (theme === 'light') {
             body.classList.add('light-mode');
             themeText.innerText = 'LIGHT';
@@ -1950,10 +1390,9 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         localStorage.setItem('dgxen_admin_theme', theme);
     }
 
-    // --- AUTO SYNC (NOTCH) LOGIC ---
+    // --- AUTO SYNC ---
     const syncGap = 5; 
     let autoSyncTimer = null;
-
     window.toggleAutoSync = function() {
         let isEnabled = localStorage.getItem('dgx_autosync_en') === 'true';
         isEnabled = !isEnabled;
@@ -1966,9 +1405,7 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         const isEnabled = localStorage.getItem('dgx_autosync_en') === 'true';
         const notch = document.getElementById('autoSyncNotch');
         const text = document.getElementById('syncNotchText');
-        
         if(autoSyncTimer) clearInterval(autoSyncTimer);
-
         if(isEnabled) {
             notch.classList.add('active');
             text.innerText = `AUTO SYNC: ${syncGap}S`;
@@ -1978,10 +1415,8 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
             text.innerText = "AUTO SYNC: OFF";
         }
     }
-
     document.getElementById('autoSyncNotch').addEventListener('click', toggleAutoSync);
 
-    // Live countdown for Active Users timers
     function updateLiveTimers() {
         document.querySelectorAll('.live-timer').forEach(el => {
             const exp = Number(el.getAttribute('data-expires') || 0);
@@ -1993,9 +1428,7 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
                 const hrs = Math.floor(remaining / 3600000);
                 const mins = Math.floor((remaining % 3600000) / 60000);
                 const secs = Math.floor((remaining % 60000) / 1000);
-                el.textContent = hrs > 0
-                    ? `${hrs}h ${mins}m ${secs}s`
-                    : `${mins}m ${secs}s`;
+                el.textContent = hrs > 0 ? `${hrs}h ${mins}m ${secs}s` : `${mins}m ${secs}s`;
                 el.style.color = 'var(--accent)';
             }
         });
@@ -2011,78 +1444,43 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         updateLiveTimers();
     }
 
-    // --- GLOBAL STATE FOR REFRESH MECHANISM ---
     let globalBannedSnap = null;
     let globalUsersSnap = null;
-
     const getSkeletonHTML = () => `
-        <div class="skeleton-box">
-            <div class="skeleton-line" style="width: 60%;"></div>
-            <div class="skeleton-line" style="width: 40%;"></div>
-        </div>
-        <div class="skeleton-box" style="animation-delay: 0.2s;">
-            <div class="skeleton-line" style="width: 50%;"></div>
-            <div class="skeleton-line" style="width: 30%;"></div>
-        </div>`;
+        <div class="skeleton-box"><div class="skeleton-line" style="width: 60%;"></div><div class="skeleton-line" style="width: 40%;"></div></div>
+        <div class="skeleton-box" style="animation-delay: 0.2s;"><div class="skeleton-line" style="width: 50%;"></div><div class="skeleton-line" style="width: 30%;"></div></div>`;
 
-    // --- MANUAL REFRESH BUTTON LOGIC ---
     window.forceInternalRefresh = async function(isSilent = false) {
         const icon = document.getElementById('refreshIcon');
-        
         if(!isSilent && icon) {
             icon.classList.remove('spin-anim');
-            setTimeout(() => {
-                icon.classList.add('spin-anim');
-                setTimeout(() => icon.classList.remove('spin-anim'), 800);
-            }, 10);
-            
-            // Show skeletons
+            setTimeout(() => { icon.classList.add('spin-anim'); setTimeout(() => icon.classList.remove('spin-anim'), 800); }, 10);
             ['masterKeysList','bannedKeysList','activeUserList','bannedUserList','liveActiveUserList','shareLogsList'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.innerHTML = getSkeletonHTML();
             });
         }
-
         try {
-            // Force fresh reads from Firebase
             const [usersSnap, bannedSnap, mkSnap, usageSnap, logsSnap] = await Promise.all([
-                get(ref(db, 'users')),
-                get(ref(db, 'settings/bannedKeys')),
-                get(ref(db, 'settings/masterKeys')),
-                get(ref(db, 'settings/mkUsage')),
-                get(ref(db, 'settings/shareLogs'))
+                get(ref(db, 'users')), get(ref(db, 'settings/bannedKeys')), get(ref(db, 'settings/masterKeys')), get(ref(db, 'settings/mkUsage')), get(ref(db, 'settings/shareLogs'))
             ]);
-
-            globalUsersSnap = usersSnap;
-            globalBannedSnap = bannedSnap;
+            globalUsersSnap = usersSnap; globalBannedSnap = bannedSnap;
             if (mkSnap.exists()) masterKeysData = mkSnap.val(); else masterKeysData = {};
             if (usageSnap.exists()) mkUsageData = usageSnap.val(); else mkUsageData = {};
-
-            renderMasterKeys();
-            renderBannedKeysUI(bannedSnap);
-            renderUsersUI(usersSnap);
+            renderMasterKeys(); renderBannedKeysUI(bannedSnap); renderUsersUI(usersSnap);
             if (window._renderShareLogs) window._renderShareLogs(logsSnap);
         } catch (e) {
             console.error('Refresh failed:', e);
-            // fallback to cached
-            renderMasterKeys();
-            renderBannedKeysUI(globalBannedSnap);
-            renderUsersUI(globalUsersSnap);
+            renderMasterKeys(); renderBannedKeysUI(globalBannedSnap); renderUsersUI(globalUsersSnap);
         }
     }
+    document.getElementById('manualRefreshBtn').addEventListener('click', () => { if(navigator.vibrate) navigator.vibrate(20); forceInternalRefresh(false); });
 
-    document.getElementById('manualRefreshBtn').addEventListener('click', () => {
-        if(navigator.vibrate) navigator.vibrate(20);
-        forceInternalRefresh(false);
-    });
-
-    // --- FIREBASE LOGIC & UI RENDERING ---
     onValue(ref(db, 'settings/keyExpiryHours'), (snap) => {
         const hrs = snap.exists() ? snap.val() : 24;
         document.getElementById('currentExpiryDisplay').innerText = hrs;
         document.getElementById('expiryHoursInput').value = hrs;
     });
-
     window.updateExpiryHours = async function() {
         const hrs = parseFloat(document.getElementById('expiryHoursInput').value);
         if(hrs > 0) {
@@ -2090,7 +1488,6 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
             showConfirm("Update Successful", "✅ Key Expiry Time updated to " + hrs + " hours for all new keys!", null);
         } else { showConfirm("Error", "Please enter a valid number of hours.", null); }
     }
-
     window.switchTab = function(tabId, el) {
         document.querySelectorAll('.nav-link').forEach(nav => nav.classList.remove('active'));
         el.classList.add('active');
@@ -2099,32 +1496,17 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
     }
 
     let masterKeysData = {};
+    onValue(ref(db, 'settings/mkUsage'), (snap) => { if(snap.exists()) { mkUsageData = snap.val(); } else { mkUsageData = {}; } renderMasterKeys(); });
+    onValue(ref(db, 'settings/masterKeys'), (snapshot) => { if(snapshot.exists()) { masterKeysData = snapshot.val(); } else { masterKeysData = {}; } renderMasterKeys(); });
 
-    onValue(ref(db, 'settings/mkUsage'), (snap) => { 
-        if(snap.exists()) { mkUsageData = snap.val(); } else { mkUsageData = {}; }
-        renderMasterKeys(); 
-    });
-
-    onValue(ref(db, 'settings/masterKeys'), (snapshot) => {
-        if(snapshot.exists()) { masterKeysData = snapshot.val(); } else { masterKeysData = {}; }
-        renderMasterKeys();
-    });
-
-    // --- Master Key Type UI ---
     let selectedMkType = 'pure';
-
     window.selectMkType = function(type) {
         selectedMkType = type;
         document.querySelectorAll('.mk-type-btn').forEach(btn => {
             const active = btn.getAttribute('data-type') === type;
             btn.classList.toggle('active', active);
-            if (active) {
-                btn.style.background = '';
-                btn.style.color = '';
-            } else {
-                btn.style.background = 'rgba(150,150,150,0.12)';
-                btn.style.color = 'var(--text-main)';
-            }
+            if (active) { btn.style.background = ''; btn.style.color = ''; } 
+            else { btn.style.background = 'rgba(150,150,150,0.12)'; btn.style.color = 'var(--text-main)'; }
         });
         const wrap = document.getElementById('mkExtraWrap');
         const input = document.getElementById('mkExtraInput');
@@ -2134,67 +1516,22 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         if (timeWrap) timeWrap.style.display = 'none';
         if (exp) exp.value = '';
         if (type === 'pure') {
-            wrap.style.display = 'none';
-            input.value = '';
-            input.type = 'text';
-            input.removeAttribute('inputmode');
-            input.removeAttribute('pattern');
-            if (devBox) devBox.style.display = 'none';
+            wrap.style.display = 'none'; input.value = ''; input.type = 'text'; input.removeAttribute('inputmode'); input.removeAttribute('pattern'); if (devBox) devBox.style.display = 'none';
         } else if (type === 'limited') {
-            wrap.style.display = 'block';
-            if (devBox) devBox.style.display = 'none';
-            input.style.display = '';
-            input.placeholder = 'Max logins allowed (e.g. 10)';
-            input.type = 'number';
-            input.setAttribute('inputmode', 'numeric');
-            input.setAttribute('pattern', '[0-9]*');
-            input.setAttribute('min', '1');
-            input.value = '';
-            input.focus();
+            wrap.style.display = 'block'; if (devBox) devBox.style.display = 'none'; input.style.display = ''; input.placeholder = 'Max logins allowed (e.g. 10)'; input.type = 'number'; input.setAttribute('inputmode', 'numeric'); input.setAttribute('pattern', '[0-9]*'); input.setAttribute('min', '1'); input.value = ''; input.focus();
         } else if (type === 'device') {
-            wrap.style.display = 'block';
-            if (devBox) devBox.style.display = 'block';
-            input.style.display = '';
-            input.placeholder = 'Paste Device ID';
-            input.type = 'text';
-            input.removeAttribute('inputmode');
-            input.removeAttribute('pattern');
-            input.removeAttribute('min');
-            input.value = '';
-            input.focus();
+            wrap.style.display = 'block'; if (devBox) devBox.style.display = 'block'; input.style.display = ''; input.placeholder = 'Paste Device ID'; input.type = 'text'; input.removeAttribute('inputmode'); input.removeAttribute('pattern'); input.removeAttribute('min'); input.value = ''; input.focus();
         } else if (type === 'time') {
-            wrap.style.display = 'block';
-            if (devBox) devBox.style.display = 'none';
-            input.style.display = 'none';
-            input.value = '';
-            if (timeWrap) timeWrap.style.display = 'block';
-            if (exp) exp.focus();
+            wrap.style.display = 'block'; if (devBox) devBox.style.display = 'none'; input.style.display = 'none'; input.value = ''; if (timeWrap) timeWrap.style.display = 'block'; if (exp) exp.focus();
         } else if (type === 'device_time') {
-            wrap.style.display = 'block';
-            if (devBox) devBox.style.display = 'block';
-            input.style.display = '';
-            input.placeholder = 'Paste Device ID';
-            input.type = 'text';
-            input.removeAttribute('inputmode');
-            input.removeAttribute('pattern');
-            input.value = '';
-            if (timeWrap) timeWrap.style.display = 'block';
-            input.focus();
+            wrap.style.display = 'block'; if (devBox) devBox.style.display = 'block'; input.style.display = ''; input.placeholder = 'Paste Device ID'; input.type = 'text'; input.removeAttribute('inputmode'); input.removeAttribute('pattern'); input.value = ''; if (timeWrap) timeWrap.style.display = 'block'; input.focus();
         }
     };
 
     function normalizeMkEntry(val) {
-        if (typeof val === 'string') {
-            return { key: val.trim(), type: 'pure', maxUses: null, deviceId: null, expiresAt: null };
-        }
+        if (typeof val === 'string') { return { key: val.trim(), type: 'pure', maxUses: null, deviceId: null, expiresAt: null }; }
         if (val && typeof val === 'object') {
-            return {
-                key: String(val.key || '').trim(),
-                type: val.type || 'pure',
-                maxUses: val.maxUses != null ? Number(val.maxUses) : null,
-                deviceId: val.deviceId || null,
-                expiresAt: val.expiresAt != null ? Number(val.expiresAt) : null
-            };
+            return { key: String(val.key || '').trim(), type: val.type || 'pure', maxUses: val.maxUses != null ? Number(val.maxUses) : null, deviceId: val.deviceId || null, expiresAt: val.expiresAt != null ? Number(val.expiresAt) : null };
         }
         return { key: '', type: 'pure', maxUses: null, deviceId: null, expiresAt: null };
     }
@@ -2204,7 +1541,6 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         listDiv.innerHTML = '';
         const keys = Object.keys(masterKeysData);
         document.getElementById('stat-keys').innerText = keys.length;
-        
         if(keys.length > 0) {
             keys.forEach(pushId => {
                 const entry = normalizeMkEntry(masterKeysData[pushId]);
@@ -2213,41 +1549,27 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
                 let safeKey = "";
                 try { safeKey = btoa(unescape(encodeURIComponent(trimmedKey))).replace(/[.#$\[\]/]/g, '_'); } catch(e) { safeKey = trimmedKey; }
                 const usageCount = mkUsageData[safeKey] || mkUsageData[trimmedKey] || 0;
-
                 let typeBadge = '';
-                if (entry.type === 'limited') {
-                    typeBadge = `<span style="font-size:11px;font-weight:800;color:var(--warn);background:rgba(255,200,0,0.12);padding:3px 8px;border-radius:6px;margin-left:8px;">LIMIT ${usageCount}/${entry.maxUses || '?'}</span>`;
-                } else if (entry.type === 'device') {
-                    typeBadge = `<span style="font-size:11px;font-weight:800;color:#5b9dff;background:rgba(91,157,255,0.12);padding:3px 8px;border-radius:6px;margin-left:8px;">DEVICE</span>`;
-                } else if (entry.type === 'time') {
-                    typeBadge = `<span style="font-size:11px;font-weight:800;color:#c084fc;background:rgba(192,132,252,0.12);padding:3px 8px;border-radius:6px;margin-left:8px;">TIME</span>`;
-                } else if (entry.type === 'device_time') {
-                    typeBadge = `<span style="font-size:11px;font-weight:800;color:#f472b6;background:rgba(244,114,182,0.12);padding:3px 8px;border-radius:6px;margin-left:8px;">DEVICE+TIME</span>`;
-                } else {
-                    typeBadge = `<span style="font-size:11px;font-weight:800;color:var(--accent);background:rgba(0,255,136,0.12);padding:3px 8px;border-radius:6px;margin-left:8px;">UNLIMITED</span>`;
-                }
-
+                if (entry.type === 'limited') typeBadge = `<span style="font-size:11px;font-weight:800;color:var(--warn);background:rgba(255,200,0,0.12);padding:3px 8px;border-radius:6px;margin-left:8px;">LIMIT ${usageCount}/${entry.maxUses || '?'}</span>`;
+                else if (entry.type === 'device') typeBadge = `<span style="font-size:11px;font-weight:800;color:#5b9dff;background:rgba(91,157,255,0.12);padding:3px 8px;border-radius:6px;margin-left:8px;">DEVICE</span>`;
+                else if (entry.type === 'time') typeBadge = `<span style="font-size:11px;font-weight:800;color:#c084fc;background:rgba(192,132,252,0.12);padding:3px 8px;border-radius:6px;margin-left:8px;">TIME</span>`;
+                else if (entry.type === 'device_time') typeBadge = `<span style="font-size:11px;font-weight:800;color:#f472b6;background:rgba(244,114,182,0.12);padding:3px 8px;border-radius:6px;margin-left:8px;">DEVICE+TIME</span>`;
+                else typeBadge = `<span style="font-size:11px;font-weight:800;color:var(--accent);background:rgba(0,255,136,0.12);padding:3px 8px;border-radius:6px;margin-left:8px;">UNLIMITED</span>`;
+                
                 let extraInfo = '';
-                if (entry.deviceId) {
-                    extraInfo += `<div style="font-size:12px;color:var(--text-dim);margin-top:6px;font-family:monospace;word-break:break-all;">ID: ${entry.deviceId}</div>`;
-                }
+                if (entry.deviceId) extraInfo += `<div style="font-size:12px;color:var(--text-dim);margin-top:6px;font-family:monospace;word-break:break-all;">ID: ${entry.deviceId}</div>`;
                 if (entry.expiresAt) {
                     const expStr = new Date(entry.expiresAt).toLocaleString();
                     const dead = Date.now() > entry.expiresAt;
                     extraInfo += `<div style="font-size:12px;color:${dead?'var(--error)':'var(--text-dim)'};margin-top:4px;">Expires: ${expStr}${dead?' (EXPIRED)':''}</div>`;
                 }
-
                 listDiv.innerHTML += `
                     <div class="mk-item">
                         <div style="flex:1;">
                             <div>
                                 <span class="mk-text copyable" style="cursor:pointer;" data-copy="${trimmedKey}" title="Click to copy">${trimmedKey}</span>
                                 ${typeBadge}
-                                <span class="mk-usage">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-5 0-9 2.5-9 5.5V22h18v-2.5C21 16.5 17 14 12 14z"/>
-                                    </svg> ${usageCount}
-                                </span>
+                                <span class="mk-usage"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-5 0-9 2.5-9 5.5V22h18v-2.5C21 16.5 17 14 12 14z"/></svg> ${usageCount}</span>
                             </div>
                             ${extraInfo}
                         </div>
@@ -2263,47 +1585,29 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
     window.addMasterKey = async function() {
         const newKey = document.getElementById('masterKeyInput').value.trim();
         if (!newKey) return showConfirm("Error", "Key cannot be empty!", null);
-
-        const payload = {
-            key: newKey,
-            type: selectedMkType || 'pure',
-            createdAt: Date.now()
-        };
-
-                if (selectedMkType === 'limited') {
+        const payload = { key: newKey, type: selectedMkType || 'pure', createdAt: Date.now() };
+        if (selectedMkType === 'limited') {
             const n = Number(document.getElementById('mkExtraInput').value);
-            if (!n || n < 1 || !Number.isFinite(n)) {
-                return showConfirm("Error", "Enter a valid number of max logins (1 or more).", null);
-            }
+            if (!n || n < 1 || !Number.isFinite(n)) return showConfirm("Error", "Enter a valid number of max logins (1 or more).", null);
             payload.maxUses = Math.floor(n);
         } else if (selectedMkType === 'device') {
             const did = document.getElementById('mkExtraInput').value.trim().replace(/\s+/g, '');
-            if (!did) {
-                return showConfirm("Error", "Enter the device ID to lock this key to.", null);
-            }
+            if (!did) return showConfirm("Error", "Enter the device ID to lock this key to.", null);
             payload.deviceId = did;
         } else if (selectedMkType === 'time' || selectedMkType === 'device_time') {
             const expEl = document.getElementById('mkExpiresInput');
             const expVal = expEl ? expEl.value : '';
-            if (!expVal) {
-                return showConfirm("Error", "Pick an expiry date and time.", null);
-            }
+            if (!expVal) return showConfirm("Error", "Pick an expiry date and time.", null);
             const expMs = new Date(expVal).getTime();
-            if (!Number.isFinite(expMs) || expMs <= Date.now()) {
-                return showConfirm("Error", "Expiry must be a future date/time.", null);
-            }
+            if (!Number.isFinite(expMs) || expMs <= Date.now()) return showConfirm("Error", "Expiry must be a future date/time.", null);
             payload.expiresAt = expMs;
             if (selectedMkType === 'device_time') {
                 const did = document.getElementById('mkExtraInput').value.trim().replace(/\s+/g, '');
-                if (!did) {
-                    return showConfirm("Error", "Enter the device ID for Device + Time key.", null);
-                }
+                if (!did) return showConfirm("Error", "Enter the device ID for Device + Time key.", null);
                 payload.deviceId = did;
             }
         }
-
         await push(ref(db, 'settings/masterKeys'), payload);
-
         document.getElementById('masterKeyInput').value = '';
         const extra = document.getElementById('mkExtraInput');
         if (extra) extra.value = '';
@@ -2313,14 +1617,11 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         document.getElementById('confirmActionTitle').innerText = title;
         document.getElementById('confirmActionDesc').innerText = desc;
         pendingConfirmAction = callback || null;
-
         if (callback) {
-            // Needs user confirmation
             document.getElementById('confirmActionTitle').style.color = "var(--error)";
             document.querySelector('#confirmActionModal .btn-cancel').style.display = "block";
             document.querySelector('#confirmActionModal .btn-confirm').innerText = "CONFIRM";
         } else {
-            // Success / info only
             document.getElementById('confirmActionTitle').style.color = "var(--accent)";
             document.querySelector('#confirmActionModal .btn-cancel').style.display = "none";
             document.querySelector('#confirmActionModal .btn-confirm').innerText = "OK";
@@ -2330,10 +1631,7 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
 
     window.closeModals = () => { 
         const modals = ['banModal', 'resetModal', 'keyBanModal', 'guideModal', 'confirmActionModal', 'unbindInfoModal'];
-        modals.forEach(id => {
-            const el = document.getElementById(id);
-            if(el) el.style.display = 'none';
-        });
+        modals.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
     }
 
     window.executeConfirm = async function() {
@@ -2348,24 +1646,17 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
             const trimmedKey = String(keyStr).trim();
             let safeKey = trimmedKey;
             try { safeKey = btoa(unescape(encodeURIComponent(trimmedKey))).replace(/[.#$\[\]/]/g, '_'); } catch(e){}
-            
-            // 1. Delete Master Key & Usage Data
             try { await set(ref(db, 'settings/masterKeys/' + pushId), null); } catch(e) {}
             try { await set(ref(db, 'settings/mkUsage/' + safeKey), null); } catch(e) {}
             try { await set(ref(db, 'settings/mkUsage/' + trimmedKey), null); } catch(e) {}
             try { await set(ref(db, 'settings/mkDeviceTrack/' + safeKey), null); } catch(e) {} 
-
-            // 2. SECURITY FIX: Instantly wipe the deleted key from any active user's profile
             try {
                 const usersSnap = await get(ref(db, 'users'));
                 if (usersSnap.exists()) {
                     const allUsers = usersSnap.val();
                     for (const uid in allUsers) {
                         if (allUsers[uid].lastGeneratedKey && allUsers[uid].lastGeneratedKey.trim() === trimmedKey) {
-                            await update(ref(db, 'users/' + uid), { 
-                                lastGeneratedKey: null, 
-                                keyExpiresAt: null 
-                            });
+                            await update(ref(db, 'users/' + uid), { lastGeneratedKey: null, keyExpiresAt: null });
                         }
                     }
                 }
@@ -2378,20 +1669,14 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         renderBannedKeysUI(snapshot);
     });
 
-    // --- SHARE LOGS ---
     let globalUsersForLogs = {};
     let globalBannedKeysForLogs = {};
 
     onValue(ref(db, 'users'), (snap) => {
         globalUsersForLogs = snap.exists() ? snap.val() : {};
-        // Refresh share logs so unknown → name when user registers later
-        try {
-            if (window.__lastShareLogsSnap) window._renderShareLogs(window.__lastShareLogsSnap);
-        } catch (e) {}
+        try { if (window.__lastShareLogsSnap) window._renderShareLogs(window.__lastShareLogsSnap); } catch (e) {}
     });
-    onValue(ref(db, 'settings/bannedKeys'), (snap) => {
-        globalBannedKeysForLogs = snap.exists() ? snap.val() : {};
-    });
+    onValue(ref(db, 'settings/bannedKeys'), (snap) => { globalBannedKeysForLogs = snap.exists() ? snap.val() : {}; });
 
     function resolveReceiverName(log) {
         const fp = String(log.receiverFingerprint || log.receiverDevice || '').trim();
@@ -2402,43 +1687,25 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         let displayId = fp || storedId || 'unknown';
 
         const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, '');
-        const fpN = norm(fp);
-        const storedN = norm(storedId);
-        const genIdN = norm(genId);
+        const fpN = norm(fp); const storedN = norm(storedId); const genIdN = norm(genId);
 
         const tryUser = (uKey, u) => {
             if (!u || norm(uKey) === genIdN) return false;
-            name = u.name || uKey;
-            displayId = uKey;
-            return true;
+            name = u.name || uKey; displayId = uKey; return true;
         };
 
-        // Exact key match
-        if (storedId && globalUsersForLogs[storedId] && norm(storedId) !== genIdN) {
-            tryUser(storedId, globalUsersForLogs[storedId]);
-        } else if (fp && globalUsersForLogs[fp] && fpN !== genIdN) {
-            tryUser(fp, globalUsersForLogs[fp]);
-        } else {
-            // Case-insensitive / field scan
+        if (storedId && globalUsersForLogs[storedId] && norm(storedId) !== genIdN) { tryUser(storedId, globalUsersForLogs[storedId]); } 
+        else if (fp && globalUsersForLogs[fp] && fpN !== genIdN) { tryUser(fp, globalUsersForLogs[fp]); } 
+        else {
             for (const uKey in globalUsersForLogs) {
                 if (norm(uKey) === genIdN) continue;
-                const u = globalUsersForLogs[uKey];
-                const uKeyN = norm(uKey);
-                if (uKeyN === fpN || uKeyN === storedN ||
-                    norm(u.deviceId) === fpN || norm(u.deviceId) === storedN ||
-                    norm(u.fingerprint) === fpN || norm(u.fingerprint) === storedN ||
-                    norm(u.lastDeviceId) === fpN || norm(u.lastDeviceId) === storedN ||
-                    norm(u.androidId) === fpN || norm(u.androidId) === storedN) {
-                    tryUser(uKey, u);
-                    break;
+                const u = globalUsersForLogs[uKey]; const uKeyN = norm(uKey);
+                if (uKeyN === fpN || uKeyN === storedN || norm(u.deviceId) === fpN || norm(u.deviceId) === storedN || norm(u.fingerprint) === fpN || norm(u.fingerprint) === storedN || norm(u.lastDeviceId) === fpN || norm(u.lastDeviceId) === storedN || norm(u.androidId) === fpN || norm(u.androidId) === storedN) {
+                    tryUser(uKey, u); break;
                 }
             }
         }
-
-        if (name === genName || norm(displayId) === genIdN) {
-            name = 'unknown user';
-            displayId = fp || storedId || 'unknown';
-        }
+        if (name === genName || norm(displayId) === genIdN) { name = 'unknown user'; displayId = fp || storedId || 'unknown'; }
         return { name, displayId };
     }
 
@@ -2446,24 +1713,18 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         const list = document.getElementById('shareLogsList');
         if (!list) return;
         list.innerHTML = '';
-        if (!snap || !snap.exists()) {
-            list.innerHTML = '<div style="color:var(--text-dim);padding:20px;text-align:center;">No share attempts yet</div>';
-            return;
-        }
+        if (!snap || !snap.exists()) { list.innerHTML = '<div style="color:var(--text-dim);padding:20px;text-align:center;">No share attempts yet</div>'; return; }
         const logs = Object.entries(snap.val()).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
         logs.forEach(([id, log]) => {
             const time = log.timestamp ? new Date(log.timestamp).toLocaleString() : '';
             const resolved = resolveReceiverName(log);
             const keyStr = log.key || '';
             const isKeyBanned = !!globalBannedKeysForLogs[keyStr];
-
             const banBtnHtml = isKeyBanned
                 ? `<button id="ban-btn-${id}" class="btn" style="background:rgba(150,150,150,0.25);color:var(--text-dim);padding:10px 18px;font-size:12px;border-radius:12px;" onclick="unbanKeyFromLog('${keyStr.replace(/'/g,"\\'")}', '${id}')">KEY BANNED</button>`
                 : `<button id="ban-btn-${id}" class="btn" style="background:var(--error);color:white;padding:10px 18px;font-size:12px;border-radius:12px;" onclick="banKeyFromLog('${keyStr.replace(/'/g,"\\'")}', '${id}')">BAN KEY</button>`;
-
             const deviceIdShow = log.receiverFingerprint || log.receiverDevice || resolved.displayId || 'unknown';
             const isNamed = resolved.name && resolved.name !== 'unknown user';
-            // Registered → name only. Unknown → unknown user + device id
             const receiverPart = isNamed
                 ? `<span class="copyable" style="color:var(--warn);cursor:pointer;" title="Click to copy name" data-copy="${resolved.name.replace(/"/g,'&quot;')}">${resolved.name}</span>`
                 : `<span style="color:var(--warn)">unknown user</span> <span class="copyable" style="font-size:12px;color:var(--text-dim);cursor:pointer;word-break:break-all;" title="Click to copy device id" data-copy="${String(deviceIdShow).replace(/"/g,'&quot;')}">(${deviceIdShow})</span>`;
@@ -2492,21 +1753,14 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         window.__lastShareLogsSnap = snap;
         window._renderShareLogs(snap);
         const countEl = document.getElementById('stat-logs');
-        if (countEl) {
-            countEl.innerText = snap.exists() ? Object.keys(snap.val()).length : 0;
-        }
+        if (countEl) { countEl.innerText = snap.exists() ? Object.keys(snap.val()).length : 0; }
     });
 
-    // Ban the KEY only → appears in Banned Normal Keys section
     window.banKeyFromLog = function(keyStr, logId) {
         if (!keyStr) return showConfirm("Error", "No key to ban.", null);
         showConfirm("Ban Key?", `Ban the key "${keyStr}"? It will appear in Banned Normal Keys and stop working for everyone.`, async () => {
             try {
-                await set(ref(db, 'settings/bannedKeys/' + keyStr), {
-                    reason: 'Ban: generate a new key to continue.',
-                    bannedAt: new Date().toISOString()
-                });
-                // Clear the key from any user record
+                await set(ref(db, 'settings/bannedKeys/' + keyStr), { reason: 'Ban: generate a new key to continue.', bannedAt: new Date().toISOString() });
                 const usersSnap = await get(ref(db, 'users'));
                 if (usersSnap.exists()) {
                     const all = usersSnap.val();
@@ -2518,19 +1772,13 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
                 }
                 const btn = document.getElementById('ban-btn-' + logId);
                 if (btn) {
-                    btn.textContent = 'KEY BANNED';
-                    btn.style.background = 'rgba(150,150,150,0.25)';
-                    btn.style.color = 'var(--text-dim)';
+                    btn.textContent = 'KEY BANNED'; btn.style.background = 'rgba(150,150,150,0.25)'; btn.style.color = 'var(--text-dim)';
                     btn.setAttribute('onclick', `unbanKeyFromLog('${keyStr.replace(/'/g,"\\'")}', '${logId}')`);
                 }
-            } catch (e) {
-                console.error(e);
-                showConfirm("Error", "Could not ban key: " + e.message, null);
-            }
+            } catch (e) { showConfirm("Error", "Could not ban key: " + e.message, null); }
         });
     };
 
-    // Click "KEY BANNED" again to unban
     window.unbanKeyFromLog = function(keyStr, logId) {
         if (!keyStr) return;
         showConfirm("Unban Key?", `Remove the ban from key "${keyStr}"?`, async () => {
@@ -2538,21 +1786,15 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
                 await remove(ref(db, 'settings/bannedKeys/' + keyStr));
                 const btn = document.getElementById('ban-btn-' + logId);
                 if (btn) {
-                    btn.textContent = 'BAN KEY';
-                    btn.style.background = 'var(--error)';
-                    btn.style.color = 'white';
+                    btn.textContent = 'BAN KEY'; btn.style.background = 'var(--error)'; btn.style.color = 'white';
                     btn.setAttribute('onclick', `banKeyFromLog('${keyStr.replace(/'/g,"\\'")}', '${logId}')`);
                 }
-            } catch (e) {
-                showConfirm("Error", "Could not unban: " + e.message, null);
-            }
+            } catch (e) { showConfirm("Error", "Could not unban: " + e.message, null); }
         });
     };
 
     window.deleteShareLog = function(logId) {
-        showConfirm("Delete Log?", "Remove this share log entry?", async () => {
-            await remove(ref(db, 'settings/shareLogs/' + logId));
-        });
+        showConfirm("Delete Log?", "Remove this share log entry?", async () => { await remove(ref(db, 'settings/shareLogs/' + logId)); });
     };
 
     window.toggleUserSearchBox = function() {
@@ -2573,30 +1815,19 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         const res = document.getElementById('userSearchResult');
         if (!inp || !res) return;
         const raw = (inp.value || '').trim();
-        if (!raw) {
-            res.style.color = 'var(--error)';
-            res.textContent = 'Enter a device ID first.';
-            return;
-        }
-        res.style.color = 'var(--text-dim)';
-        res.textContent = 'Searching...';
+        if (!raw) { res.style.color = 'var(--error)'; res.textContent = 'Enter a device ID first.'; return; }
+        res.style.color = 'var(--text-dim)'; res.textContent = 'Searching...';
         const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, '');
         const q = norm(raw);
         try {
-            let foundName = null;
-            let foundId = null;
-            // 1) Direct users/{deviceId}
+            let foundName = null; let foundId = null;
             try {
                 const direct = await get(ref(db, 'users/' + raw));
                 if (direct.exists()) {
                     const u = direct.val() || {};
-                    if (u.name && String(u.name).trim()) {
-                        foundName = String(u.name).trim();
-                        foundId = raw;
-                    }
+                    if (u.name && String(u.name).trim()) { foundName = String(u.name).trim(); foundId = raw; }
                 }
             } catch (e) {}
-            // 2) Scan users for matching device fields
             if (!foundName) {
                 const usersSnap = await get(ref(db, 'users'));
                 if (usersSnap.exists()) {
@@ -2605,22 +1836,16 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
                         const u = data[uid] || {};
                         const fields = [uid, u.deviceId, u.fingerprint, u.lastDeviceId, u.androidId, u.lastLoginDevice];
                         if (fields.some(f => norm(f) === q || (f && String(f).indexOf(raw) !== -1) || (raw && String(f||'').toLowerCase().indexOf(q) !== -1))) {
-                            if (u.name && String(u.name).trim()) {
-                                foundName = String(u.name).trim();
-                                foundId = uid;
-                            }
-                            break;
+                            if (u.name && String(u.name).trim()) { foundName = String(u.name).trim(); foundId = uid; } break;
                         }
                     }
                 }
             }
             if (foundName) {
                 res.style.color = 'var(--accent)';
-                res.innerHTML = 'Registered: <span class="copyable" style="cursor:pointer;" title="Click to copy" data-copy="'+foundName.replace(/"/g,'&quot;')+'">'+foundName.replace(/</g,'&lt;')+'</span>'
-                    + (foundId ? ' <span class="copyable" style="font-size:12px;color:var(--text-dim);cursor:pointer;margin-left:6px;" title="Click to copy id" data-copy="'+String(foundId).replace(/"/g,'&quot;')+'">('+String(foundId).replace(/</g,'&lt;')+')</span>' : '');
+                res.innerHTML = 'Registered: <span class="copyable" style="cursor:pointer;" title="Click to copy" data-copy="'+foundName.replace(/"/g,'&quot;')+'">'+foundName.replace(/</g,'&lt;')+'</span>' + (foundId ? ' <span class="copyable" style="font-size:12px;color:var(--text-dim);cursor:pointer;margin-left:6px;" title="Click to copy id" data-copy="'+String(foundId).replace(/"/g,'&quot;')+'">('+String(foundId).replace(/</g,'&lt;')+')</span>' : '');
                 return;
             }
-            // 3) Clicked Get Key but not registered → deviceRequests
             let requested = false;
             try {
                 const dr = await get(ref(db, 'deviceRequests/' + raw));
@@ -2631,30 +1856,18 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
                     const allDr = await get(ref(db, 'deviceRequests'));
                     if (allDr.exists()) {
                         const d = allDr.val() || {};
-                        for (const k in d) {
-                            const item = d[k] || {};
-                            if (norm(k) === q || norm(item.deviceId) === q) { requested = true; break; }
-                        }
+                        for (const k in d) { const item = d[k] || {}; if (norm(k) === q || norm(item.deviceId) === q) { requested = true; break; } }
                     }
                 } catch (e) {}
             }
-            // 4) knownDevices presence still counts as unknown if no name
-            res.style.color = 'var(--warn)';
-            res.textContent = 'unknown';
-        } catch (e) {
-            res.style.color = 'var(--error)';
-            res.textContent = 'Search failed: ' + (e.message || e);
-        }
+            res.style.color = 'var(--warn)'; res.textContent = 'unknown';
+        } catch (e) { res.style.color = 'var(--error)'; res.textContent = 'Search failed: ' + (e.message || e); }
     };
 
     window.clearAllShareLogs = function() {
         showConfirm("Clear All Logs?", "This will permanently delete every share log. Are you sure?", async () => {
-            try {
-                await set(ref(db, 'settings/shareLogs'), null);
-                showConfirm("Cleared", "All share logs have been deleted.", null);
-            } catch (e) {
-                showConfirm("Error", "Could not clear logs: " + e.message, null);
-            }
+            try { await set(ref(db, 'settings/shareLogs'), null); showConfirm("Cleared", "All share logs have been deleted.", null); } 
+            catch (e) { showConfirm("Error", "Could not clear logs: " + e.message, null); }
         });
     };
 
@@ -2686,17 +1899,11 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
             if (!key) return showConfirm("Error", "Enter a key first!", null);
             if (!key.startsWith('DGXEN-') || key.length < 10) return showConfirm("Invalid Key Format", "Please enter a valid running key format (e.g., DGXEN-XXXX...).", null);
             pendingKeyToBan = key;
-            window.__banKeyFromActive = false;
-            window.__banKeyUserId = null;
-            const t = document.getElementById('keyBanTarget');
-            if (t) t.innerText = key;
-            const r = document.getElementById('keyBanReasonInput');
-            if (r) r.value = 'Ban: generate a new key to continue.';
+            window.__banKeyFromActive = false; window.__banKeyUserId = null;
+            const t = document.getElementById('keyBanTarget'); if (t) t.innerText = key;
+            const r = document.getElementById('keyBanReasonInput'); if (r) r.value = 'Ban: generate a new key to continue.';
             const modal = document.getElementById('keyBanModal');
-            if (modal) {
-                modal.style.setProperty('display', 'flex', 'important');
-                modal.style.setProperty('z-index', '50000', 'important');
-            }
+            if (modal) { modal.style.setProperty('display', 'flex', 'important'); modal.style.setProperty('z-index', '50000', 'important'); }
         } catch (e) { showConfirm("Error", String(e.message||e), null); }
     }
 
@@ -2708,9 +1915,7 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         const linkedUser = window.__banKeyUserId || null;
         closeModals();
         try {
-            await set(ref(db, 'settings/bannedKeys/' + keyToBan), {
-                key: keyToBan, reason: reason, bannedAt: new Date().toISOString()
-            });
+            await set(ref(db, 'settings/bannedKeys/' + keyToBan), { key: keyToBan, reason: reason, bannedAt: new Date().toISOString() });
             const snap = await get(ref(db, 'users'));
             if (snap.exists()) {
                 const allUsers = snap.val();
@@ -2722,14 +1927,9 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
                     }
                 }
             }
-            if (linkedUser) {
-                try { await update(ref(db, 'users/' + linkedUser), { lastGeneratedKey: null, keyExpiresAt: null }); } catch (e) {}
-            }
-            const kIn = document.getElementById('keyToBanInput');
-            if (kIn) kIn.value = '';
-            pendingKeyToBan = null;
-            window.__banKeyUserId = null;
-            window.__banKeyFromActive = false;
+            if (linkedUser) { try { await update(ref(db, 'users/' + linkedUser), { lastGeneratedKey: null, keyExpiresAt: null }); } catch (e) {} }
+            const kIn = document.getElementById('keyToBanInput'); if (kIn) kIn.value = '';
+            pendingKeyToBan = null; window.__banKeyUserId = null; window.__banKeyFromActive = false;
         } catch (e) {
             pendingKeyToBan = keyToBan;
             showConfirm("Error", "Could not ban key: " + (e.message || e), null);
@@ -2737,49 +1937,26 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
     }
 
     window.unbanKey = function(keyStr) {
-        showConfirm("Unban Key?", "Are you sure you want to remove the ban from this key?", async () => {
-            await remove(ref(db, 'settings/bannedKeys/' + keyStr));
-        });
+        showConfirm("Unban Key?", "Are you sure you want to remove the ban from this key?", async () => { await remove(ref(db, 'settings/bannedKeys/' + keyStr)); });
     }
 
     let globalKnownDevices = {};
-    onValue(ref(db, 'settings/knownDevices'), (snap) => {
-        globalKnownDevices = snap.exists() ? (snap.val() || {}) : {};
-        if (globalUsersSnap) renderUsersUI(globalUsersSnap);
-    });
-
-    onValue(ref(db, 'users'), (snapshot) => {
-        globalUsersSnap = snapshot;
-        renderUsersUI(snapshot);
-    });
+    onValue(ref(db, 'settings/knownDevices'), (snap) => { globalKnownDevices = snap.exists() ? (snap.val() || {}) : {}; if (globalUsersSnap) renderUsersUI(globalUsersSnap); });
+    onValue(ref(db, 'users'), (snapshot) => { globalUsersSnap = snapshot; renderUsersUI(snapshot); });
 
     function resolveAppVersion(user) {
         if (user && user.appVersion) return user.appVersion;
         const kd = globalKnownDevices || {};
         const norm = (s) => String(s || '').trim().toLowerCase();
-        const candidates = [
-            user && user.id,
-            user && user.deviceId,
-            user && user.lastDeviceId,
-            user && user.fingerprint,
-            user && user.androidId,
-            user && user.lastLoginDevice
-        ].filter(Boolean).map(norm);
-
+        const candidates = [user && user.id, user && user.deviceId, user && user.lastDeviceId, user && user.fingerprint, user && user.androidId, user && user.lastLoginDevice].filter(Boolean).map(norm);
         for (const c of candidates) {
-            // direct key
             if (kd[c] && kd[c].appVersion) return kd[c].appVersion;
-            // sanitized key
             const safe = c.replace(/[.#$\[\]\/]/g, '_');
             if (kd[safe] && kd[safe].appVersion) return kd[safe].appVersion;
         }
         for (const k in kd) {
-            const d = kd[k] || {};
-            const kn = norm(k);
-            const did = norm(d.id);
-            if (d.appVersion && candidates.some(c => c === kn || c === did || kn.indexOf(c) !== -1 || c.indexOf(kn) !== -1)) {
-                return d.appVersion;
-            }
+            const d = kd[k] || {}; const kn = norm(k); const did = norm(d.id);
+            if (d.appVersion && candidates.some(c => c === kn || c === did || kn.indexOf(c) !== -1 || c.indexOf(kn) !== -1)) return d.appVersion;
         }
         return 'unknown';
     }
@@ -2793,14 +1970,9 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         if (liveListDiv) liveListDiv.innerHTML = '';
 
         if (!snapshot || !snapshot.exists()) {
-            document.getElementById('stat-total').innerText = 0;
-            document.getElementById('stat-active').innerText = 0;
-            document.getElementById('stat-banned').innerText = 0;
-            const liveStat = document.getElementById('stat-live-active');
-            if (liveStat) liveStat.innerText = 0;
-            if (activeListDiv) activeListDiv.innerHTML = getSkeletonHTML();
-            if (bannedListDiv) bannedListDiv.innerHTML = getSkeletonHTML();
-            if (liveListDiv) liveListDiv.innerHTML = getSkeletonHTML();
+            document.getElementById('stat-total').innerText = 0; document.getElementById('stat-active').innerText = 0; document.getElementById('stat-banned').innerText = 0;
+            const liveStat = document.getElementById('stat-live-active'); if (liveStat) liveStat.innerText = 0;
+            if (activeListDiv) activeListDiv.innerHTML = getSkeletonHTML(); if (bannedListDiv) bannedListDiv.innerHTML = getSkeletonHTML(); if (liveListDiv) liveListDiv.innerHTML = getSkeletonHTML();
             return;
         }
 
@@ -2837,11 +2009,10 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
                         <div class="user-id copyable" style="cursor:pointer;" title="Click to copy ID" data-copy="${user.id}">ID: ${user.id}</div>
                         ${nativeId ? `<div class="copyable" style="font-size:10px;color:var(--text-dim);margin:0 0 8px;font-family:monospace;cursor:pointer;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Click to copy native id" data-copy="${String(nativeId).replace(/"/g,'&quot;')}">Dev: ${nativeId}</div>` : ''}
                         <div class="copyable" style="font-size:11px;font-weight:800;color:var(--accent);margin:0 0 12px;padding:6px 10px;border-radius:8px;background:rgba(0,255,136,0.1);cursor:pointer;" title="Click to copy version" data-copy="${resolveAppVersion(user)}">v ${resolveAppVersion(user)}</div>
-                        <button type="button" class="btn-full bg-warn" data-action="ban-device" data-user-id="${String(user.id)}">BAN DEVICE</button>
+                        <button type="button" class="btn-full bg-warn" data-action="ban-device" data-user-id="${user.id}">BAN DEVICE</button>
                     </div>`;
             }
 
-            // Live Active = has a currently valid key
             if (hasLiveKey && liveListDiv) {
                 liveCount++;
                 liveListDiv.innerHTML += `
@@ -2850,7 +2021,7 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
                         <div class="user-name copyable" style="cursor:pointer; margin-top:6px; padding-right:100px;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}</div>
                         <div class="user-id copyable" style="cursor:pointer;" title="Click to copy ID" data-copy="${user.id}">ID: ${user.id}</div>
                         <div style="font-size:13px;color:var(--text-dim);margin:12px 0 8px;font-family:monospace;word-break:break-all;" class="copyable" data-copy="${user.lastGeneratedKey || ''}" title="Click to copy key">${user.lastGeneratedKey || '—'}</div>
-                        <button type="button" class="btn-full bg-warn" data-action="ban-key" data-user-id="${String(user.id)}" data-key="${String(user.lastGeneratedKey||'').replace(/"/g,'&quot;')}">BAN KEY</button>
+                        <button type="button" class="btn-full bg-warn" data-action="ban-key" data-user-id="${user.id}" data-key="${String(user.lastGeneratedKey||'').replace(/"/g,'&quot;')}">BAN KEY</button>
                     </div>`;
             }
         });
@@ -2860,128 +2031,64 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         if (liveCount === 0 && liveListDiv) liveListDiv.innerHTML = '<div style="color:var(--text-dim);padding:30px;text-align:center;">No users with a live key right now</div>';
 
         try{
-          const map={};
-          users.forEach(u=>{ if(u&&u.id) map[u.id]=u; });
-          rebuildRegisteredIdSet(map);
-          renderPendingComing();
+          const map={}; users.forEach(u=>{ if(u&&u.id) map[u.id]=u; }); rebuildRegisteredIdSet(map); renderPendingComing();
         }catch(e){}
-        document.getElementById('stat-total').innerText = users.length;
-        document.getElementById('stat-active').innerText = registeredCount;
-        document.getElementById('stat-banned').innerText = bannedCount;
-        const liveStat = document.getElementById('stat-live-active');
-        if (liveStat) liveStat.innerText = liveCount;
-        try { bindBanButtons(document); } catch(e) {}
+        document.getElementById('stat-total').innerText = users.length; document.getElementById('stat-active').innerText = registeredCount; document.getElementById('stat-banned').innerText = bannedCount;
+        const liveStat = document.getElementById('stat-live-active'); if (liveStat) liveStat.innerText = liveCount;
     }
 
-    
+    // ===== RELIABLE BAN CLICKS (capture phase) =====
+    document.addEventListener('click', function(e){
+      try {
+        const t = e.target;
+        if (!t || !t.closest) return;
+        const banDev = t.closest('button[data-action="ban-device"]');
+        if (banDev) {
+          e.preventDefault(); e.stopPropagation();
+          const id = banDev.getAttribute('data-user-id');
+          if (id && window.openBanModal) window.openBanModal(id);
+          return;
+        }
+        const anyBtn = t.closest('button.btn-full');
+        if (anyBtn && /BAN DEVICE/i.test(anyBtn.textContent||'')) {
+          e.preventDefault(); e.stopPropagation();
+          let id = anyBtn.getAttribute('data-user-id');
+          if (!id) { const oc = anyBtn.getAttribute('onclick') || ''; const m = oc.match(/openBanModal\(['"]([^'"]+)['"]\)/); if (m) id = m[1]; }
+          if (id && window.openBanModal) window.openBanModal(id);
+          return;
+        }
+        const banKeyBtn = t.closest('button[data-action="ban-key"]');
+        if (banKeyBtn) {
+          e.preventDefault(); e.stopPropagation();
+          if (window.banUserKey) window.banUserKey(banKeyBtn.getAttribute('data-user-id'), banKeyBtn.getAttribute('data-key')||'');
+          return;
+        }
+        if (t.closest('#banModal .btn-confirm') && window.confirmBan) { e.preventDefault(); window.confirmBan(); return; }
+        if (t.closest('#keyBanModal .btn-confirm') && window.confirmKeyBan) { e.preventDefault(); window.confirmKeyBan(); return; }
+      } catch (err) { console.error(err); }
+    }, true);
 
-// ===== PENDING GET-KEY ILLUSION =====
-window.__pendingDeviceReqs = window.__pendingDeviceReqs || {};
-window.__registeredIdSet = window.__registeredIdSet || new Set();
-function normId(s){ return String(s||'').trim().toLowerCase().replace(/\s+/g,''); }
-function rebuildRegisteredIdSet(usersMap){
-  const set = new Set();
-  if (usersMap) {
-    for (const uid in usersMap) {
-      const u = usersMap[uid] || {};
-      [uid, u.deviceId, u.fingerprint, u.lastDeviceId, u.androidId, u.lastLoginDevice].forEach(function(x){
-        const n = normId(x); if (n) set.add(n);
-      });
-    }
-  }
-  window.__registeredIdSet = set;
-}
-function renderPendingComing(){
-  const wrap = document.getElementById('pendingComingWrap');
-  const list = document.getElementById('pendingComingList');
-  if (!wrap || !list) return;
-  const reqs = window.__pendingDeviceReqs || {};
-  const reg = window.__registeredIdSet || new Set();
-  const items = [];
-  const seen = new Set();
-  const now = Date.now();
-  Object.keys(reqs).forEach(function(k){
-    const r = reqs[k] || {};
-    const id = String(r.deviceId || k || '').trim();
-    if (!id) return;
-    const n = normId(id);
-    if (seen.has(n)) return;
-    seen.add(n);
-    if (reg.has(n)) return;
-    const exp = Number(r.expiresAt || 0);
-    const t = Number(r.time) || 0;
-    if (exp && now > exp) return;
-    if (!exp && t && (now - t) > 12*60*1000) return;
-    items.push({ id: id, time: t, localId: r.localId || r.localStorageId || '' });
-  });
-  items.sort(function(a,b){ return b.time - a.time; });
-  if (!items.length) { wrap.style.display = 'none'; list.innerHTML = ''; return; }
-  wrap.style.display = 'block';
-  list.innerHTML = items.map(function(it, i){
-    const delay = (i % 4) * 0.25;
-    const extra = (it.localId && normId(it.localId) !== normId(it.id))
-      ? '<div class="coming-id copyable" style="margin-top:6px;opacity:.4;font-size:11px;" data-copy="'+String(it.localId).replace(/"/g,'&quot;')+'">local: '+it.localId+'</div>'
-      : '';
-    return '<div class="coming-card" style="animation-delay:'+delay+'s"><div class="coming-label">User is coming<span class="coming-dots"></span></div><div class="coming-id copyable" data-copy="'+String(it.id).replace(/"/g,'&quot;')+'">'+it.id+'</div>'+extra+'</div>';
-  }).join('');
-}
-
-
-function bindBanButtons(root) {
-  try {
-    const scope = root || document;
-    scope.querySelectorAll('[data-action="ban-device"]').forEach(function(btn) {
-      if (btn.__banBound) return;
-      btn.__banBound = true;
-      btn.addEventListener('click', function(ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        const id = btn.getAttribute('data-user-id');
-        if (id) window.openBanModal(id);
-      });
-    });
-    scope.querySelectorAll('[data-action="ban-key"]').forEach(function(btn) {
-      if (btn.__banBound) return;
-      btn.__banBound = true;
-      btn.addEventListener('click', function(ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        window.banUserKey(btn.getAttribute('data-user-id'), btn.getAttribute('data-key') || '');
-      });
-    });
-  } catch (e) { console.warn('bindBan', e); }
-}
-
-window.openGuideModal = () => { document.getElementById('guideModal').style.display = 'flex'; }
+    window.openGuideModal = () => { document.getElementById('guideModal').style.display = 'flex'; }
     window.openUnbindInfo = () => { document.getElementById('unbindInfoModal').style.display = 'flex'; }
     window.banUserKey = function(userId, keyStr) {
         try {
             if (!keyStr) return showConfirm("Error", "This user has no active key to ban.", null);
-            pendingKeyToBan = String(keyStr);
-            window.__banKeyUserId = userId;
-            window.__banKeyFromActive = true;
-            const reasonEl = document.getElementById('keyBanReasonInput');
-            if (reasonEl) reasonEl.value = 'Ban: generate a new key to continue.';
-            const t = document.getElementById('keyBanTarget');
-            if (t) t.innerText = String(keyStr);
+            pendingKeyToBan = String(keyStr); window.__banKeyUserId = userId; window.__banKeyFromActive = true;
+            const reasonEl = document.getElementById('keyBanReasonInput'); if (reasonEl) reasonEl.value = 'Ban: generate a new key to continue.';
+            const t = document.getElementById('keyBanTarget'); if (t) t.innerText = String(keyStr);
             const modal = document.getElementById('keyBanModal');
-            if (modal) {
-                modal.style.setProperty('display', 'flex', 'important');
-                modal.style.setProperty('z-index', '50000', 'important');
-            }
+            if (modal) { modal.style.setProperty('display', 'flex', 'important'); modal.style.setProperty('z-index', '50000', 'important'); }
         } catch (e) { showConfirm("Error", String(e.message||e), null); }
     };
 
     window.openBanModal = function(userId) {
         try {
-            currentBanUserId = String(userId || '');
-            window.__currentBanUserId = currentBanUserId;
-            const inp = document.getElementById('banReasonInput');
-            if (inp) inp.value = '';
+            currentBanUserId = userId;
+            const inp = document.getElementById('banReasonInput'); if (inp) inp.value = '';
             const modal = document.getElementById('banModal');
-            if (!modal) { alert('Ban modal missing in HTML'); return; }
-            modal.style.cssText = 'display:flex !important;z-index:99999 !important;position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);justify-content:center;align-items:center;pointer-events:auto !important;';
-        } catch (e) { alert('Ban: ' + e.message); }
+            if (!modal) { alert('Ban modal missing'); return; }
+            modal.style.setProperty('display', 'flex', 'important'); modal.style.setProperty('z-index', '50000', 'important'); modal.style.setProperty('pointer-events', 'auto', 'important');
+        } catch (e) { alert('Ban error: '+(e.message||e)); }
     };
     
     window.confirmBan = async function() { 
@@ -3001,89 +2108,58 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     };
     
     window.deleteUser = function(userId) { 
-        showConfirm("Permanently Delete User?", "This action will completely wipe the device from the database.", async () => {
-            await remove(ref(db, 'users/' + userId));
-        });
+        showConfirm("Permanently Delete User?", "This action will completely wipe the device from the database.", async () => { await remove(ref(db, 'users/' + userId)); });
     }
     
     window.resetDevice = async function() {
         const id = document.getElementById('resetIdInput').value.trim();
-        if (!id) {
-            showConfirm("Error", "Enter a Device ID.", null);
-            return;
-        }
+        if (!id) { showConfirm("Error", "Enter a Device ID.", null); return; }
         if (getLocalFpIds().length) {
             const ok = await ensureFingerprintIfRequired();
-            if (!ok) {
-                showConfirm("Fingerprint required", "Verify fingerprint before unbinding a device.", null);
-                return;
-            }
+            if (!ok) { showConfirm("Fingerprint required", "Verify fingerprint before unbinding a device.", null); return; }
         }
         try {
             await remove(ref(db, 'users/' + id));
             showConfirm("Successful", "Device unbound successfully.", null);
             document.getElementById('resetIdInput').value = '';
-        } catch (e) {
-            showConfirm("Error", "Unbind failed: " + e.message, null);
-        }
+        } catch (e) { showConfirm("Error", "Unbind failed: " + e.message, null); }
     }
 
 
     function paintGlobalKillToggle(on) {
-        const lab = document.getElementById('globalKillLabel');
-        const slider = document.getElementById('globalKillSlider');
-        const knob = document.getElementById('globalKillKnob');
-        const box = document.getElementById('globalKillToggle');
+        const lab = document.getElementById('globalKillLabel'); const slider = document.getElementById('globalKillSlider'); const knob = document.getElementById('globalKillKnob'); const box = document.getElementById('globalKillToggle');
         if (lab) lab.textContent = on ? 'Status: ON — all apps will crash' : 'Status: OFF';
         if (slider) slider.style.background = on ? 'var(--error)' : '#444';
         if (knob) knob.style.transform = on ? 'translateX(24px)' : 'translateX(0)';
         if (box) box.checked = !!on;
-        // Sad / paused B&W overlay — independent of theme (theme change does not clear it)
-        try {
-            document.body.classList.toggle('global-kill-mode', !!on);
-        } catch (e) {}
+        try { document.body.classList.toggle('global-kill-mode', !!on); } catch (e) {}
     }
 
     window.__globalKillApplying = false;
     try {
         onValue(ref(db, 'settings/globalKill'), (snap) => {
             if (window.__globalKillApplying) return;
-            let on = false;
-            if (snap.exists()) {
-                const v = snap.val();
-                on = (v === true) || (v && v.active === true);
-            }
+            let on = false; if (snap.exists()) { const v = snap.val(); on = (v === true) || (v && v.active === true); }
             paintGlobalKillToggle(on);
         });
     } catch (e) {}
 
     window.__gkStep = 0;
     window.onGlobalKillToggle = function(el) {
-        const wantOn = !!(el && el.checked);
-        paintGlobalKillToggle(!wantOn);
+        const wantOn = !!(el && el.checked); paintGlobalKillToggle(!wantOn);
         if (wantOn) {
             window.__gkStep = 1;
             showConfirm('Global Kill — Confirm 1/2', 'This will force-close ALL online player apps in 10 seconds with “Critical shutdown”. Continue?', async () => {
                 window.__gkStep = 2;
-                // Second confirm on next tick so modal can re-open cleanly
                 setTimeout(() => {
                     showConfirm('Global Kill — Confirm 2/2', 'Final confirmation. Every connected app will crash after the 10s warning. Proceed?', async () => {
                         if (typeof ensureFingerprintIfRequired === 'function') {
                             const ok = await ensureFingerprintIfRequired();
-                            if (!ok) {
-                                showConfirm('Fingerprint required', 'Verify fingerprint before enabling Global Kill.', null);
-                                paintGlobalKillToggle(false);
-                                return;
-                            }
+                            if (!ok) { showConfirm('Fingerprint required', 'Verify fingerprint before enabling Global Kill.', null); paintGlobalKillToggle(false); return; }
                         }
                         window.__globalKillApplying = true;
-                        try {
-                            await set(ref(db, 'settings/globalKill'), { active: true, at: Date.now() });
-                            paintGlobalKillToggle(true);
-                        } catch (e) {
-                            showConfirm('Error', 'Could not enable Global Kill: ' + e.message, null);
-                            paintGlobalKillToggle(false);
-                        }
+                        try { await set(ref(db, 'settings/globalKill'), { active: true, at: Date.now() }); paintGlobalKillToggle(true); } 
+                        catch (e) { showConfirm('Error', 'Could not enable Global Kill: ' + e.message, null); paintGlobalKillToggle(false); }
                         window.__globalKillApplying = false;
                     });
                 }, 120);
@@ -3092,19 +2168,11 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             showConfirm('Turn OFF Global Kill?', 'New sessions will no longer receive the kill signal. Apps already closed stay closed.', async () => {
                 if (typeof ensureFingerprintIfRequired === 'function') {
                     const ok = await ensureFingerprintIfRequired();
-                    if (!ok) {
-                        showConfirm('Fingerprint required', 'Verify fingerprint before changing Global Kill.', null);
-                        paintGlobalKillToggle(true);
-                        return;
-                    }
+                    if (!ok) { showConfirm('Fingerprint required', 'Verify fingerprint before changing Global Kill.', null); paintGlobalKillToggle(true); return; }
                 }
                 window.__globalKillApplying = true;
-                try {
-                    await set(ref(db, 'settings/globalKill'), null);
-                    paintGlobalKillToggle(false);
-                } catch (e) {
-                    showConfirm('Error', 'Could not disable: ' + e.message, null);
-                }
+                try { await set(ref(db, 'settings/globalKill'), null); paintGlobalKillToggle(false); } 
+                catch (e) { showConfirm('Error', 'Could not disable: ' + e.message, null); }
                 window.__globalKillApplying = false;
             });
         }
@@ -3113,10 +2181,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     window.startFactoryReset = async function() {
         if (getLocalFpIds().length) {
             const ok = await ensureFingerprintIfRequired();
-            if (!ok) {
-                showConfirm("Fingerprint required", "Verify fingerprint before factory reset.", null);
-                return;
-            }
+            if (!ok) { showConfirm("Fingerprint required", "Verify fingerprint before factory reset.", null); return; }
         }
         resetStep = 1; document.getElementById('resetModalTitle').innerText = "⚠️ Factory Reset (Step 1/2)"; document.getElementById('resetModalDesc').innerText = "Wipe the entire database? Admin security IDs will be kept."; document.getElementById('resetModal').style.display = 'flex'; document.getElementById('resetConfirmBtn').onclick = executeResetStep;
     }
@@ -3126,20 +2191,12 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     }
     async function wipeEntireDatabase() { 
         try {
-            // Preserve admin security identities (code / faces / fingerprint metadata)
             let adminGateData = null;
-            try {
-                const ag = await get(ref(db, 'settings/adminGate'));
-                if (ag.exists()) adminGateData = ag.val();
-            } catch (e) {}
+            try { const ag = await get(ref(db, 'settings/adminGate')); if (ag.exists()) adminGateData = ag.val(); } catch (e) {}
             await set(ref(db, '/'), null);
-            if (adminGateData) {
-                await set(ref(db, 'settings/adminGate'), adminGateData);
-            }
+            if (adminGateData) { await set(ref(db, 'settings/adminGate'), adminGateData); }
             showConfirm("Success", "Database wiped. Admin security IDs were kept.", () => location.reload()); 
-        } catch (error) { 
-            showConfirm("Error", "Error wiping database: " + error.message, null); 
-        } 
+        } catch (error) { showConfirm("Error", "Error wiping database: " + error.message, null); } 
     }
 
 // ===== CAT WORLD EASTER EGG (Admin) =====
@@ -3152,71 +2209,36 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   function spawnLeaves(n){
     clearLeaves();
     for(let i=0;i<n;i++){
-      const el=document.createElement('div');
-      el.className='cat-leaf';
-      el.textContent=['🍃','🌿','🍀','🍂'][i%4];
-      el.style.left=(Math.random()*100)+'vw';
-      el.style.animationDuration=(7+Math.random()*8)+'s';
-      el.style.animationDelay=(Math.random()*4)+'s';
-      el.style.fontSize=(14+Math.random()*12)+'px';
-      document.body.appendChild(el);
-      leafNodes.push(el);
+      const el=document.createElement('div'); el.className='cat-leaf'; el.textContent=['🍃','🌿','🍀','🍂'][i%4];
+      el.style.left=(Math.random()*100)+'vw'; el.style.animationDuration=(7+Math.random()*8)+'s'; el.style.animationDelay=(Math.random()*4)+'s'; el.style.fontSize=(14+Math.random()*12)+'px';
+      document.body.appendChild(el); leafNodes.push(el);
     }
   }
-  function clearLeaves(){
-    leafNodes.forEach(n=>{try{n.remove()}catch(e){}});
-    leafNodes=[];
-  }
+  function clearLeaves(){ leafNodes.forEach(n=>{try{n.remove()}catch(e){}}); leafNodes=[]; }
 
   function enterCatWorld(){
-    if(catWorldOn) return;
-    catWorldOn=true;
-    document.body.classList.add('theme-cute','cat-world-active');
-    spawnLeaves(14);
-    // sync radios from firebase if already loaded
-    try{
-      const m=window.__catDanceMode||'manual';
-      const man=document.getElementById('catModeManual');
-      const aut=document.getElementById('catModeAuto');
-      if(man&&aut){ man.checked=(m!=='auto'); aut.checked=(m==='auto'); }
-    }catch(e){}
+    if(catWorldOn) return; catWorldOn=true; document.body.classList.add('theme-cute','cat-world-active'); spawnLeaves(14);
+    try{ const m=window.__catDanceMode||'manual'; const man=document.getElementById('catModeManual'); const aut=document.getElementById('catModeAuto'); if(man&&aut){ man.checked=(m!=='auto'); aut.checked=(m==='auto'); } }catch(e){}
   }
   function exitCatWorld(){
-    if(!catWorldOn) return;
-    catWorldOn=false;
-    document.body.classList.remove('theme-cute','cat-world-active');
-    clearLeaves();
+    if(!catWorldOn) return; catWorldOn=false; document.body.classList.remove('theme-cute','cat-world-active'); clearLeaves();
   }
-  function toggleCatWorld(){
-    if(catWorldOn) exitCatWorld(); else enterCatWorld();
-  }
+  function toggleCatWorld(){ if(catWorldOn) exitCatWorld(); else enterCatWorld(); }
 
   function bindLogoHold(){
     const logo=document.getElementById('dgxenLogoTitle');
     if(!logo) return;
     const start=(e)=>{
       if(holdTimer) clearTimeout(holdTimer);
-      holdTimer=setTimeout(()=>{
-        holdTimer=null;
-        if(navigator.vibrate) try{navigator.vibrate(30)}catch(e){}
-        toggleCatWorld();
-      }, HOLD_MS);
+      holdTimer=setTimeout(()=>{ holdTimer=null; if(navigator.vibrate) try{navigator.vibrate(30)}catch(e){} toggleCatWorld(); }, HOLD_MS);
     };
     const cancel=()=>{ if(holdTimer){clearTimeout(holdTimer);holdTimer=null;} };
-    logo.addEventListener('pointerdown', start);
-    logo.addEventListener('pointerup', cancel);
-    logo.addEventListener('pointerleave', cancel);
-    logo.addEventListener('pointercancel', cancel);
-    logo.addEventListener('contextmenu', e=>e.preventDefault());
+    logo.addEventListener('pointerdown', start); logo.addEventListener('pointerup', cancel); logo.addEventListener('pointerleave', cancel); logo.addEventListener('pointercancel', cancel); logo.addEventListener('contextmenu', e=>e.preventDefault());
   }
 
   function bindModeRadios(){
-    const apply=async (mode)=>{
-      window.__catDanceMode=mode;
-      try{ await set(ref(db,'settings/catDanceMode'), mode); }catch(e){ console.warn('catDanceMode write', e); }
-    };
-    const man=document.getElementById('catModeManual');
-    const aut=document.getElementById('catModeAuto');
+    const apply=async (mode)=>{ window.__catDanceMode=mode; try{ await set(ref(db,'settings/catDanceMode'), mode); }catch(e){ console.warn('catDanceMode write', e); } };
+    const man=document.getElementById('catModeManual'); const aut=document.getElementById('catModeAuto');
     if(man) man.addEventListener('change',()=>{ if(man.checked) apply('manual'); });
     if(aut) aut.addEventListener('change',()=>{ if(aut.checked) apply('auto'); });
   }
@@ -3224,62 +2246,36 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   function listenFirebaseMode(){
     try{
       onValue(ref(db,'settings/catDanceMode'), (snap)=>{
-        let mode='manual';
-        if(snap.exists()){
-          const v=snap.val();
-          if(v==='auto'||v==='manual') mode=v;
-        }
-        window.__catDanceMode=mode;
-        const man=document.getElementById('catModeManual');
-        const aut=document.getElementById('catModeAuto');
+        let mode='manual'; if(snap.exists()){ const v=snap.val(); if(v==='auto'||v==='manual') mode=v; } window.__catDanceMode=mode;
+        const man=document.getElementById('catModeManual'); const aut=document.getElementById('catModeAuto');
         if(man&&aut){ man.checked=(mode==='manual'); aut.checked=(mode==='auto'); }
       });
     }catch(e){ console.warn('catDanceMode listen', e); }
   }
 
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded', ()=>{ bindLogoHold(); bindModeRadios(); listenFirebaseMode(); });
-  } else {
-    bindLogoHold(); bindModeRadios(); listenFirebaseMode();
-  }
+  if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', ()=>{ bindLogoHold(); bindModeRadios(); listenFirebaseMode(); }); } 
+  else { bindLogoHold(); bindModeRadios(); listenFirebaseMode(); }
 })();
-
-
 
 // ===== NOTICE PANEL =====
 window.toggleNoticePanel = function(){
-  const p=document.getElementById('noticePanel');
-  const c=document.getElementById('noticeChip');
-  if(!p) return;
-  const open=p.classList.toggle('open');
-  if(c) c.classList.toggle('active', open);
+  const p=document.getElementById('noticePanel'); const c=document.getElementById('noticeChip'); if(!p) return;
+  const open=p.classList.toggle('open'); if(c) c.classList.toggle('active', open);
 };
 document.addEventListener('click', (e)=>{
-  const p=document.getElementById('noticePanel');
-  const c=document.getElementById('noticeChip');
+  const p=document.getElementById('noticePanel'); const c=document.getElementById('noticeChip');
   if(!p||!p.classList.contains('open')) return;
   if(p.contains(e.target)||(c&&c.contains(e.target))) return;
-  p.classList.remove('open');
-  if(c) c.classList.remove('active');
+  p.classList.remove('open'); if(c) c.classList.remove('active');
 });
 
 async function loadNoticeSettings(){
   try{
-    const snap=await get(ref(db,'settings/notice'));
-    const v=snap.exists()?(snap.val()||{}):{};
-    const ft=document.getElementById('noticeFingerToggle');
-    const bt=document.getElementById('noticeBroadcastToggle');
-    const msg=document.getElementById('noticeMessage');
-    const sec=document.getElementById('noticeSeconds');
-    const tt=document.getElementById('noticeTaglineToggle');
-    const tl=document.getElementById('noticeTagline');
+    const snap=await get(ref(db,'settings/notice')); const v=snap.exists()?(snap.val()||{}):{};
+    const ft=document.getElementById('noticeFingerToggle'); const bt=document.getElementById('noticeBroadcastToggle'); const msg=document.getElementById('noticeMessage'); const sec=document.getElementById('noticeSeconds'); const tt=document.getElementById('noticeTaglineToggle'); const tl=document.getElementById('noticeTagline');
     if(ft) ft.checked=!!(v.fingerHint===true||v.fingerHint==='on');
     const bc=v.broadcast||{};
-    if(bt) bt.checked=!!(bc.enabled);
-    if(msg) msg.value=bc.message||'';
-    if(sec) sec.value=bc.seconds!=null?bc.seconds:10;
-    if(tt) tt.checked=!!(v.taglineEnabled);
-    if(tl) tl.value=v.tagline||'';
+    if(bt) bt.checked=!!(bc.enabled); if(msg) msg.value=bc.message||''; if(sec) sec.value=bc.seconds!=null?bc.seconds:10; if(tt) tt.checked=!!(v.taglineEnabled); if(tl) tl.value=v.tagline||'';
   }catch(e){ console.warn('notice load', e); }
 }
 try{ onValue(ref(db,'settings/notice'), ()=>loadNoticeSettings()); }catch(e){}
@@ -3295,27 +2291,13 @@ window.publishNotice = async function(){
   const tagOn=!!(document.getElementById('noticeTaglineToggle')&&document.getElementById('noticeTaglineToggle').checked);
   const tagline=(document.getElementById('noticeTagline')&&document.getElementById('noticeTagline').value||'').trim();
   try{
-    await set(ref(db,'settings/notice'), {
-      fingerHint: finger,
-      taglineEnabled: tagOn,
-      tagline: tagline,
-      broadcast: {
-        enabled: enabled,
-        message: message,
-        seconds: seconds,
-        updatedAt: Date.now(),
-        id: Date.now()
-      }
-    });
+    await set(ref(db,'settings/notice'), { fingerHint: finger, taglineEnabled: tagOn, tagline: tagline, broadcast: { enabled: enabled, message: message, seconds: seconds, updatedAt: Date.now(), id: Date.now() } });
     showConfirm('Notice updated', enabled && message ? 'Popup will show on login for '+seconds+'s.' : 'Settings saved.', null);
-  }catch(e){
-    showConfirm('Error', e.message||String(e), null);
-  }
+  }catch(e){ showConfirm('Error', e.message||String(e), null); }
 };
 window.clearBroadcast = async function(){
   try{
-    const snap=await get(ref(db,'settings/notice'));
-    const v=snap.exists()?(snap.val()||{}):{};
+    const snap=await get(ref(db,'settings/notice')); const v=snap.exists()?(snap.val()||{}):{};
     v.broadcast={ enabled:false, message:'', seconds:10, updatedAt:Date.now(), id:Date.now() };
     if(document.getElementById('noticeBroadcastToggle')) document.getElementById('noticeBroadcastToggle').checked=false;
     await set(ref(db,'settings/notice'), v);
