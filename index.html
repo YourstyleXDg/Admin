@@ -263,6 +263,7 @@
         .mk-item:hover { background: rgba(150,150,150,0.1); border-color: rgba(150,150,150,0.3); transform: scale(1.01); }
         .mk-text { font-family: monospace; font-size: 14px; color: var(--text-main); font-weight: 800; letter-spacing: 0.5px; word-break: break-all; }
         
+        /* UPDATED USES CSS */
         .mk-usage { 
             background: rgba(0,150,255,0.12); 
             color: #3da5ff; 
@@ -479,14 +480,143 @@
         }
 
 
-.coming-card{position:relative;padding:22px 16px;min-height:88px;border-radius:20px;border:1px dashed rgba(150,150,150,0.18);background:rgba(150,150,150,0.04);pointer-events:auto;overflow:hidden;animation:pulseSkeleton 1.8s infinite ease-in-out}
-.coming-card::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(110deg,transparent 20%,rgba(255,255,255,0.06) 45%,transparent 70%);background-size:200% 100%;animation:comingShimmer 2.4s ease-in-out infinite}
-@keyframes comingShimmer{0%{background-position:120% 0}100%{background-position:-40% 0}}
-.coming-card .coming-label{font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-dim);opacity:.75;margin-bottom:10px}
-.coming-card .coming-id{font-family:monospace;font-size:12px;font-weight:700;color:var(--text-main);opacity:.55;word-break:break-all;line-height:1.4;cursor:pointer}
-.coming-card .coming-dots::after{content:"";animation:comingDots 1.4s steps(4,end) infinite}
-@keyframes comingDots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
-.coming-section-title{font-size:12px;font-weight:800;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin:0 0 12px;opacity:.8}
+/* ===== CAT EASTER EGG (Admin) ===== */
+#dgxenLogoTitle{cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;position:relative;z-index:20}
+body.theme-cute{
+  --bg-color:#e8f8ef;
+  --text-main:#1a3d2b;
+  --text-dim:#5a7a68;
+  --accent:#3ecf8e;
+  --accent-glow:rgba(62,207,142,0.35);
+  --glass-bg:rgba(255,255,255,0.72);
+  --glass-border:rgba(255,255,255,0.95);
+  --glass-shine:#fff;
+  --shadow-color:rgba(40,120,80,0.12);
+  --input-bg:rgba(255,255,255,0.9);
+  background:linear-gradient(160deg,#f3fff8 0%,#e6f7ee 40%,#d4f0e4 100%) !important;
+}
+body.theme-cute .sidebar{background:rgba(255,255,255,0.55)}
+body.theme-cute .nav-link{opacity:0;pointer-events:none;max-height:0;margin:0;padding:0;overflow:hidden;border:none;transition:opacity .45s ease,max-height .45s ease,margin .45s ease,padding .45s ease}
+body.cat-world-active .main-content > .tab-section,
+body.cat-world-active .top-controls,
+body.cat-world-active .auto-notch,
+body.cat-world-active .info-btn,
+body.cat-world-active .sec-fab{
+  opacity:0 !important;pointer-events:none !important;transform:scale(0.96);
+  transition:opacity .5s ease,transform .5s ease;
+}
+body.cat-world-active .main-content > .tab-section{display:none !important}
+#cat-world{
+  display:none;opacity:0;transform:translateY(18px) scale(0.98);
+  transition:opacity .55s ease,transform .55s cubic-bezier(.22,1,.36,1);
+  margin-left:260px;padding:100px 36px 40px;max-width:720px;
+}
+body.cat-world-active #cat-world{display:block;opacity:1;transform:translateY(0) scale(1)}
+.cat-leaf{
+  position:fixed;z-index:8;pointer-events:none;font-size:18px;opacity:0;
+  animation:leafFall linear infinite;
+}
+@keyframes leafFall{
+  0%{transform:translateY(-10vh) rotate(0deg);opacity:0}
+  10%{opacity:.85}
+  100%{transform:translateY(110vh) rotate(360deg);opacity:0}
+}
+.cat-world-panel{padding:32px 28px}
+.cat-world-panel h2{font-size:22px;margin-bottom:8px;color:var(--accent)}
+.cat-world-panel p{color:var(--text-dim);margin-bottom:22px;font-size:14px;line-height:1.55}
+.cat-mode-row{display:flex;flex-direction:column;gap:12px}
+.cat-mode-row label{
+  display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;
+  border:1px solid var(--glass-border);background:rgba(150,150,150,0.06);
+  cursor:pointer;font-weight:700;font-size:14px;transition:border-color .2s,background .2s;
+}
+.cat-mode-row label:hover{border-color:var(--accent)}
+.cat-mode-row input{width:18px;height:18px;accent-color:var(--accent)}
+
+
+/* Notice control — full width ABOVE expiry block */
+.notice-section{position:relative;margin-bottom:16px;z-index:30}
+.notice-chip{
+  display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:14px;
+  border:1px solid var(--glass-border);background:var(--glass-bg);cursor:pointer;user-select:none;
+  color:var(--text-main);font-weight:900;font-size:12px;letter-spacing:.5px;text-transform:uppercase;
+  transition:transform .15s,border-color .2s,box-shadow .2s;
+}
+.notice-chip:hover{border-color:var(--accent);box-shadow:0 0 18px var(--accent-glow)}
+.notice-chip.active{border-color:var(--accent);background:rgba(0,255,136,.12);color:var(--accent)}
+.notice-chip svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.2}
+.notice-panel{
+  display:none;margin-top:12px;width:100%;max-width:560px;padding:18px 16px;border-radius:18px;
+  border:1px solid var(--glass-border);background:var(--glass-bg);backdrop-filter:blur(24px);
+  box-shadow:0 20px 50px var(--shadow-color);animation:noticeIn .28s cubic-bezier(.22,1,.36,1);
+}
+.notice-panel.open{display:block}
+@keyframes noticeIn{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
+.notice-panel h3{margin:0 0 12px;font-size:15px;color:var(--accent)}
+.notice-panel .np-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;font-size:13px;font-weight:700}
+.notice-panel label.switch{position:relative;width:46px;height:26px;flex:none}
+.notice-panel label.switch input{opacity:0;width:0;height:0}
+.notice-panel label.switch span{position:absolute;inset:0;border-radius:26px;background:#444;transition:.2s}
+.notice-panel label.switch span:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;border-radius:50%;background:#fff;transition:.2s}
+.notice-panel label.switch input:checked+span{background:var(--accent)}
+.notice-panel label.switch input:checked+span:before{transform:translateX(20px)}
+.notice-panel textarea,.notice-panel input[type=number],.notice-panel input[type=text]{
+  width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--glass-border);
+  background:var(--input-bg);color:var(--text-main);font-size:13px;margin-bottom:10px;outline:none;
+}
+.notice-panel textarea{min-height:72px;resize:vertical}
+.notice-panel .np-actions{display:flex;gap:8px;flex-wrap:wrap}
+.notice-panel .np-actions .btn{flex:1;min-width:100px;padding:10px 12px;font-size:12px}
+
+
+#guideModal .guide-modal{
+  display:flex;flex-direction:column;max-height:min(82vh,720px)!important;
+  width:min(560px,92vw)!important;overflow:hidden;
+}
+#guideModal .guide-scroll{
+  overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;
+  max-height:min(58vh,520px);padding-right:6px;margin-top:8px;
+}
+
+
+/* Pending Get-Key users — skeleton illusion (not solid blocks) */
+.coming-card{
+  position:relative;padding:22px 16px;min-height:88px;border-radius:20px;
+  border:1px dashed rgba(150,150,150,0.18);
+  background:rgba(150,150,150,0.04);
+  pointer-events:auto;overflow:hidden;
+  animation:pulseSkeleton 1.8s infinite ease-in-out;
+}
+.coming-card::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(110deg,transparent 20%,rgba(255,255,255,0.06) 45%,transparent 70%);
+  background-size:200% 100%;animation:comingShimmer 2.4s ease-in-out infinite;
+}
+@keyframes comingShimmer{
+  0%{background-position:120% 0}
+  100%{background-position:-40% 0}
+}
+.coming-card .coming-label{
+  font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--text-dim);opacity:.75;margin-bottom:10px;
+}
+.coming-card .coming-id{
+  font-family:monospace;font-size:12px;font-weight:700;color:var(--text-main);
+  opacity:.55;word-break:break-all;line-height:1.4;cursor:pointer;
+}
+.coming-card .coming-dots::after{
+  content:"";animation:comingDots 1.4s steps(4,end) infinite;
+}
+@keyframes comingDots{
+  0%{content:""}
+  25%{content:"."}
+  50%{content:".."}
+  75%{content:"..."}
+}
+.coming-section-title{
+  font-size:12px;font-weight:800;color:var(--text-dim);letter-spacing:1px;
+  text-transform:uppercase;margin:0 0 12px;opacity:.8;
+}
 
 </style>
 </head>
@@ -533,7 +663,7 @@
 
     <!-- Sidebar with Premium SVGs -->
     <div class="sidebar glass-panel" style="border-radius: 0 35px 35px 0; border-left: none;">
-        <h1>DGXEN</h1>
+        <h1 id="dgxenLogoTitle">DGXEN</h1>
         <div class="nav-link active" onclick="switchTab('dashboard', this)" id="nav-dashboard">
             <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
             Dashboard
@@ -571,6 +701,40 @@
     <!-- Main Content -->
     <div class="main-content">
         <div id="dashboard" class="tab-section active">
+            <div class="notice-section">
+              <button type="button" class="notice-chip" id="noticeChip" title="Notice" onclick="toggleNoticePanel()">
+                <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                Notice
+              </button>
+              <div class="notice-panel" id="noticePanel">
+                <h3>📢 Login Notice Controls</h3>
+                <div class="np-row">
+                  <span>JOIN finger pointer ☝</span>
+                  <label class="switch"><input type="checkbox" id="noticeFingerToggle"><span></span></label>
+                </div>
+                <p style="font-size:12px;color:var(--text-dim);margin:0 0 12px;">Shows a bouncing finger above the JOIN button on the login page.</p>
+                <div class="np-row"><span>Broadcast popup (bottom)</span>
+                  <label class="switch"><input type="checkbox" id="noticeBroadcastToggle"><span></span></label>
+                </div>
+                <textarea id="noticeMessage" placeholder="Message shown at bottom of login screen..."></textarea>
+                <div class="np-row" style="margin-bottom:8px;">
+                  <span style="font-size:12px;color:var(--text-dim);">Duration (seconds)</span>
+                  <input type="number" id="noticeSeconds" min="1" max="300" value="10" style="width:90px;margin:0;">
+                </div>
+                <div class="np-actions">
+                  <button class="btn" style="background:var(--accent);color:#000;" onclick="publishNotice()">UPDATE / SEND</button>
+                  <button class="btn" style="background:transparent;border:1px solid var(--glass-border);color:var(--text-main);" onclick="clearBroadcast()">CLEAR POPUP</button>
+                </div>
+                <hr style="border:none;border-top:1px solid var(--glass-border);margin:14px 0;">
+                <div class="np-row">
+                  <span>Login tagline override</span>
+                  <label class="switch"><input type="checkbox" id="noticeTaglineToggle"><span></span></label>
+                </div>
+                <input type="text" id="noticeTagline" placeholder="Custom tagline under DGXEN VIP">
+                <p style="font-size:11px;color:var(--text-dim);margin:0;">Optional: replace “Enter your access key…” on login.</p>
+              </div>
+            </div>
+
             <div class="section-box glass-panel float-anim" style="border-color: rgba(0, 255, 136, 0.4); box-shadow: inset 0 0 40px rgba(0, 255, 136, 0.05), 0 25px 60px var(--shadow-color);">
                 <h2 style="color: var(--accent);">
                     <svg style="width:28px; fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -741,6 +905,26 @@
 
     <!-- FLOATING INFO BUTTON -->
     
+
+    <!-- CAT WORLD (Easter Egg) -->
+    <div id="cat-world">
+      <div class="section-box glass-panel cat-world-panel">
+        <h2>🐱 Cat Dance Control</h2>
+        <p>Choose how the login-page 3D cat dances. Saved live to Firebase for all users.</p>
+        <div class="cat-mode-row">
+          <label>
+            <input type="radio" name="catDanceMode" value="manual" id="catModeManual" checked>
+            <span>Manual Choreography (67s Timeline)</span>
+          </label>
+          <label>
+            <input type="radio" name="catDanceMode" value="auto" id="catModeAuto">
+            <span>Auto-Beat Detection</span>
+          </label>
+        </div>
+        <p style="margin:18px 0 0;font-size:12px;color:var(--text-dim);">Hold <strong>DGXEN</strong> (top of sidebar) 3s again to exit this world.</p>
+      </div>
+    </div>
+
 <button type="button" class="sec-fab" id="secFab" title="Security" onclick="toggleSecurityPanel()">
   <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
 </button>
@@ -819,7 +1003,8 @@
 
             <!-- TAB CONTENT: MANUAL -->
             <div id="tab-manual" class="m-content active">
-                <p style="margin-bottom: 20px; color: var(--text-dim); font-size: 14px;">Important system rules, security behaviour and tips.</p>
+              <div class="guide-scroll">
+                <p style="margin-bottom: 20px; color: var(--text-dim); font-size: 14px;">Important system rules, security behaviour and tips. Scroll for more.</p>
 
                 <div class="acc-item active" id="acc-man-1">
                     <div class="acc-header" onclick="toggleAccordion('acc-man-1')">
@@ -914,8 +1099,56 @@
                 </div>
             </div>
 
+
+                <div class="acc-item" id="acc-man-notice">
+                    <div class="acc-header" onclick="toggleAccordion('acc-man-notice')">
+                        Notice / Broadcast / JOIN Finger
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="acc-body">
+                        <ul class="check-list">
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Dashboard → <b>Notice</b> (above Expiry). Opens a panel — does not stretch the expiry block.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>JOIN finger:</b> toggle ON to show bouncing pointer above JOIN on login.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Broadcast:</b> message + seconds + enable + UPDATE/SEND → bottom popup with countdown on login.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>CLEAR POPUP</b> disables broadcast for everyone.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Tagline override can replace the line under DGXEN VIP.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item" id="acc-man-live">
+                    <div class="acc-header" onclick="toggleAccordion('acc-man-live')">
+                        Live Revoke & Global Kill
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="acc-body">
+                        <ul class="check-list">
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Ban user / ban key / delete master while online → 30s message then 1:30 timer then app closes.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Global Kill</b> (System Reset): 2 confirms + fingerprint → Critical shutdown 10s on all apps.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Kill mode uses black &amp; white paused theme on admin until OFF.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item" id="acc-man-sounds">
+                    <div class="acc-header" onclick="toggleAccordion('acc-man-sounds')">
+                        Login Sounds
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="acc-body">
+                        <ul class="check-list">
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Folder <b>./sounds/</b> — prefer <b>success login.mp3</b>.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Also: failed login, save key, recall big block, auto login on.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Success and fail sounds play on auto-login as well as manual unlock.</li>
+                        </ul>
+                    </div>
+                </div>
+
+
+              </div>
             <!-- TAB CONTENT: DOWNLOADS (ACCORDION STYLE) -->
             <div id="tab-downloads" class="m-content">
+              <div class="guide-scroll">
                 <p style="margin-bottom: 20px; color: var(--text-dim); font-size: 14px;">Download core module components for local integration. Offline bundles are fully updated.</p>
                 
                 <!-- Category 1: Admin Panel -->
@@ -1093,6 +1326,8 @@ const db = getDatabase(app);
         const g = document.getElementById('adminGate');
         if (g) {
             g.classList.add('hidden');
+            g.style.setProperty('display', 'none', 'important');
+            g.style.setProperty('pointer-events', 'none', 'important');
         }
         stopGateCamera();
         try { logAdminLogin(method || 'unknown'); } catch (e) {}
@@ -1176,7 +1411,10 @@ const db = getDatabase(app);
             for (let i = 0; i < ids.length; i++) {
                 try { allow.push({ type: 'public-key', id: base64ToBuffer(ids[i]) }); } catch (e) {}
             }
-            if (!allow.length) { setGateStatus('Invalid fingerprint data in Firebase.'); return; }
+            if (!allow.length) {
+                setGateStatus('Invalid fingerprint data in Firebase.');
+                return;
+            }
             const assertion = await navigator.credentials.get({
                 publicKey: {
                     challenge: crypto.getRandomValues(new Uint8Array(32)),
@@ -1185,7 +1423,10 @@ const db = getDatabase(app);
                     allowCredentials: allow
                 }
             });
-            if (!assertion) { setGateStatus('Fingerprint failed.'); return; }
+            if (!assertion) {
+                setGateStatus('Fingerprint failed.');
+                return;
+            }
             let usedId = '';
             try { usedId = bufferToBase64(assertion.rawId); } catch (e) {}
             if (!usedId || ids.indexOf(usedId) === -1) {
@@ -1415,27 +1656,43 @@ const db = getDatabase(app);
             });
             if (!cred) return;
             const id = bufferToBase64(cred.rawId);
-            const safe = String(id).split('').map(function(ch){ return ('.$[]#/'.indexOf(ch)>=0) ? '_' : ch; }).join('');
+            const safe = String(id).split('').map(function(ch){
+                return ('.$[]#/'.indexOf(ch)>=0) ? '_' : ch;
+            }).join('');
+            // Maximize fingerprint identity stored in Firebase (strict allow-list)
             let uaData = null;
             try {
                 if (navigator.userAgentData) {
-                    uaData = { mobile: !!navigator.userAgentData.mobile, platform: navigator.userAgentData.platform || '', brands: (navigator.userAgentData.brands || []).map(function(b){ return b.brand + ' ' + b.version; }) };
+                    uaData = {
+                        mobile: !!navigator.userAgentData.mobile,
+                        platform: navigator.userAgentData.platform || '',
+                        brands: (navigator.userAgentData.brands || []).map(b => (b.brand + ' ' + b.version))
+                    };
                 }
             } catch (e) {}
             const fpRecord = {
-                id: id, createdAt: Date.now(), updatedAt: Date.now(),
+                id: id,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
                 userAgent: (navigator.userAgent || '').slice(0, 180),
-                platform: navigator.platform || '', language: navigator.language || '',
+                platform: navigator.platform || '',
+                language: navigator.language || '',
                 languages: (navigator.languages || []).slice(0, 5).join(','),
-                vendor: navigator.vendor || '', hardwareConcurrency: navigator.hardwareConcurrency || 0,
-                deviceMemory: navigator.deviceMemory || null, maxTouchPoints: navigator.maxTouchPoints || 0,
-                screen: (screen.width||0)+'x'+(screen.height||0)+'@'+(window.devicePixelRatio||1),
+                vendor: navigator.vendor || '',
+                hardwareConcurrency: navigator.hardwareConcurrency || 0,
+                deviceMemory: navigator.deviceMemory || null,
+                maxTouchPoints: navigator.maxTouchPoints || 0,
+                screen: (screen.width || 0) + 'x' + (screen.height || 0) + '@' + (window.devicePixelRatio || 1),
                 timezone: (Intl.DateTimeFormat().resolvedOptions().timeZone || ''),
-                origin: location.origin || '', host: location.host || '', colorDepth: screen.colorDepth || 0,
-                uaData: uaData, note: 'admin-webauthn'
+                origin: location.origin || '',
+                host: location.host || '',
+                colorDepth: screen.colorDepth || 0,
+                uaData: uaData,
+                note: 'admin-webauthn'
             };
             await set(ref(db, 'settings/adminGate/fingerprints/' + safe), fpRecord);
-            setLocalFpIds(await getFirebaseFpIds());
+            const synced = await getFirebaseFpIds();
+            setLocalFpIds(synced);
             renderFpList();
             if (st) { st.style.color = 'var(--accent)'; st.textContent = 'Fingerprint saved to Firebase.'; }
         } catch (e) {
@@ -1559,9 +1816,7 @@ const db = getDatabase(app);
 
     function initAdminGate() {
         const g = document.getElementById('adminGate');
-        if (adminUnlocked && g) {
-            g.classList.add('hidden');
-        }
+        if (adminUnlocked && g) g.classList.add('hidden');
         const fpBtn = document.getElementById('gateFpBtn');
         const codeBtn = document.getElementById('gateCodeBtn');
         const codeIn = document.getElementById('gateCodeInput');
@@ -1595,6 +1850,7 @@ const db = getDatabase(app);
             fpBtn.addEventListener('contextmenu', e => e.preventDefault());
         }
 
+        // Auto fingerprint ONLY if Firebase already has enrolled FP data
         getFirebaseFpIds().then(function(ids){
             if (!adminUnlocked && ids && ids.length) {
                 setTimeout(function(){ tryFingerprintLogin(); }, 500);
@@ -1613,40 +1869,109 @@ const db = getDatabase(app);
     let resetStep = 0;
     let pendingConfirmAction = null; 
 
-    // --- POPULATE DEVICE ID LIST FOR MASTER KEYS FROM DEVICEREQUESTS ---
-    onValue(ref(db, 'deviceRequests'), (snap) => {
-        window.__pendingDeviceReqs = snap.exists() ? (snap.val() || {}) : {};
-        try { renderPendingComing(); } catch(e) {}
-        const box = document.getElementById('deviceRequestsBox');
-        if(!box) return;
-        box.innerHTML = '';
-        if(snap.exists()){
-            const reqs = snap.val();
-            const sorted = Object.values(reqs).sort((a,b) => b.time - a.time);
-            const seen = new Set();
-            
-            sorted.forEach(req => {
-                if (!seen.has(req.deviceId)) {
-                    seen.add(req.deviceId);
-                    const div = document.createElement('div');
-                    div.className = 'device-id-item';
-                    div.textContent = req.deviceId;
-                    div.title = "Requested: " + new Date(req.time).toLocaleString();
-                    div.onclick = () => {
-                        navigator.clipboard.writeText(req.deviceId);
-                        const input = document.getElementById('mkExtraInput');
-                        if(input) input.value = req.deviceId; // Auto-fill the input
-                        const old = div.textContent;
-                        div.textContent = 'Copied!';
-                        setTimeout(() => div.textContent = old, 1000);
-                    };
-                    box.appendChild(div);
-                }
-            });
-        } else {
-            box.innerHTML = '<div style="font-size:11px; color:var(--text-dim); text-align:center; padding:20px 10px;">No requests yet</div>';
-        }
-    });
+    
+// ===== PENDING GET-KEY → REGISTERED ILLUSION =====
+window.__pendingDeviceReqs = {};
+window.__registeredIdSet = new Set();
+
+function normId(s){
+  return String(s||'').trim().toLowerCase().replace(/\s+/g,'');
+}
+
+function rebuildRegisteredIdSet(usersMap){
+  const set=new Set();
+  if(usersMap){
+    for(const uid in usersMap){
+      const u=usersMap[uid]||{};
+      [uid,u.deviceId,u.fingerprint,u.lastDeviceId,u.androidId,u.lastLoginDevice].forEach(x=>{
+        const n=normId(x);
+        if(n) set.add(n);
+      });
+    }
+  }
+  window.__registeredIdSet=set;
+}
+
+function renderPendingComing(){
+  const wrap=document.getElementById('pendingComingWrap');
+  const list=document.getElementById('pendingComingList');
+  if(!wrap||!list) return;
+  const reqs=window.__pendingDeviceReqs||{};
+  const reg=window.__registeredIdSet||new Set();
+  const items=[];
+  const seen=new Set();
+  const now=Date.now();
+  Object.keys(reqs).forEach(k=>{
+    const r=reqs[k]||{};
+    const id=String(r.deviceId||k||'').trim();
+    if(!id) return;
+    const n=normId(id);
+    if(seen.has(n)) return;
+    seen.add(n);
+    if(reg.has(n)) return; // already registered — hide illusion
+    // Skip / interrupted key gen: hide after expiresAt or 12 min
+    const exp=Number(r.expiresAt||0);
+    const t=Number(r.time)||0;
+    if(exp && now>exp) return;
+    if(!exp && t && (now-t)>12*60*1000) return;
+    items.push({id, time:t, localId:r.localId||r.localStorageId||''});
+  });
+  items.sort((a,b)=>b.time-a.time);
+  if(!items.length){
+    wrap.style.display='none';
+    list.innerHTML='';
+    return;
+  }
+  wrap.style.display='block';
+  list.innerHTML=items.map((it,i)=>{
+    const delay=(i%4)*0.25;
+    const extra=it.localId && normId(it.localId)!==normId(it.id)
+      ? `<div class="coming-id copyable" style="margin-top:6px;opacity:.4;font-size:11px;" data-copy="${String(it.localId).replace(/"/g,'&quot;')}" title="Click to copy local id">local: ${it.localId}</div>`
+      : '';
+    return `<div class="coming-card" style="animation-delay:${delay}s">
+      <div class="coming-label">User is coming<span class="coming-dots"></span></div>
+      <div class="coming-id copyable" data-copy="${String(it.id).replace(/"/g,'&quot;')}" title="Click to copy device id">${it.id}</div>
+      ${extra}
+    </div>`;
+  }).join('');
+}
+
+try{
+  onValue(ref(db,'deviceRequests'), (snap)=>{
+    window.__pendingDeviceReqs = snap.exists() ? (snap.val()||{}) : {};
+    // keep existing master-key deviceRequestsBox population
+    const box=document.getElementById('deviceRequestsBox');
+    if(box){
+      box.innerHTML='';
+      if(snap.exists()){
+        const sorted=Object.values(snap.val()).sort((a,b)=>(b.time||0)-(a.time||0));
+        const seen=new Set();
+        sorted.forEach(req=>{
+          const did=req.deviceId;
+          if(!did||seen.has(did)) return;
+          seen.add(did);
+          const div=document.createElement('div');
+          div.className='device-id-item';
+          div.textContent=did;
+          div.title='Requested: '+new Date(req.time||Date.now()).toLocaleString();
+          div.onclick=()=>{
+            try{navigator.clipboard.writeText(did)}catch(e){}
+            const input=document.getElementById('mkExtraInput');
+            if(input) input.value=did;
+            const old=div.textContent; div.textContent='Copied!';
+            setTimeout(()=>div.textContent=old,1000);
+          };
+          box.appendChild(div);
+        });
+      } else {
+        box.innerHTML='<div style="font-size:11px; color:var(--text-dim); text-align:center; padding:20px 10px;">No requests yet</div>';
+      }
+    }
+    renderPendingComing();
+  });
+}catch(e){ console.warn('deviceRequests listen', e); }
+
+
 
     // --- TAB SWITCHER FOR GUIDE MODAL ---
     window.switchGuideTab = function(tabName, el) {
@@ -1785,7 +2110,7 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
     // BUTTON RIPPLE EFFECT
     document.addEventListener('click', function(e) {
         // Click-to-copy for any .copyable element or data-copy attribute
-        // Never treat buttons as copy targets (fixes dead BAN on Chrome)
+        // Buttons must never be treated as copy targets (fixes dead BAN clicks on Chrome)
         if (!e.target.closest('button, a, input, select, textarea, .btn, .btn-full, .btn-confirm, .btn-cancel, .mk-del, .nav-link')) {
         const copyEl = e.target.closest('.copyable, [data-copy]');
         if (copyEl) {
@@ -2630,10 +2955,7 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
             const r = document.getElementById('keyBanReasonInput');
             if (r) r.value = 'Ban: generate a new key to continue.';
             const modal = document.getElementById('keyBanModal');
-            if (modal) {
-                modal.style.setProperty('display', 'flex', 'important');
-                modal.style.setProperty('z-index', '50000', 'important');
-            }
+            if (modal) modal.style.display = 'flex';
         } catch (e) { showConfirm("Error", String(e.message||e), null); }
     }
 
@@ -2646,7 +2968,9 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
         closeModals();
         try {
             await set(ref(db, 'settings/bannedKeys/' + keyToBan), {
-                key: keyToBan, reason: reason, bannedAt: new Date().toISOString()
+                key: keyToBan,
+                reason: reason,
+                bannedAt: new Date().toISOString()
             });
             const snap = await get(ref(db, 'users'));
             if (snap.exists()) {
@@ -2810,73 +3134,22 @@ window.downloadSpecificFile = async function(fileId, btnElement) {
     }
 
     
-
-// ===== PENDING GET-KEY ILLUSION =====
-window.__pendingDeviceReqs = window.__pendingDeviceReqs || {};
-window.__registeredIdSet = window.__registeredIdSet || new Set();
-function normId(s){ return String(s||'').trim().toLowerCase().replace(/\s+/g,''); }
-function rebuildRegisteredIdSet(usersMap){
-  const set = new Set();
-  if (usersMap) {
-    for (const uid in usersMap) {
-      const u = usersMap[uid] || {};
-      [uid, u.deviceId, u.fingerprint, u.lastDeviceId, u.androidId, u.lastLoginDevice].forEach(function(x){
-        const n = normId(x); if (n) set.add(n);
-      });
-    }
-  }
-  window.__registeredIdSet = set;
-}
-function renderPendingComing(){
-  const wrap = document.getElementById('pendingComingWrap');
-  const list = document.getElementById('pendingComingList');
-  if (!wrap || !list) return;
-  const reqs = window.__pendingDeviceReqs || {};
-  const reg = window.__registeredIdSet || new Set();
-  const items = [];
-  const seen = new Set();
-  const now = Date.now();
-  Object.keys(reqs).forEach(function(k){
-    const r = reqs[k] || {};
-    const id = String(r.deviceId || k || '').trim();
-    if (!id) return;
-    const n = normId(id);
-    if (seen.has(n)) return;
-    seen.add(n);
-    if (reg.has(n)) return;
-    const exp = Number(r.expiresAt || 0);
-    const t = Number(r.time) || 0;
-    if (exp && now > exp) return;
-    if (!exp && t && (now - t) > 12*60*1000) return;
-    items.push({ id: id, time: t, localId: r.localId || r.localStorageId || '' });
-  });
-  items.sort(function(a,b){ return b.time - a.time; });
-  if (!items.length) { wrap.style.display = 'none'; list.innerHTML = ''; return; }
-  wrap.style.display = 'block';
-  list.innerHTML = items.map(function(it, i){
-    const delay = (i % 4) * 0.25;
-    const extra = (it.localId && normId(it.localId) !== normId(it.id))
-      ? '<div class="coming-id copyable" style="margin-top:6px;opacity:.4;font-size:11px;" data-copy="'+String(it.localId).replace(/"/g,'&quot;')+'">local: '+it.localId+'</div>'
-      : '';
-    return '<div class="coming-card" style="animation-delay:'+delay+'s"><div class="coming-label">User is coming<span class="coming-dots"></span></div><div class="coming-id copyable" data-copy="'+String(it.id).replace(/"/g,'&quot;')+'">'+it.id+'</div>'+extra+'</div>';
-  }).join('');
-}
-
-// RELIABLE BAN CLICKS (capture) — Chrome-safe
+// ===== RELIABLE BAN CLICKS (capture phase) =====
 document.addEventListener('click', function(e){
   try {
     const t = e.target;
     if (!t || !t.closest) return;
     const banDev = t.closest('button[data-action="ban-device"]');
     if (banDev) {
-      /* no stopPropagation — keep inline onclick as backup */
+      /* allow bubble + inline onclick */
       const id = banDev.getAttribute('data-user-id');
       if (id && window.openBanModal) window.openBanModal(id);
       return;
     }
+    // fallback: text BAN DEVICE
     const anyBtn = t.closest('button.btn-full');
     if (anyBtn && /BAN DEVICE/i.test(anyBtn.textContent||'')) {
-      /* no stopPropagation — keep inline onclick as backup */
+      /* allow bubble + inline onclick */
       let id = anyBtn.getAttribute('data-user-id');
       if (!id) {
         const oc = anyBtn.getAttribute('onclick') || '';
@@ -2888,12 +3161,18 @@ document.addEventListener('click', function(e){
     }
     const banKeyBtn = t.closest('button[data-action="ban-key"]');
     if (banKeyBtn) {
-      /* no stopPropagation — keep inline onclick as backup */
+      /* allow bubble + inline onclick */
       if (window.banUserKey) window.banUserKey(banKeyBtn.getAttribute('data-user-id'), banKeyBtn.getAttribute('data-key')||'');
       return;
     }
-    if (t.closest('#banModal .btn-confirm') && window.confirmBan) { e.preventDefault(); window.confirmBan(); return; }
-    if (t.closest('#keyBanModal .btn-confirm') && window.confirmKeyBan) { e.preventDefault(); window.confirmKeyBan(); return; }
+    if (t.closest('#banModal .btn-confirm') && window.confirmBan) {
+      window.confirmBan();
+      return;
+    }
+    if (t.closest('#keyBanModal .btn-confirm') && window.confirmKeyBan) {
+      window.confirmKeyBan();
+      return;
+    }
   } catch (err) { console.error(err); }
 }, true);
 
@@ -2910,10 +3189,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             const t = document.getElementById('keyBanTarget');
             if (t) t.innerText = String(keyStr);
             const modal = document.getElementById('keyBanModal');
-            if (modal) {
-                modal.style.setProperty('display', 'flex', 'important');
-                modal.style.setProperty('z-index', '50000', 'important');
-            }
+            if (modal) modal.style.display = 'flex';
         } catch (e) { showConfirm("Error", String(e.message||e), null); }
     };
 
@@ -2927,7 +3203,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             modal.style.setProperty('display', 'flex', 'important');
             modal.style.setProperty('z-index', '50000', 'important');
             modal.style.setProperty('pointer-events', 'auto', 'important');
-        } catch (e) { alert('Ban error: ' + (e.message||e)); }
+        } catch (e) { alert('Ban error: '+(e.message||e)); }
     };
     
     window.confirmBan = async function() { 
