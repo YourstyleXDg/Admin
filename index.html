@@ -5229,7 +5229,48 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     return h;
   }
 
-  function explainFetchError(e) {
+  
+  function metaPathKey(fileName) {
+    try {
+      return btoa(unescape(encodeURIComponent(String(fileName || '')))).replace(/[.#$\[\]\/]/g, '_');
+    } catch (e) {
+      return String(fileName || 'x').replace(/[.#$\[\]\/]/g, '_').slice(0, 120);
+    }
+  }
+
+  async function saveFileMeta(fileName, fileId, file) {
+    const lm = file && file.lastModified ? Number(file.lastModified) : 0;
+    const payload = {
+      fileName: String(fileName || ''),
+      fileId: String(fileId || ''),
+      src_last_modified: lm || 0,
+      src_date: lm ? formatOrigDate(lm) : '',
+      uploaded_at: Date.now(),
+      orig_name: file && file.name ? String(file.name) : String(fileName || ''),
+      size: file && file.size ? Number(file.size) : 0
+    };
+    await set(ref(db, 'settings/b2FileMeta/' + metaPathKey(fileName)), payload);
+    return payload;
+  }
+
+  async function loadFileMetaMap() {
+    try {
+      const snap = await get(ref(db, 'settings/b2FileMeta'));
+      if (!snap.exists()) return {};
+      const all = snap.val() || {};
+      const byName = {};
+      Object.keys(all).forEach(k => {
+        const v = all[k];
+        if (v && v.fileName) byName[v.fileName] = v;
+      });
+      return byName;
+    } catch (e) {
+      console.warn('[B2] meta load', e);
+      return {};
+    }
+  }
+
+function explainFetchError(e) {
     const m =
       String(
         (e && e.message) ||
@@ -5952,6 +5993,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
 
         const files =
           await listAllFiles();
+        const metaMap = await loadFileMetaMap();
 
         let used = 0;
 
@@ -6026,14 +6068,13 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                   size +
                   (function(){
                     try {
-                      const fi = f.fileInfo || {};
-                      const lm = Number(fi.src_last_modified || fi.src_last_modified_millis || 0);
-                      const od = fi.src_date || formatOrigDate(lm);
+                      const fi = (f.fileInfo || {});
+                      const fm = (metaMap && metaMap[f.fileName]) || {};
+                      const lm = Number(fm.src_last_modified || fi.src_last_modified || 0);
+                      const od = fm.src_date || fi.src_date || formatOrigDate(lm);
                       if (od) return ' · Original ' + od;
-                      // fallback: B2 uploadTimestamp is when uploaded
                       if (f.uploadTimestamp) {
                         const ut = Number(f.uploadTimestamp);
-                        // B2 uploadTimestamp is in microseconds
                         const ms = ut > 1e14 ? Math.floor(ut/1000) : ut;
                         return ' · Uploaded ' + formatOrigDate(ms);
                       }
@@ -6435,55 +6476,35 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     // Browser controls forbidden request headers.
     // -------------------------------------------------------
 
-    const res =
-      await fetch(
-        up.uploadUrl,
-        {
-          method: 'POST',
-
-          headers: Object.assign({
-            Authorization: up.authorizationToken,
-            'X-Bz-File-Name': encodeB2FileName(safeName),
-            'Content-Type': file.type || 'b2/x-auto',
-            'X-Bz-Content-Sha1': sha1
-          }, b2InfoHeaders(file)),
-
-          body: buf
-        }
-      );
+    // NOTE: Do NOT send X-Bz-Info-* from browser — CORS preflight blocks unknown headers
+    // and upload fails with network/CORS error. Metadata saved to Firebase after success.
+    const res = await fetch(up.uploadUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: up.authorizationToken,
+        'X-Bz-File-Name': encodeB2FileName(safeName),
+        'Content-Type': (file.type && file.type.length) ? file.type : 'b2/x-auto',
+        'X-Bz-Content-Sha1': sha1
+      },
+      body: buf
+    });
 
     if (!res.ok) {
-
-      const text =
-        await res.text()
-          .catch(
-            () => ''
-          );
-
-      throw new Error(
-        'B2 upload failed: ' +
-        res.status +
-        ' ' +
-        text
-      );
+      const text = await res.text().catch(() => '');
+      throw new Error('B2 upload failed: ' + res.status + ' ' + text);
     }
 
-    const result =
-      await res.json()
-        .catch(
-          () => ({})
-        );
+    const result = await res.json().catch(() => ({}));
 
-    if (progressCallback)
-      progressCallback(
-        100
-      );
+    try {
+      await saveFileMeta(result.fileName || safeName, result.fileId, file);
+    } catch (metaErr) {
+      console.warn('[B2] meta save failed', metaErr);
+    }
 
-    console.log(
-      '[B2] Small upload complete:',
-      result.fileName
-    );
+    if (progressCallback) progressCallback(100);
 
+    console.log('[B2] Small upload complete:', result.fileName);
     return result;
   }
 
@@ -6853,16 +6874,13 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         );
       }
 
-      if (progressCallback)
-        progressCallback(
-          100
-        );
-
-      console.log(
-        '[B2] Large upload complete:',
-        finishData.fileName
-      );
-
+      if (progressCallback) progressCallback(100);
+      try {
+        await saveFileMeta(finishData.fileName || safeName, finishData.fileId || fileId, file);
+      } catch (metaErr) {
+        console.warn('[B2] large meta save', metaErr);
+      }
+      console.log('[B2] Large upload complete:', finishData.fileName);
       return finishData;
 
     } catch (error) {
@@ -7048,19 +7066,13 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
           );
 
         } catch (e) {
-
-          console.error(
-            '[B2] Upload failed:',
-            file.name,
-            e
-          );
-
-          setStatus(
-            file.name +
-            ': ' +
-            explainFetchError(e),
-            false
-          );
+          console.error('[B2] Upload failed:', file.name, e);
+          const em = explainFetchError(e);
+          setStatus(file.name + ': ' + em, false);
+          if (prog) {
+            prog.style.color = 'var(--error)';
+            prog.textContent = 'Failed: ' + file.name + ' — ' + em;
+          }
         }
       }
 
