@@ -2095,6 +2095,24 @@ body.cat-world-active .cat-mode-bar{display:block}
                             <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;cursor:pointer;color:var(--text-main);">
                                 <input type="checkbox" id="noticeBroadcastToggle"> Broadcast Popup
                             </label>
+                        <div style="margin-top:8px;padding:14px;border-radius:14px;border:1px solid var(--glass-border);background:rgba(0,0,0,.12);">
+                            <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:8px;letter-spacing:.4px;">LOGIN ATMOSPHERE (login page)</div>
+                            <select id="loginThemeSelect" style="width:100%;padding:12px 14px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:700;margin-bottom:10px;">
+                                <option value="auto">Auto (day / night by clock)</option>
+                                <option value="day_sunny">Day · Sunny</option>
+                                <option value="day_haze">Day · Soft haze</option>
+                                <option value="golden">Golden hour</option>
+                                <option value="rain">Rainy glass</option>
+                                <option value="night_stars">Night · Moon & stars</option>
+                                <option value="night_aurora">Night · Aurora</option>
+                                <option value="cyber">Cyber neon</option>
+                                <option value="minimal">Minimal void</option>
+                            </select>
+                            <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;color:var(--text-main);">
+                                <input type="checkbox" id="loginThemeLock"> Force this theme (ignore device clock)
+                            </label>
+                            <p style="margin:8px 0 0;font-size:11px;color:var(--text-dim);font-weight:600;line-height:1.4;">Applies on login.html corners & sky. No extra sidebar tab.</p>
+                        </div>
                         </div>
                         <div style="display:flex;flex-direction:column;gap:8px;">
                             <input type="text" id="noticeTagline" placeholder="Tagline text (shown on login)" style="padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
@@ -2346,7 +2364,7 @@ body.cat-world-active .cat-mode-bar{display:block}
         </details>
 
         <div class="cloud-upload-zone" id="cloudUploadZone">
-            Tap or drop files to upload
+            Tap or drop files (multi-select OK)
             <input type="file" id="cloudFileInput" multiple style="display:none;">
         </div>
         <div id="cloudUploadProgress" style="font-size:12px;font-weight:700;color:#5cc8ff;min-height:18px;margin-bottom:8px;"></div>
@@ -4973,6 +4991,10 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 const tt = document.getElementById('noticeTaglineToggle');
                 const tl = document.getElementById('noticeTagline');
                 if (ft) ft.checked = !!(v.fingerHint === true || v.fingerHint === 'on');
+                const lts = document.getElementById('loginThemeSelect');
+                const ltl = document.getElementById('loginThemeLock');
+                if (lts && v.loginTheme) lts.value = String(v.loginTheme);
+                if (ltl) ltl.checked = !!(v.loginThemeLock === true || v.loginThemeLock === 'on');
                 const bc = v.broadcast || {};
                 if (bt) bt.checked = !!(bc.enabled);
                 if (msg) msg.value = bc.message || '';
@@ -5000,10 +5022,14 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             const tagline = (document.getElementById('noticeTagline') && document.getElementById('noticeTagline')
                 .value || '').trim();
             try {
+                const loginTheme = (document.getElementById('loginThemeSelect') && document.getElementById('loginThemeSelect').value) || 'auto';
+                const loginThemeLock = !!(document.getElementById('loginThemeLock') && document.getElementById('loginThemeLock').checked);
                 await set(ref(db, 'settings/notice'), {
                     fingerHint: finger,
                     taglineEnabled: tagOn,
                     tagline: tagline,
+                    loginTheme: loginTheme,
+                    loginThemeLock: loginThemeLock,
                     broadcast: {
                         enabled: enabled,
                         message: message,
