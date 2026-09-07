@@ -2262,10 +2262,13 @@ body.cat-world-active .cat-mode-bar{display:block}
         <!-- Security moved to FAB (bottom-left) -->
 
         
-        <div id="atmosphere" class="tab-section">
+                <div id="atmosphere" class="tab-section">
             <div class="section-box glass-panel float-anim" style="border-color:rgba(92,200,255,.35);">
-                <h2 style="margin-bottom:6px;">Atmosphere Studio</h2>
-                <p style="margin-bottom:18px;">Login page sky, corners &amp; mood. Pick a preset — live on devices after save. <b>Native</b> = original DGXEN glass (no extra sky FX).</p>
+                <h2 style="margin-bottom:6px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Atmosphere Studio</span>
+                    <button class="btn" style="background:rgba(255,59,48,0.15); color:var(--error); padding:6px 12px; font-size:11px;" onclick="resetAtmosphere()">RESET DEFAULTS</button>
+                </h2>
+                <p style="margin-bottom:18px;">Login page sky, corners &amp; mood. Pick a preset — live on devices after save. <b>Native</b> = original DGXEN glass.</p>
 
                 <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px;">
                     <label style="font-size:12px;font-weight:800;color:var(--text-dim);">Mode</label>
@@ -2302,22 +2305,28 @@ body.cat-world-active .cat-mode-bar{display:block}
                     <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmHideJoinFx" checked> Keep JOIN badge animation</label>
                 </div>
 
-                <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px;"><input type="checkbox" id="atmSeason" checked> Season packs (festive auto when Auto)</label>
-                <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px;"><input type="checkbox" id="atmWeather" checked> Live weather (Open-Meteo near device)</label>
-                <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px;"><input type="checkbox" id="atmSound"> Ambient sound bed (mute on login)</label>
-                <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:12px;"><input type="checkbox" id="atmCardSkin" checked> Card skin tint matches atmosphere</label>
+                <div style="background:rgba(0,0,0,0.15); padding:14px; border-radius:14px; margin-bottom:18px; border:1px solid var(--glass-border);">
+                    <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:10px;">SMART LAYERS</div>
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px;"><input type="checkbox" id="atmSeason" checked> Season packs (festive auto when Auto)</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px;"><input type="checkbox" id="atmWeather" checked> Live weather (Open-Meteo near device)</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px;"><input type="checkbox" id="atmSound"> Ambient sound bed (mute on login)</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmCardSkin" checked> Card skin tint matches atmosphere</label>
+                </div>
+
                 <div style="margin-bottom:14px;padding:14px;border-radius:14px;border:1px dashed var(--glass-border);">
-                    <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:6px;">PREVIEW QR</div>
+                    <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:6px;">PREVIEW LINK / QR</div>
                     <input type="text" id="atmPreviewBase" placeholder="https://yourstylexdg.github.io/Admin/login.html" style="width:100%;margin-bottom:8px;padding:12px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
-                    <button class="btn" type="button" style="width:100%;" onclick="generateAtmPreviewQr()">GENERATE PREVIEW LINK / QR</button>
+                    <button class="btn" type="button" style="width:100%;" onclick="generateAtmPreviewQr()">GENERATE PREVIEW</button>
                     <div id="atmQrBox" style="text-align:center;margin-top:10px;"></div>
                     <p id="atmPreviewLink" style="font-size:11px;word-break:break-all;color:var(--accent);font-weight:700;margin-top:8px;"></p>
                 </div>
+                
                 <div class="input-group" style="margin-bottom:12px;">
                     <button class="btn" type="button" style="background:linear-gradient(135deg,#5cc8ff,var(--accent));color:#000;width:100%;font-weight:900;" onclick="saveAtmosphereSettings()">APPLY TO LOGIN</button>
                 </div>
                 <p id="atmStatus" style="font-size:12px;font-weight:700;color:var(--text-dim);min-height:18px;"></p>
             </div>
+        </div>
 
             <div class="section-box glass-panel" style="margin-bottom:18px;">
                 <h2 style="font-size:18px;margin-bottom:10px;">Smart layers</h2>
@@ -7557,20 +7566,55 @@ function explainFetchError(e) {
     }
   };
 
+    // Naya Reset Button Function
+  window.resetAtmosphere = async function() {
+      if(!confirm("Reset atmosphere settings to default?")) return;
+      try {
+          const snap = await get(ref(db, 'settings/notice'));
+          const v = snap.exists() ? (snap.val() || {}) : {};
+          v.loginTheme = 'auto';
+          v.atmIntensity = 80;
+          v.atmParticles = 60;
+          v.atmReduceMotion = false;
+          v.atmJoinFx = true;
+          v.atmSeason = true;
+          v.atmWeather = true;
+          v.atmSound = false;
+          v.atmCardSkin = true;
+          await set(ref(db, 'settings/notice'), v);
+          loadAtmosphereSettings();
+          status('Settings reset to default.', true);
+      } catch (e) {
+          status('Reset failed: ' + e.message, false);
+      }
+  };
+
+  // Fixed Generate QR / Link Function
   window.generateAtmPreviewQr = function() {
-    const base = (document.getElementById('atmPreviewBase') && document.getElementById('atmPreviewBase').value || '').trim()
-      || 'https://yourstylexdg.github.io/Admin/login.html';
-    const theme = (document.getElementById('atmThemeSelect') && document.getElementById('atmThemeSelect').value) || 'auto';
-    const url = base + (base.indexOf('?') >= 0 ? '&' : '?') + 'atm=' + encodeURIComponent(theme);
-    const link = document.getElementById('atmPreviewLink');
-    const box = document.getElementById('atmQrBox');
-    if (link) link.textContent = url;
-    if (box) {
-      // QR via free chart API image
-      const src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(url);
-      box.innerHTML = '<img src="'+src+'" alt="QR" width="180" height="180" style="border-radius:12px;background:#fff;padding:8px;">';
-    }
-    try { navigator.clipboard.writeText(url); status('Preview link copied.', true); } catch(e) { status('Link ready.', true); }
+      const base = (document.getElementById('atmPreviewBase') && document.getElementById('atmPreviewBase').value || '').trim() || 'https://yourstylexdg.github.io/Admin/login.html';
+      const theme = (document.getElementById('atmThemeSelect') && document.getElementById('atmThemeSelect').value) || 'auto';
+      const url = base + (base.indexOf('?') >= 0 ? '&' : '?') + 'atm=' + encodeURIComponent(theme);
+      const link = document.getElementById('atmPreviewLink');
+      const box = document.getElementById('atmQrBox');
+      
+      // Clickable link fallback
+      if (link) link.innerHTML = '<a href="'+url+'" target="_blank" style="color:var(--accent);">'+url+'</a>';
+      
+      if (box) {
+          const src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(url);
+          box.innerHTML = '<img src="'+src+'" alt="QR" width="180" height="180" style="border-radius:12px;background:#fff;padding:8px;">';
+      }
+      
+      try { 
+          if (navigator.clipboard && window.isSecureContext) {
+              navigator.clipboard.writeText(url); 
+              status('Preview link copied to clipboard.', true); 
+          } else {
+              status('Preview link generated. Click the link above to test.', true);
+          }
+      } catch(e) { 
+          status('Preview link generated. Click the link above to test.', true); 
+      }
   };
 
   const _sw = window.switchTab;
