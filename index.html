@@ -1990,6 +1990,40 @@ body.cat-world-active .cat-mode-bar{display:block}
         body.light-mode .atm-card .atm-title{color:#0f172a;text-shadow:none}
         body.light-mode .atm-card .atm-desc{color:#475569}
 
+
+        .ios-toggle{position:relative;width:46px;height:28px;flex:none}
+        .ios-toggle input{opacity:0;width:0;height:0;position:absolute}
+        .ios-toggle span{
+          position:absolute;inset:0;border-radius:999px;background:rgba(120,120,128,.32);
+          transition:background .25s;cursor:pointer;
+        }
+        .ios-toggle span::after{
+          content:"";position:absolute;width:24px;height:24px;border-radius:50%;background:#fff;
+          top:2px;left:2px;box-shadow:0 2px 6px rgba(0,0,0,.25);transition:transform .25s;
+        }
+        .ios-toggle input:checked+span{background:#34c759}
+        .ios-toggle input:checked+span::after{transform:translateX(18px)}
+        .ios-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--glass-border)}
+        .ios-row:last-child{border-bottom:0}
+        .ios-row label{font-size:13px;font-weight:700;color:var(--text-main);flex:1}
+        .atm-preview-stage{
+          position:relative;height:220px;border-radius:16px;overflow:hidden;
+          border:1px solid var(--glass-border);background:#0a0c0e;margin-top:10px;
+        }
+        .atm-preview-stage .mini-card{
+          position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+          width:min(70%,200px);padding:18px 14px;border-radius:18px;text-align:center;
+          background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+          backdrop-filter:blur(12px);color:#fff;font-size:12px;font-weight:800;
+        }
+        .atm-collapsible-hd{
+          display:flex;align-items:center;justify-content:space-between;cursor:pointer;
+          padding:4px 0;user-select:none;
+        }
+        .atm-collapsible-hd .chev{transition:transform .25s;color:var(--text-dim)}
+        .atm-collapsible-hd.open .chev{transform:rotate(180deg)}
+        .fest-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--glass-border);font-size:12px}
+        .fest-row button{padding:8px 12px;font-size:11px;border-radius:10px}
 </style>
 </head>
 <body>
@@ -2265,79 +2299,74 @@ body.cat-world-active .cat-mode-bar{display:block}
         <div id="atmosphere" class="tab-section">
             <div class="section-box glass-panel float-anim" style="border-color:rgba(92,200,255,.35);">
                 <h2 style="margin-bottom:6px;">Atmosphere Studio</h2>
-                <p style="margin-bottom:16px;line-height:1.5;">Controls <b>login page</b> sky, corners, sound &amp; glass tint. Pick a preset → <b>APPLY TO LOGIN</b>. Live via Firebase.</p>
+                <p style="margin-bottom:14px;line-height:1.5;font-size:13px;">Login sky, festivals, 3D FX &amp; ambient MP3. <b>APPLY</b> pushes live. Preview runs <b>inside this panel</b>.</p>
 
-                <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;">
+                <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;">
                     <label style="font-size:12px;font-weight:800;color:var(--text-dim);">Preset</label>
-                    <select id="atmThemeSelect" style="flex:1;min-width:180px;padding:12px 14px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:700;">
-                        <option value="auto">Auto · clock + season + weather</option>
-                        <option value="native">Native · original app glass</option>
-                        <option value="day_sunny">Day · Sunny flare</option>
-                        <option value="day_haze">Day · Soft haze</option>
+                    <select id="atmThemeSelect" style="flex:1;min-width:160px;padding:12px 14px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:700;">
+                        <option value="auto">Auto · clock + festival + weather</option>
+                        <option value="native">Native</option>
+                        <option value="day_sunny">Day · Sunny</option>
+                        <option value="day_haze">Day · Haze</option>
                         <option value="golden">Golden hour</option>
-                        <option value="rain">Rain glass</option>
-                        <option value="night_stars">Night · Moon &amp; stars</option>
+                        <option value="rain">Rain</option>
+                        <option value="night_stars">Night · Stars</option>
                         <option value="night_aurora">Night · Aurora</option>
-                        <option value="cyber">Cyber neon</option>
-                        <option value="sakura">Cute · Sakura</option>
-                        <option value="ocean">Ocean depth</option>
-                        <option value="ember">Ember / dark fire</option>
-                        <option value="minimal">Minimal void</option>
+                        <option value="cyber">Cyber</option>
+                        <option value="sakura">Sakura</option>
+                        <option value="ocean">Ocean</option>
+                        <option value="ember">Ember</option>
+                        <option value="metroid">3D · Metroid shards</option>
+                        <option value="apex">3D · Apex fall</option>
+                        <option value="minimal">Minimal</option>
                     </select>
                 </div>
+                <div class="atm-grid" id="atmPresetGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;"></div>
 
-                <div class="atm-grid" id="atmPresetGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px;"></div>
-
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
                     <label style="font-size:12px;font-weight:700;color:var(--text-dim);">FX intensity
                         <input type="range" id="atmIntensity" min="40" max="100" value="80" style="width:100%;margin-top:6px;">
                     </label>
-                    <label style="font-size:12px;font-weight:700;color:var(--text-dim);">Particle density
+                    <label style="font-size:12px;font-weight:700;color:var(--text-dim);">Particles
                         <input type="range" id="atmParticles" min="20" max="100" value="60" style="width:100%;margin-top:6px;">
                     </label>
                 </div>
 
-                <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
-                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmReduceMotion"> Respect reduced motion</label>
-                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmHideJoinFx" checked> Keep JOIN badge animation</label>
-                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmSeason" checked> Season packs (when Auto)</label>
-                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmWeather" checked> Live weather (Open-Meteo)</label>
-                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmSound"> Ambient sound (mute on login)</label>
-                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmCardSkin" checked> Card skin tint matches theme</label>
+                <div style="margin-bottom:14px;">
+                    <div class="ios-row"><label>Festival themes (auto by date)</label><label class="ios-toggle"><input type="checkbox" id="atmFestival" checked><span></span></label></div>
+                    <div class="ios-row"><label>Live weather</label><label class="ios-toggle"><input type="checkbox" id="atmWeather" checked><span></span></label></div>
+                    <div class="ios-row"><label>Ambient MP3 (./sounds/atm/)</label><label class="ios-toggle"><input type="checkbox" id="atmSound"><span></span></label></div>
+                    <div class="ios-row"><label>Card skin tint</label><label class="ios-toggle"><input type="checkbox" id="atmCardSkin" checked><span></span></label></div>
+                    <div class="ios-row"><label>JOIN badge animation</label><label class="ios-toggle"><input type="checkbox" id="atmHideJoinFx" checked><span></span></label></div>
+                    <div class="ios-row"><label>Reduced motion</label><label class="ios-toggle"><input type="checkbox" id="atmReduceMotion"><span></span></label></div>
                 </div>
 
-                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
-                    <button class="btn" type="button" style="flex:1;min-width:140px;background:linear-gradient(135deg,#5cc8ff,var(--accent));color:#000;font-weight:900;" onclick="saveAtmosphereSettings()">APPLY TO LOGIN</button>
-                    <button class="btn" type="button" style="flex:1;min-width:140px;background:rgba(150,150,150,.2);color:var(--text-main);font-weight:800;" onclick="resetAtmosphereDefaults()">RESET DEFAULTS</button>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+                    <button class="btn" type="button" style="flex:1;min-width:120px;background:linear-gradient(135deg,#5cc8ff,var(--accent));color:#000;font-weight:900;" onclick="saveAtmosphereSettings()">APPLY TO LOGIN</button>
+                    <button class="btn" type="button" style="flex:1;min-width:120px;background:rgba(150,150,150,.2);color:var(--text-main);font-weight:800;" onclick="resetAtmosphereDefaults()">RESET DEFAULTS</button>
                 </div>
-                <p id="atmStatus" style="font-size:12px;font-weight:700;color:var(--text-dim);min-height:18px;margin-bottom:16px;"></p>
+                <p id="atmStatus" style="font-size:12px;font-weight:700;color:var(--text-dim);min-height:18px;margin-bottom:12px;"></p>
 
-                <div style="padding:14px;border-radius:14px;border:1px solid var(--glass-border);background:rgba(0,0,0,.12);">
-                    <div style="font-size:13px;font-weight:900;color:var(--text-main);margin-bottom:6px;">Preview link / QR</div>
-                    <p style="font-size:12px;color:var(--text-dim);margin:0 0 10px;line-height:1.45;">Opens login with <code>?atm=preset</code> so you can test without changing global setting. Paste your real login URL below.</p>
-                    <input type="url" id="atmPreviewBase" value="https://yourstylexdg.github.io/Admin/login.html" placeholder="https://…/login.html" style="width:100%;margin-bottom:8px;padding:12px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-                        <button class="btn" type="button" style="flex:1;" onclick="generateAtmPreviewQr()">GENERATE</button>
-                        <button class="btn" type="button" style="flex:1;background:rgba(92,200,255,.2);color:#5cc8ff;" onclick="openAtmPreviewLink()">OPEN LINK</button>
-                        <button class="btn" type="button" style="flex:1;" onclick="copyAtmPreviewLink()">COPY</button>
+                <div style="padding:12px 14px;border-radius:14px;border:1px solid var(--glass-border);background:rgba(0,0,0,.12);margin-bottom:14px;">
+                    <div class="atm-collapsible-hd open" id="atmPrevHd" onclick="toggleAtmPreviewSection()">
+                        <div style="font-size:13px;font-weight:900;">Live preview (in panel)</div>
+                        <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>
-                    <div id="atmQrBox" style="text-align:center;min-height:24px;"></div>
-                    <p id="atmPreviewLink" style="font-size:11px;word-break:break-all;color:var(--accent);font-weight:700;margin-top:8px;"></p>
+                    <div id="atmPrevBody">
+                        <p style="font-size:11px;color:var(--text-dim);margin:8px 0;">Tap a preset or festival <b>Try</b> — background + mini card update here (no external link).</p>
+                        <div class="atm-preview-stage" id="atmPreviewStage">
+                            <div class="mini-card">DGXEN · <span id="atmPreviewLabel">native</span></div>
+                        </div>
+                        <button class="btn" type="button" style="width:100%;margin-top:10px;" onclick="previewAtmosphereInPanel()">REFRESH PREVIEW</button>
+                    </div>
                 </div>
-            </div>
 
-            <div class="section-box glass-panel" style="margin-bottom:22px;">
-                <h2 style="font-size:17px;margin-bottom:8px;">What the two areas mean</h2>
-                <p style="margin:0 0 10px;font-size:13px;line-height:1.55;color:var(--text-dim);">
-                    <b style="color:var(--text-main);">Top block (Studio)</b> — live controls you use now: preset, intensity, weather, sound, apply/reset, preview QR.<br><br>
-                    <b style="color:var(--text-main);">This block (Ideas)</b> — future ideas only (not active switches). Notes for later builds.
-                </p>
-                <ul style="margin:0;padding-left:18px;color:var(--text-dim);font-size:13px;font-weight:600;line-height:1.7;">
-                    <li>Festival date packs with custom art packs</li>
-                    <li>Optional MP3 ambient files per preset (folder <code>./sounds/atm/</code>)</li>
-                    <li>Per-device theme override for testers</li>
-                    <li>Admin live “push theme now” without re-login</li>
-                </ul>
+                <div style="padding:12px 14px;border-radius:14px;border:1px solid var(--glass-border);">
+                    <div style="font-size:13px;font-weight:900;margin-bottom:8px;">India festivals · try in panel</div>
+                    <div id="atmFestList" style="max-height:280px;overflow:auto;"></div>
+                    <p style="font-size:11px;color:var(--text-dim);margin:10px 0 0;line-height:1.4;">Fixed national days + 2026 anchors for lunar festivals. Festival toggle ON → Auto uses today's match.</p>
+                </div>
+                <p style="font-size:11px;color:var(--text-dim);margin:12px 0 0;line-height:1.45;">MP3 optional: put loops in <code>./sounds/atm/</code> as rain.mp3, night.mp3, diwali.mp3, patriot.mp3, soft.mp3, cyber.mp3, ocean.mp3, ember.mp3, holi.mp3</p>
             </div>
         </div>
 
@@ -7463,47 +7492,62 @@ function explainFetchError(e) {
 // ===== ATMOSPHERE STUDIO =====
 (function(){
   const PRESETS = [
-    { id:'auto', title:'Auto', desc:'Clock + season + weather', sw:'linear-gradient(135deg,#1a2a3a,#0d1520)' },
-    { id:'native', title:'Native', desc:'Original glass · subtle orbs', sw:'linear-gradient(145deg,#0c1210,#151a18 50%,#0a0e0c)' },
-    { id:'day_sunny', title:'Sunny', desc:'Corner sun + warm flare', sw:'linear-gradient(135deg,#2a4a6a,#f0c060)' },
-    { id:'day_haze', title:'Haze', desc:'Soft morning light', sw:'linear-gradient(135deg,#3a4a55,#8aa0b0)' },
-    { id:'golden', title:'Golden', desc:'Low sunset sun', sw:'linear-gradient(135deg,#1a0c08,#e08030)' },
-    { id:'rain', title:'Rain', desc:'Glass rain lines', sw:'linear-gradient(135deg,#0a1520,#3a5570)' },
-    { id:'night_stars', title:'Stars', desc:'Moon + twinkles', sw:'linear-gradient(135deg,#02040a,#1a2040)' },
-    { id:'night_aurora', title:'Aurora', desc:'Northern glow', sw:'linear-gradient(135deg,#041018,#2a8060)' },
-    { id:'cyber', title:'Cyber', desc:'Neon grid', sw:'linear-gradient(135deg,#050812,#00c8a0 40%,#a000ff)' },
-    { id:'sakura', title:'Sakura', desc:'Cute pink petals', sw:'linear-gradient(135deg,#2a1520,#ff9ec0)' },
-    { id:'ocean', title:'Ocean', desc:'Deep blue drift', sw:'linear-gradient(135deg,#021018,#0a6a8a)' },
-    { id:'ember', title:'Ember', desc:'Dark fire glow', sw:'linear-gradient(135deg,#120805,#c04010)' },
-    { id:'minimal', title:'Minimal', desc:'Quiet void', sw:'linear-gradient(135deg,#030504,#0a0c0a)' }
+    { id:'auto', title:'Auto', desc:'Clock + festival + weather', sw:'linear-gradient(135deg,#1a2a3a,#0d1520)' },
+    { id:'native', title:'Native', desc:'Original glass', sw:'linear-gradient(145deg,#0c1210,#151a18)' },
+    { id:'day_sunny', title:'Sunny', desc:'Warm sun', sw:'linear-gradient(135deg,#2a4a6a,#f0c060)' },
+    { id:'rain', title:'Rain', desc:'Visible rain lines', sw:'linear-gradient(135deg,#0a1520,#3a5570)' },
+    { id:'night_stars', title:'Stars', desc:'Moon night', sw:'linear-gradient(135deg,#02040a,#1a2040)' },
+    { id:'cyber', title:'Cyber', desc:'Neon grid', sw:'linear-gradient(135deg,#050812,#00c8a0)' },
+    { id:'sakura', title:'Sakura', desc:'Petals', sw:'linear-gradient(135deg,#2a1520,#ff9ec0)' },
+    { id:'metroid', title:'Metroid', desc:'3D shards fall', sw:'linear-gradient(135deg,#020806,#00c8a0)' },
+    { id:'apex', title:'Apex', desc:'3D ember fall', sw:'linear-gradient(135deg,#120805,#c04010)' },
+    { id:'ocean', title:'Ocean', desc:'Deep blue', sw:'linear-gradient(135deg,#021018,#0a6a8a)' },
+    { id:'ember', title:'Ember', desc:'Fire glow', sw:'linear-gradient(135deg,#120805,#c04010)' },
+    { id:'minimal', title:'Minimal', desc:'Void', sw:'linear-gradient(135deg,#030504,#0a0c0a)' }
   ];
-
-  const DEFAULTS = {
-    loginTheme: 'auto',
-    atmIntensity: 80,
-    atmParticles: 60,
-    atmReduceMotion: false,
-    atmJoinFx: true,
-    atmSeason: true,
-    atmWeather: true,
-    atmSound: false,
-    atmCardSkin: true
+  const FESTIVALS = [
+    { md:'01-01', id:'fest_newyear', name:'New Year' },
+    { md:'01-14', id:'fest_sankranti', name:'Makar Sankranti / Pongal' },
+    { md:'01-26', id:'fest_republic', name:'Republic Day' },
+    { md:'03-04', id:'fest_holi', name:'Holi' },
+    { md:'08-15', id:'fest_independence', name:'Independence Day' },
+    { md:'08-28', id:'fest_rakhi', name:'Raksha Bandhan' },
+    { md:'09-04', id:'fest_janmashtami', name:'Janmashtami' },
+    { md:'09-05', id:'fest_teachers', name:"Teachers' Day" },
+    { md:'09-14', id:'fest_ganesh', name:'Ganesh Chaturthi' },
+    { md:'10-02', id:'fest_gandhi', name:'Gandhi Jayanti' },
+    { md:'10-21', id:'fest_dussehra', name:'Dussehra' },
+    { md:'11-08', id:'fest_diwali', name:'Diwali' },
+    { md:'11-14', id:'fest_children', name:"Children's Day" },
+    { md:'12-25', id:'fest_christmas', name:'Christmas' }
+  ];
+  const DEFAULTS = { loginTheme:'auto', atmIntensity:80, atmParticles:60, atmReduceMotion:false, atmJoinFx:true, atmSeason:true, atmWeather:true, atmSound:false, atmCardSkin:true, atmFestival:true };
+  const STAGE_BG = {
+    auto:'linear-gradient(160deg,#0d1520,#1a2a3a)', native:'linear-gradient(145deg,#020302,#070a08)',
+    day_sunny:'radial-gradient(circle at 80% 10%,rgba(255,200,80,.4),transparent 40%),linear-gradient(160deg,#0a1218,#0d1a14)',
+    rain:'linear-gradient(160deg,#060a0e,#0a1016)', night_stars:'linear-gradient(160deg,#02040a,#050812)',
+    cyber:'linear-gradient(150deg,#03010a,#050812)', sakura:'linear-gradient(160deg,#1a0c12,#120a10)',
+    metroid:'linear-gradient(160deg,#020806,#041210)', apex:'linear-gradient(165deg,#0a0604,#120805)',
+    ocean:'linear-gradient(165deg,#020c14,#041820)', ember:'linear-gradient(170deg,#100805,#0a0604)',
+    minimal:'#030504', golden:'linear-gradient(165deg,#1a0c08,#120e0a)',
+    fest_teachers:'linear-gradient(160deg,#120e08,#1a160e)', fest_children:'linear-gradient(160deg,#0c1020,#1a1830)',
+    fest_republic:'linear-gradient(160deg,#0a1020,#1a2038)', fest_independence:'linear-gradient(160deg,#0a1208,#102010)',
+    fest_holi:'linear-gradient(160deg,#1a0a14,#2a1030)', fest_diwali:'linear-gradient(160deg,#120805,#1a1008)',
+    fest_christmas:'linear-gradient(160deg,#061208,#0a1a10)', fest_newyear:'linear-gradient(160deg,#0a0a14,#141428)',
+    fest_gandhi:'linear-gradient(160deg,#0e100c,#161812)', fest_sankranti:'linear-gradient(160deg,#1a1208,#201808)',
+    fest_rakhi:'linear-gradient(160deg,#140a12,#1c1018)', fest_janmashtami:'linear-gradient(160deg,#0a1018,#101820)',
+    fest_ganesh:'linear-gradient(160deg,#120e08,#1a140c)', fest_dussehra:'linear-gradient(160deg,#140a08,#1c1008)'
   };
 
-  let lastPreviewUrl = '';
-
+  function g(id){ return document.getElementById(id); }
   function status(msg, ok) {
-    const el = document.getElementById('atmStatus');
-    if (!el) return;
+    const el = g('atmStatus'); if (!el) return;
     el.textContent = msg || '';
     el.style.color = ok === false ? 'var(--error)' : (ok ? 'var(--accent)' : 'var(--text-dim)');
   }
 
-  function g(id){ return document.getElementById(id); }
-
   function renderGrid(active) {
-    const box = g('atmPresetGrid');
-    if (!box) return;
+    const box = g('atmPresetGrid'); if (!box) return;
     box.innerHTML = PRESETS.map(p => {
       const on = p.id === active ? ' active' : '';
       return '<div class="atm-card'+on+'" data-atm="'+p.id+'"><div class="atm-swatch" style="background:'+p.sw+'"></div><div class="atm-title">'+p.title+'</div><div class="atm-desc">'+p.desc+'</div></div>';
@@ -7513,9 +7557,47 @@ function explainFetchError(e) {
         const id = this.getAttribute('data-atm');
         if (g('atmThemeSelect')) g('atmThemeSelect').value = id;
         box.querySelectorAll('.atm-card').forEach(c => c.classList.toggle('active', c === this));
+        previewAtmosphereInPanel(id);
       });
     });
   }
+
+  function renderFestList() {
+    const box = g('atmFestList'); if (!box) return;
+    const today = new Date();
+    const md = String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+    box.innerHTML = FESTIVALS.map(f => {
+      const isToday = f.md === md ? ' · <b style="color:var(--accent)">TODAY</b>' : '';
+      return '<div class="fest-row"><div style="flex:1;font-weight:700;color:var(--text-main)">'+f.name+' <span style="color:var(--text-dim);font-weight:600">('+f.md+')</span>'+isToday+'</div><button class="btn" type="button" data-fest="'+f.id+'">Try</button></div>';
+    }).join('');
+    box.querySelectorAll('[data-fest]').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const id = this.getAttribute('data-fest');
+        if (g('atmThemeSelect')) {
+          // temporary select value not in dropdown — still preview
+        }
+        previewAtmosphereInPanel(id);
+        status('Preview: ' + id + ' (Apply only if you set preset to Auto or save a matching force later)', true);
+      });
+    });
+  }
+
+  window.toggleAtmPreviewSection = function() {
+    const hd = g('atmPrevHd');
+    const body = g('atmPrevBody');
+    if (!hd || !body) return;
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'block';
+    hd.classList.toggle('open', !open);
+  };
+
+  window.previewAtmosphereInPanel = function(theme) {
+    const t = theme || (g('atmThemeSelect') && g('atmThemeSelect').value) || 'native';
+    const stage = g('atmPreviewStage');
+    const lab = g('atmPreviewLabel');
+    if (lab) lab.textContent = t;
+    if (stage) stage.style.background = STAGE_BG[t] || STAGE_BG.native;
+  };
 
   function readForm() {
     return {
@@ -7524,98 +7606,42 @@ function explainFetchError(e) {
       atmParticles: Number(g('atmParticles') && g('atmParticles').value) || 60,
       atmReduceMotion: !!(g('atmReduceMotion') && g('atmReduceMotion').checked),
       atmJoinFx: !!(g('atmHideJoinFx') && g('atmHideJoinFx').checked),
-      atmSeason: !!(g('atmSeason') && g('atmSeason').checked),
       atmWeather: !!(g('atmWeather') && g('atmWeather').checked),
       atmSound: !!(g('atmSound') && g('atmSound').checked),
-      atmCardSkin: !!(g('atmCardSkin') && g('atmCardSkin').checked)
+      atmCardSkin: !!(g('atmCardSkin') && g('atmCardSkin').checked),
+      atmFestival: !!(g('atmFestival') && g('atmFestival').checked),
+      atmSeason: true
     };
   }
 
   function writeForm(v) {
-    v = v || DEFAULTS;
+    v = Object.assign({}, DEFAULTS, v || {});
     if (g('atmThemeSelect')) g('atmThemeSelect').value = v.loginTheme || 'auto';
     if (g('atmIntensity')) g('atmIntensity').value = v.atmIntensity != null ? v.atmIntensity : 80;
     if (g('atmParticles')) g('atmParticles').value = v.atmParticles != null ? v.atmParticles : 60;
-    if (g('atmReduceMotion')) g('atmReduceMotion').checked = !!v.atmReduceMotion;
-    if (g('atmHideJoinFx')) g('atmHideJoinFx').checked = v.atmJoinFx === false ? false : true;
-    if (g('atmSeason')) g('atmSeason').checked = v.atmSeason !== false;
-    if (g('atmWeather')) g('atmWeather').checked = v.atmWeather !== false;
-    if (g('atmSound')) g('atmSound').checked = !!v.atmSound;
-    if (g('atmCardSkin')) g('atmCardSkin').checked = v.atmCardSkin !== false;
+    ['atmReduceMotion','atmHideJoinFx','atmWeather','atmSound','atmCardSkin','atmFestival'].forEach(function(id) {
+      const el = g(id);
+      if (!el) return;
+      if (id === 'atmHideJoinFx') el.checked = v.atmJoinFx === false ? false : true;
+      else if (id === 'atmFestival') el.checked = v.atmFestival !== false;
+      else if (id === 'atmWeather') el.checked = v.atmWeather !== false;
+      else if (id === 'atmCardSkin') el.checked = v.atmCardSkin !== false;
+      else if (id === 'atmSound') el.checked = !!v.atmSound;
+      else if (id === 'atmReduceMotion') el.checked = !!v.atmReduceMotion;
+    });
     renderGrid(v.loginTheme || 'auto');
+    previewAtmosphereInPanel(v.loginTheme || 'auto');
   }
-
-  function buildPreviewUrl() {
-    let base = (g('atmPreviewBase') && g('atmPreviewBase').value || '').trim();
-    if (!base) base = 'https://yourstylexdg.github.io/Admin/login.html';
-    // strip existing atm param
-    try {
-      const u = new URL(base, location.href);
-      u.searchParams.delete('atm');
-      const theme = (g('atmThemeSelect') && g('atmThemeSelect').value) || 'auto';
-      u.searchParams.set('atm', theme);
-      return u.toString();
-    } catch (e) {
-      const theme = (g('atmThemeSelect') && g('atmThemeSelect').value) || 'auto';
-      const join = base.indexOf('?') >= 0 ? '&' : '?';
-      return base + join + 'atm=' + encodeURIComponent(theme);
-    }
-  }
-
-  window.generateAtmPreviewQr = function() {
-    try {
-      const url = buildPreviewUrl();
-      lastPreviewUrl = url;
-      if (g('atmPreviewLink')) g('atmPreviewLink').textContent = url;
-      if (g('atmQrBox')) {
-        const src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=' + encodeURIComponent(url);
-        g('atmQrBox').innerHTML = '<img src="'+src+'" width="180" height="180" alt="QR" style="border-radius:12px;background:#fff;padding:8px;max-width:100%;height:auto;">';
-      }
-      status('Preview ready for ' + ((g('atmThemeSelect')&&g('atmThemeSelect').value)||'auto'), true);
-    } catch (e) {
-      status('Preview error: ' + (e.message || e), false);
-      console.error(e);
-    }
-  };
-
-  window.openAtmPreviewLink = function() {
-    const url = lastPreviewUrl || buildPreviewUrl();
-    lastPreviewUrl = url;
-    if (g('atmPreviewLink')) g('atmPreviewLink').textContent = url;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  window.copyAtmPreviewLink = async function() {
-    const url = lastPreviewUrl || buildPreviewUrl();
-    lastPreviewUrl = url;
-    if (g('atmPreviewLink')) g('atmPreviewLink').textContent = url;
-    try {
-      await navigator.clipboard.writeText(url);
-      status('Link copied.', true);
-    } catch (e) {
-      status('Copy failed — select link text manually.', false);
-    }
-  };
 
   window.loadAtmosphereSettings = async function() {
     try {
       const snap = await get(ref(db, 'settings/notice'));
       const v = snap.exists() ? (snap.val() || {}) : {};
-      writeForm({
-        loginTheme: v.loginTheme || 'auto',
-        atmIntensity: v.atmIntensity,
-        atmParticles: v.atmParticles,
-        atmReduceMotion: v.atmReduceMotion,
-        atmJoinFx: v.atmJoinFx,
-        atmSeason: v.atmSeason,
-        atmWeather: v.atmWeather,
-        atmSound: v.atmSound,
-        atmCardSkin: v.atmCardSkin
-      });
-      status('', null);
+      writeForm(v);
+      renderFestList();
     } catch (e) {
       writeForm(DEFAULTS);
-      status('Load failed — showing defaults', false);
+      renderFestList();
     }
   };
 
@@ -7623,16 +7649,13 @@ function explainFetchError(e) {
     try {
       const snap = await get(ref(db, 'settings/notice'));
       const v = snap.exists() ? (snap.val() || {}) : {};
-      const f = readForm();
-      Object.assign(v, f);
+      Object.assign(v, readForm());
       v.loginThemeLock = false;
       v.atmUpdatedAt = Date.now();
       await set(ref(db, 'settings/notice'), v);
-      renderGrid(f.loginTheme);
+      renderGrid(v.loginTheme);
       status('Saved · login updates live.', true);
-    } catch (e) {
-      status(e.message || String(e), false);
-    }
+    } catch (e) { status(e.message || String(e), false); }
   };
 
   window.resetAtmosphereDefaults = async function() {
@@ -7644,10 +7667,8 @@ function explainFetchError(e) {
       v.loginThemeLock = false;
       v.atmUpdatedAt = Date.now();
       await set(ref(db, 'settings/notice'), v);
-      status('Reset to defaults and saved.', true);
-    } catch (e) {
-      status('UI reset. Save failed: ' + (e.message || e), false);
-    }
+      status('Reset to defaults.', true);
+    } catch (e) { status('UI reset. Save failed.', false); }
   };
 
   const _sw = window.switchTab;
@@ -7658,14 +7679,14 @@ function explainFetchError(e) {
     };
     window.switchTab._atmHooked = true;
   }
-
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function(){ renderGrid('auto'); loadAtmosphereSettings(); });
+    document.addEventListener('DOMContentLoaded', function(){ renderGrid('auto'); renderFestList(); loadAtmosphereSettings(); });
   } else {
-    renderGrid('auto');
+    renderGrid('auto'); renderFestList();
     try { loadAtmosphereSettings(); } catch (e) {}
   }
 })();
+
 
 
 
