@@ -2262,19 +2262,16 @@ body.cat-world-active .cat-mode-bar{display:block}
         <!-- Security moved to FAB (bottom-left) -->
 
         
-                <div id="atmosphere" class="tab-section">
+        <div id="atmosphere" class="tab-section">
             <div class="section-box glass-panel float-anim" style="border-color:rgba(92,200,255,.35);">
-                <h2 style="margin-bottom:6px; display: flex; justify-content: space-between; align-items: center;">
-                    <span>Atmosphere Studio</span>
-                    <button class="btn" style="background:rgba(255,59,48,0.15); color:var(--error); padding:6px 12px; font-size:11px;" onclick="resetAtmosphere()">RESET DEFAULTS</button>
-                </h2>
-                <p style="margin-bottom:18px;">Login page sky, corners &amp; mood. Pick a preset — live on devices after save. <b>Native</b> = original DGXEN glass.</p>
+                <h2 style="margin-bottom:6px;">Atmosphere Studio</h2>
+                <p style="margin-bottom:16px;line-height:1.5;">Controls <b>login page</b> sky, corners, sound &amp; glass tint. Pick a preset → <b>APPLY TO LOGIN</b>. Live via Firebase.</p>
 
-                <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px;">
-                    <label style="font-size:12px;font-weight:800;color:var(--text-dim);">Mode</label>
+                <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;">
+                    <label style="font-size:12px;font-weight:800;color:var(--text-dim);">Preset</label>
                     <select id="atmThemeSelect" style="flex:1;min-width:180px;padding:12px 14px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:700;">
-                        <option value="auto">Auto · clock day/night</option>
-                        <option value="native">Native · original app</option>
+                        <option value="auto">Auto · clock + season + weather</option>
+                        <option value="native">Native · original app glass</option>
                         <option value="day_sunny">Day · Sunny flare</option>
                         <option value="day_haze">Day · Soft haze</option>
                         <option value="golden">Golden hour</option>
@@ -2282,16 +2279,16 @@ body.cat-world-active .cat-mode-bar{display:block}
                         <option value="night_stars">Night · Moon &amp; stars</option>
                         <option value="night_aurora">Night · Aurora</option>
                         <option value="cyber">Cyber neon</option>
-                        <option value="sakura">Cute · Sakura drift</option>
+                        <option value="sakura">Cute · Sakura</option>
                         <option value="ocean">Ocean depth</option>
                         <option value="ember">Ember / dark fire</option>
                         <option value="minimal">Minimal void</option>
                     </select>
                 </div>
 
-                <div class="atm-grid" id="atmPresetGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px;"></div>
+                <div class="atm-grid" id="atmPresetGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px;"></div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
                     <label style="font-size:12px;font-weight:700;color:var(--text-dim);">FX intensity
                         <input type="range" id="atmIntensity" min="40" max="100" value="80" style="width:100%;margin-top:6px;">
                     </label>
@@ -2300,56 +2297,47 @@ body.cat-world-active .cat-mode-bar{display:block}
                     </label>
                 </div>
 
-                <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+                <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
                     <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmReduceMotion"> Respect reduced motion</label>
                     <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmHideJoinFx" checked> Keep JOIN badge animation</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmSeason" checked> Season packs (when Auto)</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmWeather" checked> Live weather (Open-Meteo)</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmSound"> Ambient sound (mute on login)</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmCardSkin" checked> Card skin tint matches theme</label>
                 </div>
 
-                <div style="background:rgba(0,0,0,0.15); padding:14px; border-radius:14px; margin-bottom:18px; border:1px solid var(--glass-border);">
-                    <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:10px;">SMART LAYERS</div>
-                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px;"><input type="checkbox" id="atmSeason" checked> Season packs (festive auto when Auto)</label>
-                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px;"><input type="checkbox" id="atmWeather" checked> Live weather (Open-Meteo near device)</label>
-                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:8px;"><input type="checkbox" id="atmSound"> Ambient sound bed (mute on login)</label>
-                    <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;"><input type="checkbox" id="atmCardSkin" checked> Card skin tint matches atmosphere</label>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+                    <button class="btn" type="button" style="flex:1;min-width:140px;background:linear-gradient(135deg,#5cc8ff,var(--accent));color:#000;font-weight:900;" onclick="saveAtmosphereSettings()">APPLY TO LOGIN</button>
+                    <button class="btn" type="button" style="flex:1;min-width:140px;background:rgba(150,150,150,.2);color:var(--text-main);font-weight:800;" onclick="resetAtmosphereDefaults()">RESET DEFAULTS</button>
                 </div>
+                <p id="atmStatus" style="font-size:12px;font-weight:700;color:var(--text-dim);min-height:18px;margin-bottom:16px;"></p>
 
-                <div style="margin-bottom:14px;padding:14px;border-radius:14px;border:1px dashed var(--glass-border);">
-                    <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:6px;">PREVIEW LINK / QR</div>
-                    <input type="text" id="atmPreviewBase" placeholder="https://yourstylexdg.github.io/Admin/login.html" style="width:100%;margin-bottom:8px;padding:12px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
-                    <button class="btn" type="button" style="width:100%;" onclick="generateAtmPreviewQr()">GENERATE PREVIEW</button>
-                    <div id="atmQrBox" style="text-align:center;margin-top:10px;"></div>
+                <div style="padding:14px;border-radius:14px;border:1px solid var(--glass-border);background:rgba(0,0,0,.12);">
+                    <div style="font-size:13px;font-weight:900;color:var(--text-main);margin-bottom:6px;">Preview link / QR</div>
+                    <p style="font-size:12px;color:var(--text-dim);margin:0 0 10px;line-height:1.45;">Opens login with <code>?atm=preset</code> so you can test without changing global setting. Paste your real login URL below.</p>
+                    <input type="url" id="atmPreviewBase" value="https://yourstylexdg.github.io/Admin/login.html" placeholder="https://…/login.html" style="width:100%;margin-bottom:8px;padding:12px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                        <button class="btn" type="button" style="flex:1;" onclick="generateAtmPreviewQr()">GENERATE</button>
+                        <button class="btn" type="button" style="flex:1;background:rgba(92,200,255,.2);color:#5cc8ff;" onclick="openAtmPreviewLink()">OPEN LINK</button>
+                        <button class="btn" type="button" style="flex:1;" onclick="copyAtmPreviewLink()">COPY</button>
+                    </div>
+                    <div id="atmQrBox" style="text-align:center;min-height:24px;"></div>
                     <p id="atmPreviewLink" style="font-size:11px;word-break:break-all;color:var(--accent);font-weight:700;margin-top:8px;"></p>
                 </div>
-                
-                <div class="input-group" style="margin-bottom:12px;">
-                    <button class="btn" type="button" style="background:linear-gradient(135deg,#5cc8ff,var(--accent));color:#000;width:100%;font-weight:900;" onclick="saveAtmosphereSettings()">APPLY TO LOGIN</button>
-                </div>
-                <p id="atmStatus" style="font-size:12px;font-weight:700;color:var(--text-dim);min-height:18px;"></p>
             </div>
-        </div>
 
-            <div class="section-box glass-panel" style="margin-bottom:18px;">
-                <h2 style="font-size:18px;margin-bottom:10px;">Smart layers</h2>
-                <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:10px;">
-                    <input type="checkbox" id="atmSeasonPack" checked> Season packs (festival / month auto when theme = Auto)
-                </label>
-                <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:10px;">
-                    <input type="checkbox" id="atmWeather" checked> Live weather (Open-Meteo · rain/clear near device)
-                </label>
-                <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:10px;">
-                    <input type="checkbox" id="atmSound"> Ambient sound bed (soft loop · user can mute on login)
-                </label>
-                <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:10px;">
-                    <input type="checkbox" id="atmCardSkin" checked> Card skin tint matches atmosphere
-                </label>
-                <div style="margin-top:14px;padding:14px;border-radius:14px;border:1px dashed var(--glass-border);">
-                    <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:8px;">PREVIEW QR</div>
-                    <p style="font-size:12px;color:var(--text-dim);margin:0 0 10px;line-height:1.45;">Encode login URL + selected theme so a phone can test without changing global Auto.</p>
-                    <input type="text" id="atmPreviewBase" placeholder="https://yourstylexdg.github.io/Admin/login.html" style="width:100%;margin-bottom:10px;padding:12px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
-                    <button class="btn" type="button" style="width:100%;margin-bottom:10px;" onclick="generateAtmPreviewQr()">GENERATE PREVIEW LINK / QR</button>
-                    <div id="atmQrBox" style="text-align:center;min-height:20px;"></div>
-                    <p id="atmPreviewLink" style="font-size:11px;word-break:break-all;color:var(--accent);font-weight:700;margin-top:8px;"></p>
-                </div>
+            <div class="section-box glass-panel" style="margin-bottom:22px;">
+                <h2 style="font-size:17px;margin-bottom:8px;">What the two areas mean</h2>
+                <p style="margin:0 0 10px;font-size:13px;line-height:1.55;color:var(--text-dim);">
+                    <b style="color:var(--text-main);">Top block (Studio)</b> — live controls you use now: preset, intensity, weather, sound, apply/reset, preview QR.<br><br>
+                    <b style="color:var(--text-main);">This block (Ideas)</b> — future ideas only (not active switches). Notes for later builds.
+                </p>
+                <ul style="margin:0;padding-left:18px;color:var(--text-dim);font-size:13px;font-weight:600;line-height:1.7;">
+                    <li>Festival date packs with custom art packs</li>
+                    <li>Optional MP3 ambient files per preset (folder <code>./sounds/atm/</code>)</li>
+                    <li>Per-device theme override for testers</li>
+                    <li>Admin live “push theme now” without re-login</li>
+                </ul>
             </div>
         </div>
 
@@ -7490,6 +7478,20 @@ function explainFetchError(e) {
     { id:'minimal', title:'Minimal', desc:'Quiet void', sw:'linear-gradient(135deg,#030504,#0a0c0a)' }
   ];
 
+  const DEFAULTS = {
+    loginTheme: 'auto',
+    atmIntensity: 80,
+    atmParticles: 60,
+    atmReduceMotion: false,
+    atmJoinFx: true,
+    atmSeason: true,
+    atmWeather: true,
+    atmSound: false,
+    atmCardSkin: true
+  };
+
+  let lastPreviewUrl = '';
+
   function status(msg, ok) {
     const el = document.getElementById('atmStatus');
     if (!el) return;
@@ -7497,47 +7499,123 @@ function explainFetchError(e) {
     el.style.color = ok === false ? 'var(--error)' : (ok ? 'var(--accent)' : 'var(--text-dim)');
   }
 
+  function g(id){ return document.getElementById(id); }
+
   function renderGrid(active) {
-    const g = document.getElementById('atmPresetGrid');
-    if (!g) return;
-    g.innerHTML = PRESETS.map(p => {
+    const box = g('atmPresetGrid');
+    if (!box) return;
+    box.innerHTML = PRESETS.map(p => {
       const on = p.id === active ? ' active' : '';
       return '<div class="atm-card'+on+'" data-atm="'+p.id+'"><div class="atm-swatch" style="background:'+p.sw+'"></div><div class="atm-title">'+p.title+'</div><div class="atm-desc">'+p.desc+'</div></div>';
     }).join('');
-    g.querySelectorAll('.atm-card').forEach(card => {
+    box.querySelectorAll('.atm-card').forEach(card => {
       card.addEventListener('click', function() {
         const id = this.getAttribute('data-atm');
-        const sel = document.getElementById('atmThemeSelect');
-        if (sel) sel.value = id;
-        g.querySelectorAll('.atm-card').forEach(c => c.classList.toggle('active', c === this));
+        if (g('atmThemeSelect')) g('atmThemeSelect').value = id;
+        box.querySelectorAll('.atm-card').forEach(c => c.classList.toggle('active', c === this));
       });
     });
   }
+
+  function readForm() {
+    return {
+      loginTheme: (g('atmThemeSelect') && g('atmThemeSelect').value) || 'auto',
+      atmIntensity: Number(g('atmIntensity') && g('atmIntensity').value) || 80,
+      atmParticles: Number(g('atmParticles') && g('atmParticles').value) || 60,
+      atmReduceMotion: !!(g('atmReduceMotion') && g('atmReduceMotion').checked),
+      atmJoinFx: !!(g('atmHideJoinFx') && g('atmHideJoinFx').checked),
+      atmSeason: !!(g('atmSeason') && g('atmSeason').checked),
+      atmWeather: !!(g('atmWeather') && g('atmWeather').checked),
+      atmSound: !!(g('atmSound') && g('atmSound').checked),
+      atmCardSkin: !!(g('atmCardSkin') && g('atmCardSkin').checked)
+    };
+  }
+
+  function writeForm(v) {
+    v = v || DEFAULTS;
+    if (g('atmThemeSelect')) g('atmThemeSelect').value = v.loginTheme || 'auto';
+    if (g('atmIntensity')) g('atmIntensity').value = v.atmIntensity != null ? v.atmIntensity : 80;
+    if (g('atmParticles')) g('atmParticles').value = v.atmParticles != null ? v.atmParticles : 60;
+    if (g('atmReduceMotion')) g('atmReduceMotion').checked = !!v.atmReduceMotion;
+    if (g('atmHideJoinFx')) g('atmHideJoinFx').checked = v.atmJoinFx === false ? false : true;
+    if (g('atmSeason')) g('atmSeason').checked = v.atmSeason !== false;
+    if (g('atmWeather')) g('atmWeather').checked = v.atmWeather !== false;
+    if (g('atmSound')) g('atmSound').checked = !!v.atmSound;
+    if (g('atmCardSkin')) g('atmCardSkin').checked = v.atmCardSkin !== false;
+    renderGrid(v.loginTheme || 'auto');
+  }
+
+  function buildPreviewUrl() {
+    let base = (g('atmPreviewBase') && g('atmPreviewBase').value || '').trim();
+    if (!base) base = 'https://yourstylexdg.github.io/Admin/login.html';
+    // strip existing atm param
+    try {
+      const u = new URL(base, location.href);
+      u.searchParams.delete('atm');
+      const theme = (g('atmThemeSelect') && g('atmThemeSelect').value) || 'auto';
+      u.searchParams.set('atm', theme);
+      return u.toString();
+    } catch (e) {
+      const theme = (g('atmThemeSelect') && g('atmThemeSelect').value) || 'auto';
+      const join = base.indexOf('?') >= 0 ? '&' : '?';
+      return base + join + 'atm=' + encodeURIComponent(theme);
+    }
+  }
+
+  window.generateAtmPreviewQr = function() {
+    try {
+      const url = buildPreviewUrl();
+      lastPreviewUrl = url;
+      if (g('atmPreviewLink')) g('atmPreviewLink').textContent = url;
+      if (g('atmQrBox')) {
+        const src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=' + encodeURIComponent(url);
+        g('atmQrBox').innerHTML = '<img src="'+src+'" width="180" height="180" alt="QR" style="border-radius:12px;background:#fff;padding:8px;max-width:100%;height:auto;">';
+      }
+      status('Preview ready for ' + ((g('atmThemeSelect')&&g('atmThemeSelect').value)||'auto'), true);
+    } catch (e) {
+      status('Preview error: ' + (e.message || e), false);
+      console.error(e);
+    }
+  };
+
+  window.openAtmPreviewLink = function() {
+    const url = lastPreviewUrl || buildPreviewUrl();
+    lastPreviewUrl = url;
+    if (g('atmPreviewLink')) g('atmPreviewLink').textContent = url;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  window.copyAtmPreviewLink = async function() {
+    const url = lastPreviewUrl || buildPreviewUrl();
+    lastPreviewUrl = url;
+    if (g('atmPreviewLink')) g('atmPreviewLink').textContent = url;
+    try {
+      await navigator.clipboard.writeText(url);
+      status('Link copied.', true);
+    } catch (e) {
+      status('Copy failed — select link text manually.', false);
+    }
+  };
 
   window.loadAtmosphereSettings = async function() {
     try {
       const snap = await get(ref(db, 'settings/notice'));
       const v = snap.exists() ? (snap.val() || {}) : {};
-      const theme = v.loginTheme || 'auto';
-      const set = (id, val, isCheck) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        if (isCheck) el.checked = !!val; else el.value = val;
-      };
-      set('atmThemeSelect', theme);
-      set('atmIntensity', v.atmIntensity != null ? v.atmIntensity : 80);
-      set('atmParticles', v.atmParticles != null ? v.atmParticles : 60);
-      set('atmReduceMotion', !!v.atmReduceMotion, true);
-      set('atmHideJoinFx', v.atmJoinFx === false ? false : true, true);
-      set('atmSeason', v.atmSeason !== false, true);
-      set('atmWeather', v.atmWeather !== false, true);
-      set('atmSound', !!v.atmSound, true);
-      set('atmCardSkin', v.atmCardSkin !== false, true);
-      renderGrid(theme);
-      const old = document.getElementById('loginThemeSelect');
-      if (old) old.value = theme;
+      writeForm({
+        loginTheme: v.loginTheme || 'auto',
+        atmIntensity: v.atmIntensity,
+        atmParticles: v.atmParticles,
+        atmReduceMotion: v.atmReduceMotion,
+        atmJoinFx: v.atmJoinFx,
+        atmSeason: v.atmSeason,
+        atmWeather: v.atmWeather,
+        atmSound: v.atmSound,
+        atmCardSkin: v.atmCardSkin
+      });
+      status('', null);
     } catch (e) {
-      renderGrid('auto');
+      writeForm(DEFAULTS);
+      status('Load failed — showing defaults', false);
     }
   };
 
@@ -7545,76 +7623,31 @@ function explainFetchError(e) {
     try {
       const snap = await get(ref(db, 'settings/notice'));
       const v = snap.exists() ? (snap.val() || {}) : {};
-      const g = id => document.getElementById(id);
-      const theme = (g('atmThemeSelect') && g('atmThemeSelect').value) || 'auto';
-      v.loginTheme = theme;
+      const f = readForm();
+      Object.assign(v, f);
       v.loginThemeLock = false;
-      v.atmIntensity = Number(g('atmIntensity') && g('atmIntensity').value) || 80;
-      v.atmParticles = Number(g('atmParticles') && g('atmParticles').value) || 60;
-      v.atmReduceMotion = !!(g('atmReduceMotion') && g('atmReduceMotion').checked);
-      v.atmJoinFx = !!(g('atmHideJoinFx') && g('atmHideJoinFx').checked);
-      v.atmSeason = !!(g('atmSeason') && g('atmSeason').checked);
-      v.atmWeather = !!(g('atmWeather') && g('atmWeather').checked);
-      v.atmSound = !!(g('atmSound') && g('atmSound').checked);
-      v.atmCardSkin = !!(g('atmCardSkin') && g('atmCardSkin').checked);
       v.atmUpdatedAt = Date.now();
       await set(ref(db, 'settings/notice'), v);
-      renderGrid(theme);
-      status('Saved · login will update live.', true);
+      renderGrid(f.loginTheme);
+      status('Saved · login updates live.', true);
     } catch (e) {
       status(e.message || String(e), false);
     }
   };
 
-    // Naya Reset Button Function
-  window.resetAtmosphere = async function() {
-      if(!confirm("Reset atmosphere settings to default?")) return;
-      try {
-          const snap = await get(ref(db, 'settings/notice'));
-          const v = snap.exists() ? (snap.val() || {}) : {};
-          v.loginTheme = 'auto';
-          v.atmIntensity = 80;
-          v.atmParticles = 60;
-          v.atmReduceMotion = false;
-          v.atmJoinFx = true;
-          v.atmSeason = true;
-          v.atmWeather = true;
-          v.atmSound = false;
-          v.atmCardSkin = true;
-          await set(ref(db, 'settings/notice'), v);
-          loadAtmosphereSettings();
-          status('Settings reset to default.', true);
-      } catch (e) {
-          status('Reset failed: ' + e.message, false);
-      }
-  };
-
-  // Fixed Generate QR / Link Function
-  window.generateAtmPreviewQr = function() {
-      const base = (document.getElementById('atmPreviewBase') && document.getElementById('atmPreviewBase').value || '').trim() || 'https://yourstylexdg.github.io/Admin/login.html';
-      const theme = (document.getElementById('atmThemeSelect') && document.getElementById('atmThemeSelect').value) || 'auto';
-      const url = base + (base.indexOf('?') >= 0 ? '&' : '?') + 'atm=' + encodeURIComponent(theme);
-      const link = document.getElementById('atmPreviewLink');
-      const box = document.getElementById('atmQrBox');
-      
-      // Clickable link fallback
-      if (link) link.innerHTML = '<a href="'+url+'" target="_blank" style="color:var(--accent);">'+url+'</a>';
-      
-      if (box) {
-          const src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(url);
-          box.innerHTML = '<img src="'+src+'" alt="QR" width="180" height="180" style="border-radius:12px;background:#fff;padding:8px;">';
-      }
-      
-      try { 
-          if (navigator.clipboard && window.isSecureContext) {
-              navigator.clipboard.writeText(url); 
-              status('Preview link copied to clipboard.', true); 
-          } else {
-              status('Preview link generated. Click the link above to test.', true);
-          }
-      } catch(e) { 
-          status('Preview link generated. Click the link above to test.', true); 
-      }
+  window.resetAtmosphereDefaults = async function() {
+    writeForm(DEFAULTS);
+    try {
+      const snap = await get(ref(db, 'settings/notice'));
+      const v = snap.exists() ? (snap.val() || {}) : {};
+      Object.assign(v, DEFAULTS);
+      v.loginThemeLock = false;
+      v.atmUpdatedAt = Date.now();
+      await set(ref(db, 'settings/notice'), v);
+      status('Reset to defaults and saved.', true);
+    } catch (e) {
+      status('UI reset. Save failed: ' + (e.message || e), false);
+    }
   };
 
   const _sw = window.switchTab;
@@ -7625,13 +7658,15 @@ function explainFetchError(e) {
     };
     window.switchTab._atmHooked = true;
   }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function(){ renderGrid('auto'); loadAtmosphereSettings(); });
   } else {
     renderGrid('auto');
-    try { loadAtmosphereSettings(); } catch(e) {}
+    try { loadAtmosphereSettings(); } catch (e) {}
   }
 })();
+
 
 
 </script>
