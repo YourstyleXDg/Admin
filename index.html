@@ -2151,7 +2151,8 @@ body.cat-world-active .cat-mode-bar{display:block}
                             <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:8px;letter-spacing:.4px;">LOGIN ATMOSPHERE (login page)</div>
                             <select id="loginThemeSelect" style="width:100%;padding:12px 14px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:700;margin-bottom:10px;">
                                 <option value="auto">Auto (day / night by clock)</option>
-                                <option value="day_sunny">Day · Sunny</option>
+                                <option value="morning">Morning · Dew & leaves</option>
+                                <option value="day_sunny">Afternoon · Sunny</option>
                                 <option value="day_haze">Day · Soft haze</option>
                                 <option value="golden">Golden hour</option>
                                 <option value="rain">Rainy glass</option>
@@ -2306,7 +2307,8 @@ body.cat-world-active .cat-mode-bar{display:block}
                     <select id="atmThemeSelect" style="flex:1;min-width:160px;padding:12px 14px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:700;">
                         <option value="auto">Auto · clock + festival + weather</option>
                         <option value="native">Native</option>
-                        <option value="day_sunny">Day · Sunny</option>
+                        <option value="morning">Morning · Dew & leaves</option>
+                                <option value="day_sunny">Afternoon · Sunny</option>
                         <option value="day_haze">Day · Haze</option>
                         <option value="golden">Golden hour</option>
                         <option value="rain">Rain</option>
@@ -2362,9 +2364,12 @@ body.cat-world-active .cat-mode-bar{display:block}
                 </div>
 
                 <div style="padding:12px 14px;border-radius:14px;border:1px solid var(--glass-border);">
-                    <div style="font-size:13px;font-weight:900;margin-bottom:8px;">India festivals · try in panel</div>
-                    <div id="atmFestList" style="max-height:280px;overflow:auto;"></div>
-                    <p style="font-size:11px;color:var(--text-dim);margin:10px 0 0;line-height:1.4;">Fixed national days + 2026 anchors for lunar festivals. Festival toggle ON → Auto uses today's match.</p>
+                    <div class="atm-collapsible-hd open" id="atmFestHd" onclick="toggleAtmFestivalSection()">
+                        <div style="font-size:13px;font-weight:900;">India festivals · try in panel</div>
+                        <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                    <div id="atmFestBody"><div id="atmFestList" style="max-height:280px;overflow:auto;"></div>
+                    <p style="font-size:11px;color:var(--text-dim);margin:10px 0 0;line-height:1.4;">Fixed national days + 2026 anchors for lunar festivals. Festival toggle ON → Auto uses today's match.</p></div>
                 </div>
                 <p style="font-size:11px;color:var(--text-dim);margin:12px 0 0;line-height:1.45;">MP3 optional: put loops in <code>./sounds/atm/</code> as rain.mp3, night.mp3, diwali.mp3, patriot.mp3, soft.mp3, cyber.mp3, ocean.mp3, ember.mp3, holi.mp3</p>
             </div>
@@ -7494,6 +7499,7 @@ function explainFetchError(e) {
   const PRESETS = [
     { id:'auto', title:'Auto', desc:'Clock + festival + weather', sw:'linear-gradient(135deg,#1a2a3a,#0d1520)' },
     { id:'native', title:'Native', desc:'Original glass', sw:'linear-gradient(145deg,#0c1210,#151a18)' },
+    { id:'morning', title:'Morning', desc:'Dew + leaves', sw:'linear-gradient(135deg,#10251b,#d6b761)' },
     { id:'day_sunny', title:'Sunny', desc:'Warm sun', sw:'linear-gradient(135deg,#2a4a6a,#f0c060)' },
     { id:'rain', title:'Rain', desc:'Visible rain lines', sw:'linear-gradient(135deg,#0a1520,#3a5570)' },
     { id:'night_stars', title:'Stars', desc:'Moon night', sw:'linear-gradient(135deg,#02040a,#1a2040)' },
@@ -7510,6 +7516,18 @@ function explainFetchError(e) {
     { md:'01-14', id:'fest_sankranti', name:'Makar Sankranti / Pongal' },
     { md:'01-26', id:'fest_republic', name:'Republic Day' },
     { md:'03-04', id:'fest_holi', name:'Holi' },
+    { md:'03-19', id:'fest_ugadi', name:'Ugadi / Gudi Padwa' },
+    { md:'03-26', id:'fest_ramnavami', name:'Ram Navami' },
+    { md:'04-02', id:'fest_hanuman', name:'Hanuman Jayanti' },
+    { md:'04-14', id:'fest_baisakhi', name:'Baisakhi / Vaisakhi' },
+    { md:'04-19', id:'fest_akshaya', name:'Akshaya Tritiya' },
+    { md:'05-01', id:'fest_buddha', name:'Buddha Purnima' },
+    { md:'05-16', id:'fest_vatsavitri', name:'Vat Savitri' },
+    { md:'05-25', id:'fest_ganga', name:'Ganga Dussehra' },
+    { md:'06-21', id:'fest_yoga', name:'International Yoga Day' },
+    { md:'07-16', id:'fest_rathyatra', name:'Jagannath Rath Yatra' },
+    { md:'07-26', id:'fest_kargil', name:'Kargil Vijay Diwas' },
+    { md:'07-29', id:'fest_gurupurnima', name:'Guru Purnima' },
     { md:'08-15', id:'fest_independence', name:'Independence Day' },
     { md:'08-28', id:'fest_rakhi', name:'Raksha Bandhan' },
     { md:'09-04', id:'fest_janmashtami', name:'Janmashtami' },
@@ -7523,7 +7541,7 @@ function explainFetchError(e) {
   ];
   const DEFAULTS = { loginTheme:'auto', atmIntensity:80, atmParticles:60, atmReduceMotion:false, atmJoinFx:true, atmSeason:true, atmWeather:true, atmSound:false, atmCardSkin:true, atmFestival:true };
   const STAGE_BG = {
-    auto:'linear-gradient(160deg,#0d1520,#1a2a3a)', native:'linear-gradient(145deg,#020302,#070a08)',
+    auto:'linear-gradient(160deg,#0d1520,#1a2a3a)', morning:'radial-gradient(circle at 80% 10%,rgba(255,220,130,.35),transparent 35%),linear-gradient(160deg,#08130f,#102019)', native:'linear-gradient(145deg,#020302,#070a08)',
     day_sunny:'radial-gradient(circle at 80% 10%,rgba(255,200,80,.4),transparent 40%),linear-gradient(160deg,#0a1218,#0d1a14)',
     rain:'linear-gradient(160deg,#060a0e,#0a1016)', night_stars:'linear-gradient(160deg,#02040a,#050812)',
     cyber:'linear-gradient(150deg,#03010a,#050812)', sakura:'linear-gradient(160deg,#1a0c12,#120a10)',
@@ -7536,7 +7554,8 @@ function explainFetchError(e) {
     fest_christmas:'linear-gradient(160deg,#061208,#0a1a10)', fest_newyear:'linear-gradient(160deg,#0a0a14,#141428)',
     fest_gandhi:'linear-gradient(160deg,#0e100c,#161812)', fest_sankranti:'linear-gradient(160deg,#1a1208,#201808)',
     fest_rakhi:'linear-gradient(160deg,#140a12,#1c1018)', fest_janmashtami:'linear-gradient(160deg,#0a1018,#101820)',
-    fest_ganesh:'linear-gradient(160deg,#120e08,#1a140c)', fest_dussehra:'linear-gradient(160deg,#140a08,#1c1008)'
+    fest_ganesh:'linear-gradient(160deg,#120e08,#1a140c)', fest_dussehra:'linear-gradient(160deg,#140a08,#1c1008)',
+    fest_ugadi:'linear-gradient(160deg,#10200d,#24351a)', fest_ramnavami:'linear-gradient(160deg,#1b1007,#3a220b)', fest_hanuman:'linear-gradient(160deg,#160805,#3a1208)', fest_baisakhi:'linear-gradient(160deg,#1d1605,#3b2b08)', fest_akshaya:'linear-gradient(160deg,#211908,#42330d)', fest_buddha:'linear-gradient(160deg,#17130b,#302916)', fest_vatsavitri:'linear-gradient(160deg,#0b1b12,#183823)', fest_ganga:'linear-gradient(160deg,#071923,#0d3650)', fest_yoga:'linear-gradient(160deg,#091b18,#123c34)', fest_rathyatra:'linear-gradient(160deg,#1c0b08,#3c1810)', fest_kargil:'linear-gradient(160deg,#11151b,#27313f)', fest_gurupurnima:'linear-gradient(160deg,#151023,#2d2046)'
   };
 
   function g(id){ return document.getElementById(id); }
@@ -7582,6 +7601,13 @@ function explainFetchError(e) {
     });
   }
 
+  window.toggleAtmFestivalSection = function() {
+    const hd=g('atmFestHd'), body=g('atmFestBody');
+    if(!hd||!body) return;
+    const open=body.style.display!=='none';
+    body.style.display=open?'none':'block';
+    hd.classList.toggle('open',!open);
+  };
   window.toggleAtmPreviewSection = function() {
     const hd = g('atmPrevHd');
     const body = g('atmPrevBody');
