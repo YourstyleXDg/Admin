@@ -1558,6 +1558,51 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.15);
         }
 
+        /* ========================================= */
+        /* AI CHAT CUSTOMIZATIONS */
+        /* ========================================= */
+        #chatHistoryList {
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        #chatHistoryList > div {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #chatHistoryList > div:not(:first-child):hover {
+            background: rgba(0,242,254,0.08) !important;
+            transform: translateX(4px);
+        }
+        #chatMessages {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0,242,254,0.3) rgba(0,0,0,0.1);
+        }
+        #chatMessages::-webkit-scrollbar {
+            width: 6px;
+        }
+        #chatMessages::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+        #chatMessages::-webkit-scrollbar-thumb {
+            background: rgba(0,242,254,0.4);
+            border-radius: 10px;
+        }
+        #chatMessages::-webkit-scrollbar-thumb:hover {
+            background: rgba(0,242,254,0.6);
+        }
+        #aiInputPrompt::placeholder {
+            color: rgba(255,255,255,0.3);
+        }
+        #aiInputPrompt:focus {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(0,242,254,0.4);
+            outline: none;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
         .cloud-stat-bar {
             height: 10px;
             border-radius: 99px;
@@ -2656,13 +2701,39 @@ body.cat-world-active .cat-mode-bar{display:block}
     <!-- AI PANEL & BACKDROP -->
     <div id="aiPanelBackdrop" onclick="toggleAIPanel(false)"></div>
     <div id="aiPanel" class="glass-panel">
-        <button type="button" class="sec-panel-close" onclick="toggleAIPanel(false)" aria-label="Close" style="color: #d884ff; border-color: rgba(180,0,255,0.4);">×</button>
-        <h2 style="color:#d884ff;font-size:26px;margin:0 0 8px;font-weight:900;">AI Engine</h2>
-        <p style="color:var(--text-dim);font-size:13px;margin:0 0 16px;line-height:1.5;">Termux local instance connection pending...</p>
+        <button type="button" class="sec-panel-close" onclick="toggleAIPanel(false)" aria-label="Close" style="color: #00f2fe; border-color: rgba(0,242,254,0.4);">×</button>
+        
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+            <h2 style="color:#00f2fe; font-size:22px; font-weight:900; margin:0;">AI Engine (MiMo 2.5 Pro)</h2>
+            <button class="btn" onclick="startNewChat()" style="padding: 8px 14px; font-size: 11px; background: rgba(0,242,254,0.15); color: #00f2fe; border: 1px solid rgba(0,242,254,0.4); border-radius: 8px; cursor: pointer; font-weight: 700;">+ New Chat</button>
+        </div>
 
-        <!-- UI Container for future API chat integration -->
-        <div style="flex: 1; border: 1px solid rgba(180,0,255,0.2); border-radius: 16px; background: rgba(0,0,0,0.3); padding: 20px; display: flex; align-items: center; justify-content: center; color: var(--text-dim);">
-            [ Your AI Chat Interface Will Go Here ]
+        <!-- Main Workspace (History Sidebar + Chat Area) -->
+        <div style="display: flex; flex: 1; gap: 15px; overflow: hidden; height: calc(100% - 50px);">
+            
+            <!-- Chat History List -->
+            <div style="width: 220px; border-right: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 8px; padding-right: 10px; overflow-y: auto;" id="chatHistoryList">
+                <div style="font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;">Recent Chats</div>
+                <!-- Dynamic sessions will appear here -->
+            </div>
+
+            <!-- Chat Conversation Window -->
+            <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: rgba(0,0,0,0.25); border-radius: 16px; border: 1px solid rgba(255,255,255,0.06);">
+                
+                <!-- Messages Box -->
+                <div id="chatMessages" style="flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; font-size: 14px; scroll-behavior: smooth;">
+                    <div style="text-align: center; color: var(--text-dim); margin-top: auto; margin-bottom: auto; font-size: 13px;">
+                        MiMo 2.5 Pro is ready for coding & logic tasks. Ask anything!
+                    </div>
+                </div>
+
+                <!-- Input Box -->
+                <div style="padding: 15px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; gap: 10px; background: rgba(0,0,0,0.2);">
+                    <input type="text" id="aiInputPrompt" placeholder="Ask code or logic..." style="flex: 1; padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); font-size: 13px;" autocomplete="off">
+                    <button class="btn" onclick="sendAiMessage()" style="background: #00f2fe; color: #000; padding: 0 20px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none;">Send</button>
+                </div>
+
+            </div>
         </div>
     </div>
 
@@ -7573,6 +7644,254 @@ function explainFetchError(e) {
         }
       }
     };
+
+  // =========================================================
+  // AI ENGINE CONFIG & CHAT HISTORY SYSTEM
+  // =========================================================
+  const AI_CONFIG = {
+      baseUrl: "https://opengateway.gitlawb.com/v1",
+      apiKey: "ogw_live_d5ed3f73fab4372f1a1e80d8f06d84e5",
+      model: "xiaomi/mimo-v2.5-pro"
+  };
+
+  let currentChatId = null;
+  let chatSessions = {};
+
+  // Initialize from localStorage on page load
+  function loadChatSessions() {
+      const stored = localStorage.getItem('dgxen_ai_sessions');
+      chatSessions = stored ? JSON.parse(stored) : {};
+  }
+
+  function saveSessions() {
+      localStorage.setItem('dgxen_ai_sessions', JSON.stringify(chatSessions));
+      renderChatHistoryList();
+  }
+
+  function renderChatHistoryList() {
+      const listEl = document.getElementById('chatHistoryList');
+      if (!listEl) return;
+      
+      let html = '<div style="font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Recent Chats</div>';
+      
+      const ids = Object.keys(chatSessions).sort((a,b) => chatSessions[b].timestamp - chatSessions[a].timestamp);
+      if(ids.length === 0) {
+          html += '<div style="font-size:12px; color:var(--text-dim); padding:10px 0;">No history yet</div>';
+      } else {
+          ids.slice(0, 15).forEach(id => {
+              const session = chatSessions[id];
+              const activeClass = id === currentChatId ? 'background: rgba(0,242,254,0.2); color: #00f2fe; border-color: rgba(0,242,254,0.5);' : 'background: rgba(150,150,150,0.05); color: var(--text-main); border-color: transparent;';
+              const title = session.title || 'New Chat';
+              const shortTitle = title.length > 18 ? title.slice(0, 15) + '...' : title;
+              html += `<div onclick="loadChat('${id}')" style="padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid; transition: all 0.2s; ${activeClass}">${shortTitle}</div>`;
+          });
+      }
+      listEl.innerHTML = html;
+  }
+
+  window.startNewChat = function() {
+      currentChatId = 'chat_' + Date.now();
+      chatSessions[currentChatId] = {
+          title: 'New Chat',
+          messages: [],
+          timestamp: Date.now()
+      };
+      saveSessions();
+      renderCurrentMessages();
+      document.getElementById('aiInputPrompt').focus();
+  }
+
+  window.loadChat = function(id) {
+      if(!chatSessions[id]) return;
+      currentChatId = id;
+      renderCurrentMessages();
+      renderChatHistoryList();
+      document.getElementById('aiInputPrompt').focus();
+  }
+
+  function renderCurrentMessages() {
+      const box = document.getElementById('chatMessages');
+      if (!box) return;
+      
+      if(!currentChatId || !chatSessions[currentChatId] || chatSessions[currentChatId].messages.length === 0) {
+          box.innerHTML = '<div style="text-align: center; color: var(--text-dim); margin-top: auto; margin-bottom: auto; font-size: 13px;">MiMo 2.5 Pro is ready for coding & logic tasks. Ask anything!</div>';
+          return;
+      }
+
+      let html = '';
+      chatSessions[currentChatId].messages.forEach(msg => {
+          const isUser = msg.role === 'user';
+          const bubbleStyle = isUser 
+              ? 'align-self: flex-end; background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.3); color: #fff;' 
+              : 'align-self: flex-start; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main);';
+          const formattedContent = msg.content
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/\n/g, '<br>')
+              .replace(/```(.*?)\n([\s\S]*?)```/g, '<pre style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 12px;"><code>$2</code></pre>');
+          html += `<div style="max-width: 85%; padding: 12px 16px; border-radius: 14px; ${bubbleStyle} word-break: break-word; line-height: 1.5; font-size: 13.5px;">${formattedContent}</div>`;
+      });
+      box.innerHTML = html;
+      box.scrollTop = box.scrollHeight;
+  }
+
+  window.sendAiMessage = async function() {
+      const input = document.getElementById('aiInputPrompt');
+      if (!input) return;
+      const text = input.value.trim();
+      if (!text) return;
+
+      if (!currentChatId || !chatSessions[currentChatId]) {
+          startNewChat();
+      }
+
+      // Auto-set title from first message
+      if (chatSessions[currentChatId].messages.length === 0) {
+          chatSessions[currentChatId].title = text.slice(0, 25) + (text.length > 25 ? '...' : '');
+      }
+
+      // Push user message
+      chatSessions[currentChatId].messages.push({ role: 'user', content: text });
+      chatSessions[currentChatId].timestamp = Date.now();
+      input.value = '';
+      renderCurrentMessages();
+      saveSessions();
+
+      // Show loading state
+      const box = document.getElementById('chatMessages');
+      const loadingId = 'load_' + Date.now();
+      const loadingDiv = document.createElement('div');
+      loadingDiv.id = loadingId;
+      loadingDiv.style.cssText = 'align-self: flex-start; background: rgba(255,255,255,0.06); padding: 12px 16px; border-radius: 14px; color: var(--text-dim); font-size: 13px; border: 1px solid rgba(255,255,255,0.1);';
+      loadingDiv.innerHTML = '⏳ MiMo thinking...';
+      box.appendChild(loadingDiv);
+      box.scrollTop = box.scrollHeight;
+
+      try {
+          const response = await fetch(`${AI_CONFIG.baseUrl}/chat/completions`, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${AI_CONFIG.apiKey}`
+              },
+              body: JSON.stringify({
+                  model: AI_CONFIG.model,
+                  messages: chatSessions[currentChatId].messages.map(m => ({ role: m.role, content: m.content })),
+                  temperature: 0.7,
+                  max_tokens: 2000
+              })
+          });
+
+          if (!response.ok) {
+              throw new Error(`API Error: ${response.status} ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          const reply = data.choices?.[0]?.message?.content 
+                        ? data.choices[0].message.content 
+                        : '⚠️ Error: Invalid API response structure.';
+
+          // Push assistant reply
+          chatSessions[currentChatId].messages.push({ role: 'assistant', content: reply });
+          chatSessions[currentChatId].timestamp = Date.now();
+          saveSessions();
+          renderCurrentMessages();
+
+      } catch (err) {
+          console.error('AI API Error:', err);
+          const errorMsg = `❌ ${err.message || 'Network or API error. Check your connection.'}`;
+          chatSessions[currentChatId].messages.push({ role: 'assistant', content: errorMsg });
+          renderCurrentMessages();
+          loadingDiv.remove();
+      }
+  };
+
+  // DOMContentLoaded initialization
+  document.addEventListener('DOMContentLoaded', () => {
+      loadChatSessions();
+      const input = document.getElementById('aiInputPrompt');
+      if(input) {
+          input.addEventListener('keydown', (e) => {
+              if(e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  sendAiMessage();
+              }
+          });
+      }
+      // Initialize chat on first load
+      if(Object.keys(chatSessions).length === 0) {
+          startNewChat();
+      } else {
+          renderChatHistoryList();
+      }
+  });
+
+  // =========================================================
+  // ADVANCED AI ENGINE FEATURES
+  // =========================================================
+
+  // Auto-save to localStorage on every change
+  window.autoSaveChat = function() {
+      if(currentChatId && chatSessions[currentChatId]) {
+          chatSessions[currentChatId].lastSaved = new Date().toISOString();
+          saveSessions();
+      }
+  };
+
+  // Periodic auto-save every 10 seconds
+  setInterval(() => {
+      if(currentChatId && chatSessions[currentChatId] && chatSessions[currentChatId].messages.length > 0) {
+          autoSaveChat();
+      }
+  }, 10000);
+
+  // Clear current chat (with confirmation)
+  window.clearCurrentChat = function() {
+      if(!currentChatId) return;
+      if(confirm('Clear this chat? This action cannot be undone.')) {
+          chatSessions[currentChatId].messages = [];
+          saveSessions();
+          renderCurrentMessages();
+      }
+  };
+
+  // Export chat as JSON
+  window.exportChat = function() {
+      if(!currentChatId || !chatSessions[currentChatId]) return;
+      const data = {
+          title: chatSessions[currentChatId].title,
+          exportDate: new Date().toISOString(),
+          messages: chatSessions[currentChatId].messages
+      };
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `chat_${currentChatId}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+  };
+
+  // Delete chat from history
+  window.deleteChat = function(id) {
+      if(!id) return;
+      if(confirm('Delete this chat permanently?')) {
+          delete chatSessions[id];
+          if(currentChatId === id) {
+              currentChatId = null;
+              startNewChat();
+          }
+          saveSessions();
+      }
+  };
+
+  // Copy message to clipboard
+  window.copyMessage = function(text) {
+      navigator.clipboard.writeText(text).then(() => {
+          alert('Message copied to clipboard!');
+      }).catch(err => console.error('Copy failed:', err));
+  };
 
   // =========================================================
   // TOGGLE AI PANEL (GLOW FLY ANIMATION)
