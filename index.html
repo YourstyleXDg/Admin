@@ -1620,6 +1620,65 @@
             box-shadow: 0 4px 12px var(--accent-glow);
         }
 
+        /* ========================================= */
+        /* TYPING ANIMATION & ADVANCED EFFECTS */
+        /* ========================================= */
+        @keyframes typing {
+            0% { width: 0; }
+            100% { width: 100%; }
+        }
+        @keyframes blink {
+            0%, 50% { border-right-color: var(--accent); }
+            51%, 100% { border-right-color: transparent; }
+        }
+        .ai-typing {
+            display: inline-block;
+            white-space: nowrap;
+            overflow: hidden;
+            border-right: 2px solid var(--accent);
+            animation: typing 0.3s steps(40, end), blink 0.75s step-end infinite;
+            padding-right: 5px;
+        }
+        .ai-thinking {
+            display: inline-block;
+            font-size: 16px;
+            letter-spacing: 2px;
+        }
+        .ai-thinking::after {
+            content: '';
+            animation: dots 1.4s steps(4, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60% { content: '...'; }
+            80%, 100% { content: ''; }
+        }
+        
+        /* Chat Fade-in Animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .ai-message {
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        /* Pulse Animation for loading */
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 0.4; }
+        }
+        .ai-loading {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
         /* Light Mode AI Section */
         body.light-mode #aiInputPrompt {
             background: rgba(255,255,255,0.5) !important;
@@ -2772,9 +2831,10 @@ body.cat-world-active .cat-mode-bar{display:block}
     <div id="aiPanel" class="glass-panel">
         <button type="button" class="sec-panel-close" onclick="toggleAIPanel(false)" aria-label="Close" style="color: var(--accent); border-color: var(--accent-glow);">×</button>
         
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-            <h2 style="color: var(--accent); font-size:22px; font-weight:900; margin:0;">AI Engine (MiMo 2.5 Pro)</h2>
-            <button class="btn" onclick="startNewChat()" style="padding: 8px 14px; font-size: 11px; background: rgba(var(--accent-rgb), 0.15); color: var(--accent); border: 1px solid var(--accent-glow); border-radius: 8px; cursor: pointer; font-weight: 700;">+ New Chat</button>
+        <!-- FIX: Added padding-right: 50px so it doesn't overlap the 'X' button -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; padding-right: 50px;">
+            <h2 style="color: var(--accent); font-size:22px; font-weight:900; margin:0;">AI Engine</h2>
+            <button class="btn" onclick="startNewChat()" style="padding: 8px 14px; font-size: 11px; background: rgba(var(--accent-rgb), 0.15); color: var(--accent); border: 1px solid var(--accent-glow); border-radius: 8px; cursor: pointer; font-weight: 700; white-space: nowrap;">+ New Chat</button>
         </div>
 
         <!-- Main Workspace (History Sidebar + Chat Area) -->
@@ -2782,7 +2842,7 @@ body.cat-world-active .cat-mode-bar{display:block}
             
             <!-- Chat History List -->
             <div style="width: 220px; border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: 8px; padding-right: 10px; overflow-y: auto;" id="chatHistoryList">
-                <div style="font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;">Recent Chats</div>
+                <div style="font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Recent Chats <span style="font-size: 9px; opacity: 0.6; text-transform: none; display: block;">(Hold to delete)</span></div>
                 <!-- Dynamic sessions will appear here -->
             </div>
 
@@ -2848,6 +2908,10 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <div class="m-tab" onclick="switchGuideTab('downloads', this)">
                     <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     Download Modules
+                </div>
+                <div class="m-tab" onclick="switchGuideTab('ai-guide', this)">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v4m0 8v4M2 12h4m8 0h4M4.22 4.22l2.83 2.83m5.9 5.9l2.83 2.83M4.22 19.78l2.83-2.83m5.9-5.9l2.83-2.83"/></svg>
+                    AI Engine Guide
                 </div>
             </div>
 
@@ -3014,6 +3078,91 @@ body.cat-world-active .cat-mode-bar{display:block}
                     </div>
                 </div>
 
+            </div>
+
+            <!-- AI ENGINE GUIDE TAB -->
+            <div id="tab-ai-guide" class="m-content">
+                <p style="margin-bottom: 20px; color: var(--text-dim); font-size: 14px;">MiMo 2.5 Pro AI Engine - Your coding assistant with persistent chat history.</p>
+
+                <div class="acc-item active" id="acc-ai-1">
+                    <div class="acc-header" onclick="toggleAccordion('acc-ai-1')">
+                        🎯 Getting Started - AI Engine Basics
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="acc-body">
+                        <ul class="check-list">
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Click the AI Orb</b> (glowing 3D button at bottom-left) to open the AI Engine panel</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> The panel morphs smoothly from the button with beautiful cyan glow animation</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Type your question</b> in the input box (code, logic, explanations, etc.)</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Press Enter</b> or click Send to submit - MiMo processes instantly</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Your message appears with theme-matching colors (green/cyan/blue depending on your theme)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item" id="acc-ai-2">
+                    <div class="acc-header" onclick="toggleAccordion('acc-ai-2')">
+                        💾 Chat History & Persistence
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="acc-body">
+                        <ul class="check-list">
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>All chats are saved automatically</b> in your browser's local storage</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Left sidebar shows "Recent Chats" - <b>click any chat to reopen</b> its entire conversation</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Each chat gets an auto-generated title from your first message</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Long-press (hold 700ms) any chat to delete</b> - vibration feedback on mobile</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Click "+ New Chat" button to start a fresh conversation</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item" id="acc-ai-3">
+                    <div class="acc-header" onclick="toggleAccordion('acc-ai-3')">
+                        ⚡ Advanced Features & Shortcuts
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="acc-body">
+                        <ul class="check-list">
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Ctrl+N / Cmd+N:</b> Create new chat instantly (while panel is open)</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Ctrl+K / Cmd+K:</b> Jump focus to input box for quick typing</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Shift+Enter:</b> Multi-line messages (press Enter alone to send)</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Auto-save:</b> Messages save every 10 seconds automatically</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Typing animation:</b> See MiMo thinking with animated dots...</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item" id="acc-ai-4">
+                    <div class="acc-header" onclick="toggleAccordion('acc-ai-4')">
+                        🎨 Theme-Aware Design
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="acc-body">
+                        <ul class="check-list">
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Dark Mode:</b> Cyan/bright green accents with smooth glassmorphism</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Light Mode:</b> Soft green accents, clear contrast for daytime use</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Max Pro Mode:</b> Hyper-cyan glow with premium blur effects</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> AI panel colors match your theme perfectly - scrollbars, buttons, inputs all themed</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Switch themes anytime - AI section adapts instantly</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="acc-item" id="acc-ai-5">
+                    <div class="acc-header" onclick="toggleAccordion('acc-ai-5')">
+                        🚀 Performance & Backend
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="acc-body">
+                        <ul class="check-list">
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Powered by:</b> MiMo 2.5 Pro via your personal Cloudflare Worker</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Ultra-fast:</b> Responses in seconds using edge computing</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>No server lag:</b> Direct Cloudflare Worker integration (your endpoint)</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Privacy:</b> Chat history stored locally in browser (not on servers)</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Error handling:</b> Clear messages if connection fails - retry anytime</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
 
             <button class="btn-full bg-green" style="margin-top: 10px;" onclick="closeModals()">CLOSE PANEL</button>
@@ -7717,20 +7866,16 @@ function explainFetchError(e) {
   // =========================================================
   // AI ENGINE CONFIG & CHAT HISTORY SYSTEM
   // =========================================================
-  const AI_CONFIG = {
-      baseUrl: "https://opengateway.gitlawb.com/v1",
-      apiKey: "ogw_live_d5ed3f73fab4372f1a1e80d8f06d84e5",
-      model: "xiaomi/mimo-v2.5-pro"
-  };
-
+  // ==========================================
+  // AI ENGINE CONFIG & CHAT HISTORY SYSTEM
+  // ==========================================
   let currentChatId = null;
-  let chatSessions = {};
+  let chatSessions = JSON.parse(localStorage.getItem('dgxen_ai_sessions') || '{}');
+  let chatHoldTimer = null;
+  let isChatHolding = false;
 
-  // Initialize from localStorage on page load
-  function loadChatSessions() {
-      const stored = localStorage.getItem('dgxen_ai_sessions');
-      chatSessions = stored ? JSON.parse(stored) : {};
-  }
+  // Cloudflare Worker URL (your personal endpoint)
+  const WORKER_URL = "https://dgxen-ai-bot.akkumsgsjshjwej.workers.dev/";
 
   function saveSessions() {
       localStorage.setItem('dgxen_ai_sessions', JSON.stringify(chatSessions));
@@ -7741,24 +7886,68 @@ function explainFetchError(e) {
       const listEl = document.getElementById('chatHistoryList');
       if (!listEl) return;
       
-      let html = '<div style="font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Recent Chats</div>';
+      let html = '<div style="font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Recent Chats <span style="font-size: 9px; opacity: 0.6; text-transform: none; display: block;">(Hold to delete)</span></div>';
       
-      const ids = Object.keys(chatSessions).sort((a,b) => chatSessions[b].timestamp - chatSessions[a].timestamp);
+      const ids = Object.keys(chatSessions).sort((a,b) => b - a);
       if(ids.length === 0) {
           html += '<div style="font-size:12px; color:var(--text-dim); padding:10px 0;">No history yet</div>';
       } else {
-          ids.slice(0, 15).forEach(id => {
+          ids.forEach(id => {
               const session = chatSessions[id];
-              const activeClass = id === currentChatId ? 'background: rgba(0,242,254,0.2); color: #00f2fe; border-color: rgba(0,242,254,0.5);' : 'background: rgba(150,150,150,0.05); color: var(--text-main); border-color: transparent;';
+              const activeClass = id === currentChatId ? 'background: rgba(var(--accent-rgb), 0.2); color: var(--accent); border-color: var(--accent-glow);' : 'background: rgba(150,150,150,0.05); color: var(--text-main); border-color: transparent;';
               const title = session.title || 'New Chat';
               const shortTitle = title.length > 18 ? title.slice(0, 15) + '...' : title;
-              html += `<div onclick="loadChat('${id}')" style="padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid; transition: all 0.2s; ${activeClass}">${shortTitle}</div>`;
+              
+              // Long-press (hold) to delete
+              html += `<div 
+                          onpointerdown="startChatHold(event, '${id}')" 
+                          onpointerup="cancelChatHold()" 
+                          onpointerleave="cancelChatHold()" 
+                          onpointercancel="cancelChatHold()"
+                          onclick="handleChatClick('${id}')" 
+                          style="padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid; transition: 0.2s; user-select: none; ${activeClass}"
+                       >${shortTitle}</div>`;
           });
       }
       listEl.innerHTML = html;
   }
 
-  window.startNewChat = function() {
+  // HOLD TO DELETE LOGIC (700ms hold)
+  window.startChatHold = function(e, id) {
+      isChatHolding = false;
+      if(e.button !== undefined && e.button !== 0) return;
+      
+      chatHoldTimer = setTimeout(() => {
+          isChatHolding = true;
+          if(navigator.vibrate) navigator.vibrate(50);
+          
+          // Use admin panel's confirmation
+          if(window.showConfirm) {
+              showConfirm("Delete Chat?", `Are you sure? "${chatSessions[id].title}"`, () => {
+                  delete chatSessions[id];
+                  if(currentChatId === id) startNewChat(); 
+                  else saveSessions();
+              });
+          } else {
+              if(confirm("Delete this chat?")) {
+                  delete chatSessions[id];
+                  if(currentChatId === id) startNewChat(); 
+                  else saveSessions();
+              }
+          }
+      }, 700);
+  };
+
+  window.cancelChatHold = function() {
+      if(chatHoldTimer) clearTimeout(chatHoldTimer);
+  };
+
+  window.handleChatClick = function(id) {
+      if(!isChatHolding) {
+          loadChat(id);
+      }
+      isChatHolding = false;
+  };
       currentChatId = 'chat_' + Date.now();
       chatSessions[currentChatId] = {
           title: 'New Chat',
@@ -7814,95 +8003,87 @@ function explainFetchError(e) {
           startNewChat();
       }
 
-      // Auto-set title from first message
-      if (chatSessions[currentChatId].messages.length === 0) {
-          chatSessions[currentChatId].title = text.slice(0, 25) + (text.length > 25 ? '...' : '');
+      if (chatSessions[currentChatId].title === 'New Chat') {
+          chatSessions[currentChatId].title = text.slice(0, 22) + (text.length > 22 ? '...' : '');
       }
 
-      // Push user message
+      // Push user message with animation
       chatSessions[currentChatId].messages.push({ role: 'user', content: text });
-      chatSessions[currentChatId].timestamp = Date.now();
       input.value = '';
       renderCurrentMessages();
       saveSessions();
 
-      // Show loading state
+      // Show animated loading state
       const box = document.getElementById('chatMessages');
       const loadingId = 'load_' + Date.now();
       const loadingDiv = document.createElement('div');
       loadingDiv.id = loadingId;
-      loadingDiv.style.cssText = 'align-self: flex-start; background: rgba(255,255,255,0.06); padding: 12px 16px; border-radius: 14px; color: var(--text-dim); font-size: 13px; border: 1px solid rgba(255,255,255,0.1);';
-      loadingDiv.innerHTML = '⏳ MiMo thinking...';
+      loadingDiv.style.cssText = 'align-self: flex-start; background: rgba(255,255,255,0.06); padding: 12px 16px; border-radius: 14px; color: var(--text-dim); font-size: 13px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center;';
+      loadingDiv.innerHTML = '<span class="ai-thinking"></span>';
+      loadingDiv.classList.add('ai-loading');
       box.appendChild(loadingDiv);
       box.scrollTop = box.scrollHeight;
 
       try {
-          // 🔥 FIX: CORS Proxy to bypass browser security blocks
-          const targetUrl = `${AI_CONFIG.baseUrl}/chat/completions`;
-          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
-
-          const response = await fetch(proxyUrl, {
+          // 🔥 Using your Cloudflare Worker endpoint 🔥
+          const response = await fetch(WORKER_URL, {
               method: 'POST',
               headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${AI_CONFIG.apiKey}`
+                  'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                  model: AI_CONFIG.model,
-                  messages: chatSessions[currentChatId].messages.map(m => ({ role: m.role, content: m.content })),
-                  temperature: 0.7,
-                  max_tokens: 2000
+                  model: "xiaomi/mimo-v2.5-pro",
+                  messages: chatSessions[currentChatId].messages.map(m => ({ role: m.role, content: m.content }))
               })
           });
 
-          if (!response.ok) {
-              throw new Error(`API Error: ${response.status}`);
-          }
+          if (!response.ok) throw new Error(`Worker Error: ${response.status}`);
 
           const data = await response.json();
           const reply = data.choices?.[0]?.message?.content 
                         ? data.choices[0].message.content 
-                        : '⚠️ Error: Invalid API response structure.';
+                        : 'Error: Invalid response structure.';
 
-          // Remove loading indicator
-          if(document.getElementById(loadingId)) {
-              document.getElementById(loadingId).remove();
+          // Remove loading indicator with animation
+          const loadEl = document.getElementById(loadingId);
+          if(loadEl) {
+              loadEl.style.animation = 'fadeInUp 0.4s ease-out';
+              loadEl.remove();
           }
 
           // Push assistant reply
           chatSessions[currentChatId].messages.push({ role: 'assistant', content: reply });
-          chatSessions[currentChatId].timestamp = Date.now();
           saveSessions();
           renderCurrentMessages();
 
       } catch (err) {
-          console.error('AI API Error:', err);
-          const errorMsg = `❌ Connection Failed! CORS/Network Issue: ${err.message}`;
+          console.error(err);
+          const loadEl = document.getElementById(loadingId);
+          if(loadEl) loadEl.remove();
+          
+          const errorMsg = `❌ Connection Failed: ${err.message}`;
           chatSessions[currentChatId].messages.push({ role: 'assistant', content: errorMsg });
-          if(document.getElementById(loadingId)) {
-              document.getElementById(loadingId).remove();
-          }
           renderCurrentMessages();
       }
+
+  input.focus();
   };
 
   // DOMContentLoaded initialization
   document.addEventListener('DOMContentLoaded', () => {
-      loadChatSessions();
       const input = document.getElementById('aiInputPrompt');
       if(input) {
           input.addEventListener('keydown', (e) => {
-              if(e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendAiMessage();
-              }
+              if(e.key === 'Enter') sendAiMessage();
           });
       }
-      // Initialize chat on first load
-      if(Object.keys(chatSessions).length === 0) {
-          startNewChat();
-      } else {
+      
+      if(Object.keys(chatSessions).length > 0) {
           renderChatHistoryList();
+          const sortedIds = Object.keys(chatSessions).sort((a,b) => b - a);
+          loadChat(sortedIds[0]); // Auto-load latest chat
+      } else {
+          startNewChat();
       }
   });
 
