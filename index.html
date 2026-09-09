@@ -1097,16 +1097,24 @@
         }
 
         /* --- SCROLL PERFORMANCE: smoother momentum scrolling + no chained pull ---- */
+        /* NOTE: overscroll-behavior:contain must only go on containers that
+           reliably have their own overflow to scroll. Applied more broadly
+           (e.g. to #cloudFileList, which is flex-stretched and often taller
+           than its own content, or to any element merely matching an
+           overflow:auto inline-style substring) it creates a dead zone: the
+           container has nothing to scroll internally, and "contain" also
+           blocks the touch from falling through to scroll the page — one
+           finger does nothing at all in that area. */
         .guide-modal,
-        .device-id-box,
-        #cloudFileList,
         #chatMessages,
-        #chatHistoryList,
-        .mk-list,
-        [style*="overflow-y: auto"],
-        [style*="overflow: auto"] {
+        #chatHistoryList {
             -webkit-overflow-scrolling: touch;
             overscroll-behavior: contain;
+        }
+        .device-id-box,
+        #cloudFileList,
+        .mk-list {
+            -webkit-overflow-scrolling: touch;
         }
 
         /* --- Modern Guide Modal & Tabs (ACCORDION STYLE) --- */
@@ -2520,6 +2528,31 @@ body.cat-world-active .cat-mode-bar{display:block}
             text-align: center;
             font-variant-numeric: tabular-nums;
         }
+        /* Fullscreen: fill the entire screen and keep the video's own aspect
+           ratio (portrait stays portrait, landscape stays landscape) instead
+           of only growing to its normal in-page box size. */
+        .dgxen-video-wrap:fullscreen,
+        .dgxen-video-wrap:-webkit-full-screen {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border-radius: 0;
+            background: #000;
+        }
+        .dgxen-video-wrap:fullscreen video,
+        .dgxen-video-wrap:-webkit-full-screen video {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            object-fit: contain;
+        }
+        .dgxen-video-wrap:fullscreen .dgxen-video-controls,
+        .dgxen-video-wrap:-webkit-full-screen .dgxen-video-controls {
+            flex: 0 0 auto;
+        }
 </style>
 </head>
 <body>
@@ -3016,9 +3049,17 @@ body.cat-world-active .cat-mode-bar{display:block}
         <div id="cloudUploadInlineBar" class="cloud-upload-inline-bar"><i id="cloudUploadInlineBarFill"></i></div>
         <div id="cloudUploadProgress" style="font-size:12px;font-weight:700;color:#5cc8ff;min-height:18px;margin-bottom:8px;"></div>
 
-        <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0;gap:8px;flex-wrap:wrap;">
             <span style="font-size:14px;font-weight:800;">Files</span>
-            <button class="btn" type="button" style="padding:8px 14px;font-size:11px;" onclick="refreshCloudFiles()">REFRESH</button>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <select id="cloudSortSelect" onchange="setCloudSort(this.value)" style="padding:8px 10px;font-size:11px;font-weight:800;border-radius:10px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);">
+                    <option value="date_desc">Newest first</option>
+                    <option value="date_asc">Oldest first</option>
+                    <option value="name_asc">Name A–Z</option>
+                    <option value="size_desc">Largest first</option>
+                </select>
+                <button class="btn" type="button" style="padding:8px 14px;font-size:11px;" onclick="refreshCloudFiles()">REFRESH</button>
+            </div>
         </div>
         <div id="cloudFileList" class="mk-list" style="overflow:auto;min-height:42vh;flex:1;"></div>
     </div>
@@ -3067,6 +3108,13 @@ body.cat-world-active .cat-mode-bar{display:block}
 
                 <!-- Jump to latest button (shows when user has scrolled up) -->
                 <button type="button" id="chatJumpBtn" onclick="scrollChatToBottom(true)" style="display:none; position:absolute; right:34px; bottom:82px; z-index:5; padding:8px 14px; border-radius:20px; background:var(--accent); color:#000; font-weight:800; font-size:11px; border:none; cursor:pointer; box-shadow:0 8px 20px rgba(0,0,0,0.4);">↓ New replies</button>
+
+                <!-- Pasted-text-as-attachment chip (Claude-style: a large paste becomes a file, not raw text in the box) -->
+                <div id="aiAttachmentChip" style="display:none; margin:0 15px; padding:8px 12px; border-radius:10px; background:rgba(0,242,254,0.1); border:1px solid rgba(0,242,254,0.3); align-items:center; gap:8px; font-size:12px; font-weight:700; color:var(--text-main);">
+                    <span style="font-size:15px;">📄</span>
+                    <span id="aiAttachmentChipLabel" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+                    <button type="button" onclick="removeAiAttachment()" style="background:none;border:none;color:var(--text-dim);font-size:15px;cursor:pointer;padding:0 4px;">✕</button>
+                </div>
 
                 <!-- Input Box (always pinned below the conversation) -->
                 <div style="padding: 15px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; gap: 10px; background: rgba(0,0,0,0.2);">
@@ -4276,6 +4324,29 @@ body.cat-world-active .cat-mode-bar{display:block}
             const level = saved !== null ? Number(saved) : 2; // default: Max (current look, unchanged)
             setGfxFluidity(level);
         });
+
+        // FIX: tapping any text field was shifting the page sideways.
+        // The page is a fixed-width desktop layout with horizontal scroll on
+        // mobile — when a field is focused, the browser's native "scroll
+        // element into view" moves BOTH axes, including horizontally, even
+        // though we only ever need the vertical scroll (for the keyboard).
+        // Lock the horizontal scroll position across every focus event.
+        (function() {
+            const scroller = () => document.scrollingElement || document.documentElement;
+            let lockedX = null;
+            document.addEventListener('focusin', (e) => {
+                if (!e.target.matches('input, textarea, select')) return;
+                lockedX = scroller().scrollLeft;
+                // Re-apply a few times: the browser's own auto-scroll (and any
+                // on-screen keyboard resize) can happen a frame or two later.
+                [0, 50, 150, 350].forEach(delay => {
+                    setTimeout(() => {
+                        if (lockedX !== null) scroller().scrollLeft = lockedX;
+                    }, delay);
+                });
+            }, true);
+            document.addEventListener('focusout', () => { lockedX = null; }, true);
+        })();
 
         // SMOOTH THEME CYCLE
         const themes = ['light', 'dark', 'max'];
@@ -6005,9 +6076,25 @@ window.__dgxenInitVideoControls = function(vId) {
   });
   if (fullBtn) fullBtn.addEventListener('click', function() {
     const target = wrap || video;
+    const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    if (fsEl) {
+      // Already fullscreen (including this element) → tapping again exits.
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      else if (document.webkitCancelFullScreen) document.webkitCancelFullScreen();
+      else if (video.webkitDisplayingFullscreen) video.webkitExitFullscreen();
+      return;
+    }
     if (target.requestFullscreen) target.requestFullscreen();
-    else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+    else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
+    else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen(); // iOS Safari native player fallback
   });
+  function syncFullBtnIcon() {
+    const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    if (fullBtn) fullBtn.textContent = fsEl === wrap ? '×' : '⛶';
+  }
+  document.addEventListener('fullscreenchange', syncFullBtnIcon);
+  document.addEventListener('webkitfullscreenchange', syncFullBtnIcon);
 };
 
 // ===== BACKBLAZE B2 CLOUD =====
@@ -6901,6 +6988,37 @@ function explainFetchError(e) {
   }
 
   // =========================================================
+  // SORT SYSTEM (4 types) — persisted per device
+  // =========================================================
+  window.setCloudSort = function(mode) {
+    localStorage.setItem('dgxen_cloud_sort', mode);
+    if (window.refreshCloudFiles) window.refreshCloudFiles();
+  };
+  function sortCloudFiles(files) {
+    const mode = localStorage.getItem('dgxen_cloud_sort') || 'date_desc';
+    const sel = document.getElementById('cloudSortSelect');
+    if (sel) sel.value = mode;
+    const ts = f => {
+      const ut = Number(f.uploadTimestamp) || 0;
+      return ut > 1e14 ? Math.floor(ut / 1000) : ut;
+    };
+    files.sort((a, b) => {
+      switch (mode) {
+        case 'date_asc':
+          return ts(a) - ts(b);
+        case 'name_asc':
+          return String(a.fileName || '').localeCompare(String(b.fileName || ''));
+        case 'size_desc':
+          return (Number(b.contentLength) || 0) - (Number(a.contentLength) || 0);
+        case 'date_desc':
+        default:
+          return ts(b) - ts(a);
+      }
+    });
+    return files;
+  }
+
+  // =========================================================
   // REFRESH CLOUD FILES
   // =========================================================
 
@@ -6939,6 +7057,7 @@ function explainFetchError(e) {
         const files =
           await listAllFiles();
         const metaMap = await loadFileMetaMap();
+        sortCloudFiles(files);
 
         let used = 0;
 
@@ -8390,8 +8509,15 @@ function explainFetchError(e) {
   window.sendAiMessage = async function() {
       const input = document.getElementById('aiInputPrompt');
       if (!input) return;
-      const text = input.value.trim();
-      if (!text) return;
+      let text = input.value.trim();
+      if (!text && !pendingAiAttachment) return;
+
+      // Fold the pasted-file attachment into the outgoing message.
+      if (pendingAiAttachment) {
+          const wrapped = '[Attached file: ' + pendingAiAttachment.name + ']\n\n' + pendingAiAttachment.content;
+          text = text ? (text + '\n\n' + wrapped) : wrapped;
+      }
+      removeAiAttachment();
 
       if (!currentChatId || !chatSessions[currentChatId]) {
           startNewChat();
@@ -8463,12 +8589,41 @@ function explainFetchError(e) {
   input.focus();
   };
 
+  // --- Paste-as-attachment (Claude-style): a large paste becomes a file
+  // chip instead of dumping thousands of characters into the input box. ---
+  let pendingAiAttachment = null;
+  const AI_PASTE_ATTACH_THRESHOLD = 600; // chars
+
+  window.removeAiAttachment = function() {
+      pendingAiAttachment = null;
+      const chip = document.getElementById('aiAttachmentChip');
+      if (chip) chip.style.display = 'none';
+  };
+
+  function attachAiPastedText(pasted) {
+      const lines = pasted.split('\n').length;
+      const name = 'Pasted text (' + lines + ' line' + (lines === 1 ? '' : 's') + ', ' + pasted.length.toLocaleString() + ' chars)';
+      pendingAiAttachment = { name: name, content: pasted };
+      const chip = document.getElementById('aiAttachmentChip');
+      const label = document.getElementById('aiAttachmentChipLabel');
+      if (label) label.textContent = name;
+      if (chip) { chip.style.display = 'flex'; }
+  }
+
   // DOMContentLoaded initialization
   document.addEventListener('DOMContentLoaded', () => {
       const input = document.getElementById('aiInputPrompt');
       if(input) {
           input.addEventListener('keydown', (e) => {
               if(e.key === 'Enter') sendAiMessage();
+          });
+          input.addEventListener('paste', (e) => {
+              const pasted = (e.clipboardData || window.clipboardData).getData('text');
+              if (pasted && pasted.length > AI_PASTE_ATTACH_THRESHOLD) {
+                  e.preventDefault();
+                  attachAiPastedText(pasted);
+              }
+              // short pastes: let the browser insert them into the field as normal
           });
           // Mobile: keep the input bar visible above the on-screen keyboard,
           // and keep the conversation scrolled to the latest message once
