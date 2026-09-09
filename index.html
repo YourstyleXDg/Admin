@@ -2530,28 +2530,75 @@ body.cat-world-active .cat-mode-bar{display:block}
         }
         /* Fullscreen: fill the entire screen and keep the video's own aspect
            ratio (portrait stays portrait, landscape stays landscape) instead
-           of only growing to its normal in-page box size. */
+           of only growing to its normal in-page box size.
+           NOTE: this page uses a fixed desktop-width viewport meta tag, so
+           on mobile 100vw/100vh can be computed against the wrong box and
+           the native Fullscreen API can end up only covering part of the
+           screen. inset:0 + position:fixed + dvh/svh units make the panel
+           truly cover the visible screen regardless of viewport scaling. */
         .dgxen-video-wrap:fullscreen,
         .dgxen-video-wrap:-webkit-full-screen {
+            position: fixed;
+            inset: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             width: 100vw;
             height: 100vh;
+            height: 100svh;
+            height: 100dvh;
+            max-width: none;
+            max-height: none;
+            margin: 0;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            align-items: stretch;
             border-radius: 0;
             background: #000;
+            z-index: 2147483647;
         }
         .dgxen-video-wrap:fullscreen video,
         .dgxen-video-wrap:-webkit-full-screen video {
-            flex: 1;
+            flex: 1 1 auto;
             width: 100%;
             height: 100%;
             min-height: 0;
+            max-height: none;
             object-fit: contain;
         }
         .dgxen-video-wrap:fullscreen .dgxen-video-controls,
         .dgxen-video-wrap:-webkit-full-screen .dgxen-video-controls {
             flex: 0 0 auto;
+        }
+        /* Manual fullscreen fallback — used when the native Fullscreen API
+           is accepted by the browser but doesn't actually cover the screen
+           (seen on some Android WebViews with this page's fixed-width
+           viewport). Forces a true full-viewport fixed overlay via JS class
+           toggle instead of relying on :fullscreen alone. */
+        .dgxen-video-wrap.dgxen-manual-fullscreen {
+            position: fixed !important;
+            inset: 0 !important;
+            top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            height: 100svh !important;
+            height: 100dvh !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            background: #000 !important;
+            z-index: 2147483647 !important;
+        }
+        .dgxen-video-wrap.dgxen-manual-fullscreen video {
+            flex: 1 1 auto;
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            object-fit: contain;
+        }
+        body.dgxen-fs-lock {
+            overflow: hidden !important;
         }
 </style>
 </head>
@@ -6077,21 +6124,43 @@ window.__dgxenInitVideoControls = function(vId) {
   if (fullBtn) fullBtn.addEventListener('click', function() {
     const target = wrap || video;
     const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
-    if (fsEl) {
-      // Already fullscreen (including this element) → tapping again exits.
-      if (document.exitFullscreen) document.exitFullscreen();
+    // Already fullscreen (native API or our manual CSS fallback) → tapping again exits.
+    if (fsEl === target || (wrap && wrap.classList.contains('dgxen-manual-fullscreen'))) {
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
       else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
       else if (document.webkitCancelFullScreen) document.webkitCancelFullScreen();
       else if (video.webkitDisplayingFullscreen) video.webkitExitFullscreen();
+      if (wrap) wrap.classList.remove('dgxen-manual-fullscreen');
+      document.body.classList.remove('dgxen-fs-lock');
+      syncFullBtnIcon();
       return;
     }
-    if (target.requestFullscreen) target.requestFullscreen();
-    else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
-    else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen(); // iOS Safari native player fallback
+    let requested = false;
+    if (target.requestFullscreen) { target.requestFullscreen().catch(() => {}); requested = true; }
+    else if (target.webkitRequestFullscreen) { target.webkitRequestFullscreen(); requested = true; }
+    else if (video.webkitEnterFullscreen) { video.webkitEnterFullscreen(); requested = true; } // iOS Safari native player fallback
+    // Fallback: some mobile WebViews accept the Fullscreen API call but never
+    // actually cover the full screen (the bug seen in testing — video only
+    // fills the top half). Detect that after a short delay and, if the
+    // element still isn't the true fullscreen element, force a manual
+    // full-screen overlay via CSS class instead.
+    setTimeout(() => {
+      const nowFsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      if (!nowFsEl || nowFsEl !== target) {
+        wrap && wrap.classList.add('dgxen-manual-fullscreen');
+        document.body.classList.add('dgxen-fs-lock');
+      }
+      syncFullBtnIcon();
+    }, 250);
   });
   function syncFullBtnIcon() {
     const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
-    if (fullBtn) fullBtn.textContent = fsEl === wrap ? '×' : '⛶';
+    // If the native API reports we've left fullscreen, also clear our manual fallback state.
+    if (!fsEl && wrap && wrap.classList.contains('dgxen-manual-fullscreen') === false) {
+      document.body.classList.remove('dgxen-fs-lock');
+    }
+    const isManual = wrap && wrap.classList.contains('dgxen-manual-fullscreen');
+    if (fullBtn) fullBtn.textContent = (fsEl === wrap || isManual) ? '×' : '⛶';
   }
   document.addEventListener('fullscreenchange', syncFullBtnIcon);
   document.addEventListener('webkitfullscreenchange', syncFullBtnIcon);
@@ -8466,6 +8535,72 @@ function explainFetchError(e) {
       });
   };
 
+  // Lightweight Markdown → HTML formatter for AI chat bubbles.
+  // Supports: ```code blocks```, `inline code`, **bold**, __bold__,
+  // *italic*, _italic_, # / ## / ### headers, - / * bullet lists,
+  // 1. numbered lists, and blank-line-separated paragraphs.
+  // Escapes HTML first so user/AI text can never inject markup, then
+  // re-introduces only the tags we generate ourselves.
+  function formatAiMarkdown(raw) {
+      let text = String(raw)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+
+      // Pull out fenced code blocks first so nothing inside them gets
+      // touched by the other markdown rules, then restore them at the end.
+      const codeBlocks = [];
+      text = text.replace(/```([a-zA-Z0-9]*)\n?([\s\S]*?)```/g, (m, lang, code) => {
+          codeBlocks.push(
+              '<pre style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 12px; margin: 8px 0;"><code>' +
+              code.replace(/\n$/, '') +
+              '</code></pre>'
+          );
+          return '\u0000CODEBLOCK' + (codeBlocks.length - 1) + '\u0000';
+      });
+
+      // Inline code `like this`
+      text = text.replace(/`([^`\n]+)`/g, '<code style="background: rgba(255,255,255,0.12); padding: 2px 6px; border-radius: 4px; font-size: 0.9em;">$1</code>');
+
+      // Headers (#, ##, ###) — must be at start of a line
+      text = text.replace(/^### (.*)$/gm, '<div style="font-size: 1.05em; font-weight: 800; margin: 10px 0 4px;">$1</div>');
+      text = text.replace(/^## (.*)$/gm, '<div style="font-size: 1.15em; font-weight: 800; margin: 12px 0 6px;">$1</div>');
+      text = text.replace(/^# (.*)$/gm, '<div style="font-size: 1.25em; font-weight: 900; margin: 14px 0 6px;">$1</div>');
+
+      // Bold + italic combined (***text*** or ___text___)
+      text = text.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong style="font-weight:800;"><em>$1</em></strong>');
+      // Bold (**text** or __text__)
+      text = text.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight:800; color: var(--accent);">$1</strong>');
+      text = text.replace(/__([^_]+)__/g, '<strong style="font-weight:800; color: var(--accent);">$1</strong>');
+      // Italic (*text* or _text_) — avoid matching leftover bold markers or bullet "* "
+      text = text.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+      text = text.replace(/(?<!_)_([^_\n]+)_(?!_)/g, '<em>$1</em>');
+
+      // Bullet lists: group consecutive "- " / "* " lines into a <ul>
+      text = text.replace(/(?:^|\n)((?:[-*] .*(?:\n|$))+)/g, (m, block) => {
+          const items = block.trim().split('\n').map(l => l.replace(/^[-*]\s+/, '').trim());
+          return '\n<ul style="margin: 6px 0; padding-left: 20px;">' +
+                 items.map(i => '<li style="margin: 3px 0;">' + i + '</li>').join('') +
+                 '</ul>\n';
+      });
+
+      // Numbered lists: group consecutive "1. " style lines into an <ol>
+      text = text.replace(/(?:^|\n)((?:\d+\. .*(?:\n|$))+)/g, (m, block) => {
+          const items = block.trim().split('\n').map(l => l.replace(/^\d+\.\s+/, '').trim());
+          return '\n<ol style="margin: 6px 0; padding-left: 20px;">' +
+                 items.map(i => '<li style="margin: 3px 0;">' + i + '</li>').join('') +
+                 '</ol>\n';
+      });
+
+      // Remaining newlines → line breaks (list/header blocks already have their own spacing)
+      text = text.replace(/\n/g, '<br>');
+
+      // Restore fenced code blocks
+      text = text.replace(/\u0000CODEBLOCK(\d+)\u0000/g, (m, i) => codeBlocks[Number(i)]);
+
+      return text;
+  }
+
   function renderCurrentMessages(opts) {
       const box = document.getElementById('chatMessages');
       if (!box) return;
@@ -8482,11 +8617,10 @@ function explainFetchError(e) {
           const bubbleStyle = isUser 
               ? 'align-self: flex-end; background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.3); color: #fff;' 
               : 'align-self: flex-start; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main);';
-          const formattedContent = msg.content
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')
-              .replace(/\n/g, '<br>')
-              .replace(/```(.*?)\n([\s\S]*?)```/g, '<pre style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 12px;"><code>$2</code></pre>');
+          // AI replies get full markdown formatting (bold, headers, lists, code);
+          // user messages are kept simpler (still safe-escaped) since they're
+          // plain typed text, not markdown-formatted responses.
+          const formattedContent = formatAiMarkdown(msg.content);
           html += `<div style="max-width: 85%; padding: 12px 16px; border-radius: 14px; ${bubbleStyle} word-break: break-word; line-height: 1.5; font-size: 13.5px;">${formattedContent}</div>`;
       });
       box.innerHTML = html;
@@ -8629,10 +8763,17 @@ function explainFetchError(e) {
           // and keep the conversation scrolled to the latest message once
           // the keyboard finishes opening/closing (its height eats into the
           // panel and can otherwise leave the input bar or last reply hidden).
+          // NOTE: scrollIntoView() was replaced with a manual vertical-only
+          // scroll because on this fixed-width (desktop) viewport layout,
+          // scrollIntoView() also nudges the page horizontally on first
+          // focus, causing a visible left-shift glitch on mobile.
           input.addEventListener('focus', () => {
               setTimeout(() => {
-                  input.scrollIntoView({ block: 'end', behavior: 'smooth' });
+                  const savedScrollLeft = (document.scrollingElement || document.documentElement).scrollLeft;
                   scrollChatToBottom(true);
+                  // Restore horizontal scroll position in case the keyboard/focus
+                  // event caused the browser to shift the page sideways.
+                  (document.scrollingElement || document.documentElement).scrollLeft = savedScrollLeft;
               }, 300);
           });
           if (window.visualViewport) {
