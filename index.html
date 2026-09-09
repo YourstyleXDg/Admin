@@ -7866,9 +7866,6 @@ function explainFetchError(e) {
   // =========================================================
   // AI ENGINE CONFIG & CHAT HISTORY SYSTEM
   // =========================================================
-  // ==========================================
-  // AI ENGINE CONFIG & CHAT HISTORY SYSTEM
-  // ==========================================
   let currentChatId = null;
   let chatSessions = JSON.parse(localStorage.getItem('dgxen_ai_sessions') || '{}');
   let chatHoldTimer = null;
@@ -7948,6 +7945,8 @@ function explainFetchError(e) {
       }
       isChatHolding = false;
   };
+
+  window.startNewChat = function() {
       currentChatId = 'chat_' + Date.now();
       chatSessions[currentChatId] = {
           title: 'New Chat',
@@ -7957,7 +7956,7 @@ function explainFetchError(e) {
       saveSessions();
       renderCurrentMessages();
       document.getElementById('aiInputPrompt').focus();
-  }
+  };
 
   window.loadChat = function(id) {
       if(!chatSessions[id]) return;
@@ -8615,11 +8614,8 @@ function explainFetchError(e) {
     renderGrid('auto'); renderFestList();
     try { loadAtmosphereSettings(); } catch (e) {}
   }
+
 })();
-
-
-
-
 </script>
 </body>
 </html>
