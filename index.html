@@ -2417,6 +2417,19 @@ body.cat-world-active .cat-mode-bar{display:block}
             animation: none !important;
             transition-duration: 0.05s !important;
         }
+        /* Many elements (.tab-section, .modal, etc.) rest at opacity:0 /
+           translated / scaled and only reach their real, visible state via a
+           "forwards"-filling entry animation. Killing animation above freezes
+           them at that invisible starting frame, so their true end state has
+           to be forced back in explicitly. */
+        body.gfx-low .tab-section,
+        body.gfx-low .modal,
+        body.gfx-low .float-anim,
+        body.gfx-low [style*="fadeIn"],
+        body.gfx-low .chat-fade-in {
+            opacity: 1 !important;
+            transform: none !important;
+        }
         body.gfx-low [style*="backdrop-filter"],
         body.gfx-low .glass-panel {
             backdrop-filter: none !important;
