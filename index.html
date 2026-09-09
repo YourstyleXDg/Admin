@@ -1559,7 +1559,7 @@
         }
 
         /* ========================================= */
-        /* AI CHAT CUSTOMIZATIONS */
+        /* AI CHAT CUSTOMIZATIONS - THEME AWARE */
         /* ========================================= */
         #chatHistoryList {
             -webkit-user-select: none;
@@ -1569,12 +1569,14 @@
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
         #chatHistoryList > div:not(:first-child):hover {
-            background: rgba(0,242,254,0.08) !important;
+            background: rgba(var(--accent-rgb), 0.1) !important;
             transform: translateX(4px);
         }
+
+        /* Scrollbar - Dynamic Theme Colors */
         #chatMessages {
             scrollbar-width: thin;
-            scrollbar-color: rgba(0,242,254,0.3) rgba(0,0,0,0.1);
+            scrollbar-color: var(--accent-glow) rgba(0,0,0,0.1);
         }
         #chatMessages::-webkit-scrollbar {
             width: 6px;
@@ -1584,23 +1586,90 @@
             border-radius: 10px;
         }
         #chatMessages::-webkit-scrollbar-thumb {
-            background: rgba(0,242,254,0.4);
+            background: var(--accent);
             border-radius: 10px;
+            opacity: 0.5;
         }
         #chatMessages::-webkit-scrollbar-thumb:hover {
-            background: rgba(0,242,254,0.6);
+            opacity: 0.8;
+        }
+
+        /* Input Styling - Theme Aware */
+        #aiInputPrompt {
+            background: rgba(0,0,0,0.2) !important;
+            border: 1px solid var(--glass-border) !important;
+            color: var(--text-main) !important;
         }
         #aiInputPrompt::placeholder {
-            color: rgba(255,255,255,0.3);
+            color: var(--text-dim);
+            opacity: 0.6;
         }
         #aiInputPrompt:focus {
-            background: rgba(255,255,255,0.08);
-            border-color: rgba(0,242,254,0.4);
+            background: rgba(0,0,0,0.3) !important;
+            border-color: var(--accent) !important;
             outline: none;
+            box-shadow: 0 0 15px var(--accent-glow);
         }
-        .btn:hover {
+
+        /* Send Button - Theme Aware */
+        #aiPanel .btn {
+            transition: all 0.3s ease;
+        }
+        #aiPanel .btn:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 12px var(--accent-glow);
+        }
+
+        /* Light Mode AI Section */
+        body.light-mode #aiInputPrompt {
+            background: rgba(255,255,255,0.5) !important;
+        }
+        body.light-mode #aiInputPrompt:focus {
+            background: rgba(255,255,255,0.7) !important;
+            border-color: var(--accent) !important;
+        }
+        body.light-mode #chatHistoryList > div:not(:first-child):hover {
+            background: rgba(0,184,107,0.08) !important;
+        }
+
+        /* Max Pro Mode - Cyan Glow */
+        body.max-mode #aiInputPrompt {
+            background: rgba(0,255,213,0.05) !important;
+            border-color: rgba(0,255,213,0.2) !important;
+        }
+        body.max-mode #aiInputPrompt:focus {
+            background: rgba(0,255,213,0.1) !important;
+            border-color: rgba(0,255,213,0.5) !important;
+            box-shadow: 0 0 20px rgba(0,255,213,0.3);
+        }
+        body.max-mode #chatMessages::-webkit-scrollbar-thumb {
+            background: rgba(0,255,213,0.6);
+        }
+
+        /* Chat Bubbles - User Message (Accent Colored) */
+        .ai-user-bubble {
+            align-self: flex-end;
+            background: rgba(var(--accent-rgb), 0.15);
+            border: 1px solid rgba(var(--accent-rgb), 0.3);
+            color: var(--accent);
+        }
+        /* Chat Bubbles - Assistant Message (Glass Style) */
+        .ai-assistant-bubble {
+            align-self: flex-start;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-main);
+        }
+
+        /* Code Block Styling */
+        .ai-code-block {
+            background: rgba(0,0,0,0.4) !important;
+            border-left: 3px solid var(--accent);
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
         }
 
         .cloud-stat-bar {
@@ -2701,24 +2770,24 @@ body.cat-world-active .cat-mode-bar{display:block}
     <!-- AI PANEL & BACKDROP -->
     <div id="aiPanelBackdrop" onclick="toggleAIPanel(false)"></div>
     <div id="aiPanel" class="glass-panel">
-        <button type="button" class="sec-panel-close" onclick="toggleAIPanel(false)" aria-label="Close" style="color: #00f2fe; border-color: rgba(0,242,254,0.4);">×</button>
+        <button type="button" class="sec-panel-close" onclick="toggleAIPanel(false)" aria-label="Close" style="color: var(--accent); border-color: var(--accent-glow);">×</button>
         
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-            <h2 style="color:#00f2fe; font-size:22px; font-weight:900; margin:0;">AI Engine (MiMo 2.5 Pro)</h2>
-            <button class="btn" onclick="startNewChat()" style="padding: 8px 14px; font-size: 11px; background: rgba(0,242,254,0.15); color: #00f2fe; border: 1px solid rgba(0,242,254,0.4); border-radius: 8px; cursor: pointer; font-weight: 700;">+ New Chat</button>
+            <h2 style="color: var(--accent); font-size:22px; font-weight:900; margin:0;">AI Engine (MiMo 2.5 Pro)</h2>
+            <button class="btn" onclick="startNewChat()" style="padding: 8px 14px; font-size: 11px; background: rgba(var(--accent-rgb), 0.15); color: var(--accent); border: 1px solid var(--accent-glow); border-radius: 8px; cursor: pointer; font-weight: 700;">+ New Chat</button>
         </div>
 
         <!-- Main Workspace (History Sidebar + Chat Area) -->
         <div style="display: flex; flex: 1; gap: 15px; overflow: hidden; height: calc(100% - 50px);">
             
             <!-- Chat History List -->
-            <div style="width: 220px; border-right: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 8px; padding-right: 10px; overflow-y: auto;" id="chatHistoryList">
+            <div style="width: 220px; border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: 8px; padding-right: 10px; overflow-y: auto;" id="chatHistoryList">
                 <div style="font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;">Recent Chats</div>
                 <!-- Dynamic sessions will appear here -->
             </div>
 
             <!-- Chat Conversation Window -->
-            <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: rgba(0,0,0,0.25); border-radius: 16px; border: 1px solid rgba(255,255,255,0.06);">
+            <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: rgba(0,0,0,0.25); border-radius: 16px; border: 1px solid var(--glass-border);">
                 
                 <!-- Messages Box -->
                 <div id="chatMessages" style="flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; font-size: 14px; scroll-behavior: smooth;">
@@ -7768,7 +7837,11 @@ function explainFetchError(e) {
       box.scrollTop = box.scrollHeight;
 
       try {
-          const response = await fetch(`${AI_CONFIG.baseUrl}/chat/completions`, {
+          // 🔥 FIX: CORS Proxy to bypass browser security blocks
+          const targetUrl = `${AI_CONFIG.baseUrl}/chat/completions`;
+          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+
+          const response = await fetch(proxyUrl, {
               method: 'POST',
               headers: {
                   'Content-Type': 'application/json',
@@ -7783,13 +7856,18 @@ function explainFetchError(e) {
           });
 
           if (!response.ok) {
-              throw new Error(`API Error: ${response.status} ${response.statusText}`);
+              throw new Error(`API Error: ${response.status}`);
           }
 
           const data = await response.json();
           const reply = data.choices?.[0]?.message?.content 
                         ? data.choices[0].message.content 
                         : '⚠️ Error: Invalid API response structure.';
+
+          // Remove loading indicator
+          if(document.getElementById(loadingId)) {
+              document.getElementById(loadingId).remove();
+          }
 
           // Push assistant reply
           chatSessions[currentChatId].messages.push({ role: 'assistant', content: reply });
@@ -7799,10 +7877,12 @@ function explainFetchError(e) {
 
       } catch (err) {
           console.error('AI API Error:', err);
-          const errorMsg = `❌ ${err.message || 'Network or API error. Check your connection.'}`;
+          const errorMsg = `❌ Connection Failed! CORS/Network Issue: ${err.message}`;
           chatSessions[currentChatId].messages.push({ role: 'assistant', content: errorMsg });
+          if(document.getElementById(loadingId)) {
+              document.getElementById(loadingId).remove();
+          }
           renderCurrentMessages();
-          loadingDiv.remove();
       }
   };
 
@@ -7892,6 +7972,86 @@ function explainFetchError(e) {
           alert('Message copied to clipboard!');
       }).catch(err => console.error('Copy failed:', err));
   };
+
+  // =========================================================
+  // CLAUDE-INSPIRED ADVANCED FEATURES
+  // =========================================================
+
+  // Search messages in current chat
+  window.searchMessages = function(query) {
+      if(!currentChatId || !chatSessions[currentChatId]) return [];
+      const q = query.toLowerCase();
+      return chatSessions[currentChatId].messages.filter(m => 
+          m.content.toLowerCase().includes(q)
+      );
+  };
+
+  // Get chat statistics
+  window.getChatStats = function() {
+      if(!currentChatId || !chatSessions[currentChatId]) return null;
+      const msgs = chatSessions[currentChatId].messages;
+      return {
+          totalMessages: msgs.length,
+          userMessages: msgs.filter(m => m.role === 'user').length,
+          aiMessages: msgs.filter(m => m.role === 'assistant').length,
+          totalTokens: msgs.reduce((sum, m) => sum + m.content.split(/\s+/).length, 0),
+          createdAt: chatSessions[currentChatId].timestamp
+      };
+  };
+
+  // Smart response suggestion (Claude-like feature)
+  window.suggestFollowUp = function() {
+      if(!currentChatId || !chatSessions[currentChatId]) return null;
+      const msgs = chatSessions[currentChatId].messages;
+      if(msgs.length < 2) return null;
+      
+      const lastAiMsg = msgs[msgs.length - 1];
+      if(lastAiMsg.role !== 'assistant') return null;
+
+      const suggestions = [
+          'Can you explain that in simpler terms?',
+          'Provide a code example for this',
+          'What are the edge cases?',
+          'How does this compare to alternatives?',
+          'Can you summarize the key points?'
+      ];
+      return suggestions[Math.floor(Math.random() * suggestions.length)];
+  };
+
+  // Clear all chat history with confirmation
+  window.clearAllHistory = function() {
+      if(Object.keys(chatSessions).length === 0) {
+          alert('No chat history to clear');
+          return;
+      }
+      if(confirm(`Delete ALL ${Object.keys(chatSessions).length} chats? This cannot be undone!`)) {
+          chatSessions = {};
+          currentChatId = null;
+          localStorage.removeItem('dgxen_ai_sessions');
+          startNewChat();
+      }
+  };
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+      if(e.ctrlKey || e.metaKey) {
+          // Ctrl/Cmd + N = New Chat
+          if(e.key === 'n') {
+              e.preventDefault();
+              if(document.getElementById('aiPanel').classList.contains('open')) {
+                  startNewChat();
+              }
+          }
+          // Ctrl/Cmd + K = Focus input
+          if(e.key === 'k') {
+              e.preventDefault();
+              const input = document.getElementById('aiInputPrompt');
+              if(input && document.getElementById('aiPanel').classList.contains('open')) {
+                  input.focus();
+              }
+          }
+      }
+  });
 
   // =========================================================
   // TOGGLE AI PANEL (GLOW FLY ANIMATION)
