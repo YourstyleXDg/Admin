@@ -1548,6 +1548,22 @@
             word-break: break-all;
             color: var(--text-main);
         }
+        .cloud-file-row .name[data-exp-id] {
+            cursor: pointer;
+            border-radius: 8px;
+            padding: 4px 6px;
+            margin: -4px -6px;
+            transition: background .15s ease;
+        }
+        .cloud-file-row .name[data-exp-id]:hover,
+        .cloud-file-row .name[data-exp-id]:focus-visible {
+            background: rgba(0,255,136,.08);
+            outline: none;
+        }
+        .cloud-file-row .name[data-exp-id][aria-expanded="true"] {
+            background: rgba(0,255,136,.14);
+            color: var(--accent);
+        }
         .cloud-file-row .meta {
             color: var(--text-dim);
             font-size: 11px;
@@ -1874,7 +1890,7 @@
             background: #ff6b9d;
             color: #000;
         }
-    
+
 #dgxenLogoTitle{
   cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none;
   position:relative;z-index:20;outline:none;
@@ -2159,9 +2175,14 @@ body.cat-world-active .cat-mode-bar{display:block}
                                 <option value="night_stars">Night · Moon & stars</option>
                                 <option value="night_aurora">Night · Aurora</option>
                                 <option value="cyber">Cyber neon</option>
+                                <option value="sakura">Sakura</option>
+                                <option value="ocean">Ocean</option>
+                                <option value="ember">Ember</option>
+                                <option value="metroid">3D · Meteor fall</option>
+                                <option value="apex">3D · Ember rise</option>
                                 <option value="minimal">Minimal void</option>
                             </select>
-                            <p style="margin:8px 0 0;font-size:11px;color:var(--text-dim);font-weight:600;line-height:1.4;">Applies on login.html corners & sky. No extra sidebar tab.</p>
+                            <p style="margin:8px 0 0;font-size:11px;color:var(--text-dim);font-weight:600;line-height:1.4;">Applies on login.html corners &amp; sky. No extra sidebar tab.</p>
                         </div>
                         </div>
                         <div style="display:flex;flex-direction:column;gap:8px;">
@@ -2308,7 +2329,7 @@ body.cat-world-active .cat-mode-bar{display:block}
                         <option value="auto">Auto · clock + festival + weather</option>
                         <option value="native">Native</option>
                         <option value="morning">Morning · Dew & leaves</option>
-                                <option value="day_sunny">Afternoon · Sunny</option>
+                        <option value="day_sunny">Afternoon · Sunny</option>
                         <option value="day_haze">Day · Haze</option>
                         <option value="golden">Golden hour</option>
                         <option value="rain">Rain</option>
@@ -2318,8 +2339,8 @@ body.cat-world-active .cat-mode-bar{display:block}
                         <option value="sakura">Sakura</option>
                         <option value="ocean">Ocean</option>
                         <option value="ember">Ember</option>
-                        <option value="metroid">3D · Metroid shards</option>
-                        <option value="apex">3D · Apex fall</option>
+                        <option value="metroid">3D · Meteor fall</option>
+                        <option value="apex">3D · Ember rise</option>
                         <option value="minimal">Minimal</option>
                     </select>
                 </div>
@@ -2350,11 +2371,11 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <p id="atmStatus" style="font-size:12px;font-weight:700;color:var(--text-dim);min-height:18px;margin-bottom:12px;"></p>
 
                 <div style="padding:12px 14px;border-radius:14px;border:1px solid var(--glass-border);background:rgba(0,0,0,.12);margin-bottom:14px;">
-                    <div class="atm-collapsible-hd open" id="atmPrevHd" onclick="toggleAtmPreviewSection()">
+                    <div class="atm-collapsible-hd" id="atmPrevHd" onclick="toggleAtmPreviewSection()">
                         <div style="font-size:13px;font-weight:900;">Live preview (in panel)</div>
                         <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>
-                    <div id="atmPrevBody">
+                    <div id="atmPrevBody" style="display:none;">
                         <p style="font-size:11px;color:var(--text-dim);margin:8px 0;">Tap a preset or festival <b>Try</b> — background + mini card update here (no external link).</p>
                         <div class="atm-preview-stage" id="atmPreviewStage">
                             <div class="mini-card">DGXEN · <span id="atmPreviewLabel">native</span></div>
@@ -2364,11 +2385,11 @@ body.cat-world-active .cat-mode-bar{display:block}
                 </div>
 
                 <div style="padding:12px 14px;border-radius:14px;border:1px solid var(--glass-border);">
-                    <div class="atm-collapsible-hd open" id="atmFestHd" onclick="toggleAtmFestivalSection()">
+                    <div class="atm-collapsible-hd" id="atmFestHd" onclick="toggleAtmFestivalSection()">
                         <div style="font-size:13px;font-weight:900;">India festivals · try in panel</div>
                         <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>
-                    <div id="atmFestBody"><div id="atmFestList" style="max-height:280px;overflow:auto;"></div>
+                    <div id="atmFestBody" style="display:none;"><div id="atmFestList" style="max-height:280px;overflow:auto;"></div>
                     <p style="font-size:11px;color:var(--text-dim);margin:10px 0 0;line-height:1.4;">Fixed national days + 2026 anchors for lunar festivals. Festival toggle ON → Auto uses today's match.</p></div>
                 </div>
                 <p style="font-size:11px;color:var(--text-dim);margin:12px 0 0;line-height:1.45;">MP3 optional: put loops in <code>./sounds/atm/</code> as rain.mp3, night.mp3, diwali.mp3, patriot.mp3, soft.mp3, cyber.mp3, ocean.mp3, ember.mp3, holi.mp3</p>
@@ -3416,7 +3437,22 @@ body.cat-world-active .cat-mode-bar{display:block}
                 let finalName = "";
 
                 if (fileId === 'index') {
-                    content = document.documentElement.outerHTML;
+                    // NOTE: document.documentElement.outerHTML used to be used here, but that
+                    // serializes the *live rendered DOM* — not the real file. By the time you
+                    // click download, the DOM already has extra classes/attributes/nodes added
+                    // by our own JS at runtime (toggled state classes, injected modals/toasts,
+                    // admin widgets, data-* attrs, etc). None of that exists in the actual file
+                    // on disk, which is exactly why the download always came out ~20KB bigger
+                    // than the real index.html. Fetching the file straight from the server gives
+                    // back the exact original bytes instead.
+                    let fetched = false;
+                    for (const candidate of [location.pathname, './index.html']) {
+                        try {
+                            const res = await fetch(candidate + (candidate.indexOf('?') > -1 ? '&' : '?') + '_dl=' + Date.now(), { cache: 'no-store' });
+                            if (res.ok) { content = await res.text(); fetched = true; break; }
+                        } catch (eFetch) { /* try next candidate */ }
+                    }
+                    if (!fetched) content = document.documentElement.outerHTML; // last-resort fallback (e.g. opened via file://)
                     finalName = "index.html";
                 } else if (fileId === 'auth_online' || fileId === 'auth_offline' || fileId === 'auth_smali') {
                     // Single embedded Auth.smali template (~15KB). Online vs Offline = only loadUrl line.
@@ -3804,6 +3840,18 @@ body.cat-world-active .cat-mode-bar{display:block}
             el.classList.add('active');
             document.querySelectorAll('.tab-section').forEach(sec => sec.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
+            // Live preview + festival blocks always come back minimized whenever this tab
+            // is (re)opened, even if they were left expanded earlier in the same session.
+            if (tabId === 'atmosphere') {
+                ['atmPrevHd', 'atmFestHd'].forEach(function(hdId) {
+                    const hd = document.getElementById(hdId);
+                    if (hd) hd.classList.remove('open');
+                });
+                ['atmPrevBody', 'atmFestBody'].forEach(function(bodyId) {
+                    const body = document.getElementById(bodyId);
+                    if (body) body.style.display = 'none';
+                });
+            }
         }
 
         let masterKeysData = {};
@@ -6249,12 +6297,12 @@ function explainFetchError(e) {
 
                 // ---- File type detection ----
                 const ext = name.split('.').pop().toLowerCase();
-                const hasPreview = ['jpg','jpeg','png','gif','webp','svg','mp3','wav','ogg','m4a','mp4','webm','mov','pdf','txt','md','json','csv','log','html','js','css'].includes(ext);
+                const hasPreview = ['jpg','jpeg','png','gif','webp','svg','heic','heif','mp3','wav','ogg','m4a','mp4','webm','mov','mkv','m4v','pdf','txt','md','json','csv','log','html','js','css'].includes(ext);
 
                 return (
                   '<div class="cloud-file-row">' +
 
-                  '<div class="name">' +
+                  '<div class="name"' + (hasPreview ? ' data-exp-id="' + fid + '" data-exp-name="' + name + '" role="button" tabindex="0" aria-expanded="false" title="Tap to preview"' : '') + '>' +
                   name +
 
                   '<div class="meta">' +
@@ -6277,8 +6325,6 @@ function explainFetchError(e) {
                   '</div>' +
 
                   '</div>' +
-
-                  (hasPreview ? '<button class="btn" type="button" style="background:rgba(0,255,136,.15);color:var(--accent);" data-exp-id="' + fid + '" data-exp-name="' + name + '">👁</button>' : '') +
 
                   '<button class="btn" type="button" style="background:rgba(92,200,255,.15);color:#5cc8ff;" data-dl-name="' +
                   name +
@@ -6336,14 +6382,14 @@ function explainFetchError(e) {
             }
           );
 
-        // ===== PREVIEW BUTTONS (toggle same file = hide) =====
-        box.querySelectorAll('[data-exp-id]').forEach(btn => {
-          btn.addEventListener('click', async function(e) {
-            e.stopPropagation();
-            
-            const fileId = this.getAttribute('data-exp-id');
-            const fileName = this.getAttribute('data-exp-name');
-            const row = this.closest('.cloud-file-row');
+        // ===== PREVIEW (click any file row to open — toggle same file = close) =====
+        box.querySelectorAll('[data-exp-id]').forEach(nameEl => {
+          const openPreview = async function(e) {
+            if (e) e.stopPropagation();
+
+            const fileId = nameEl.getAttribute('data-exp-id');
+            const fileName = nameEl.getAttribute('data-exp-name');
+            const row = nameEl.closest('.cloud-file-row');
             if (!row) return;
 
             // Drawer is inserted as next sibling of the row (not a child)
@@ -6353,13 +6399,14 @@ function explainFetchError(e) {
 
             // Close all open previews first
             document.querySelectorAll('.cloud-preview-drawer').forEach(d => d.remove());
+            document.querySelectorAll('.cloud-file-row .name[aria-expanded="true"]').forEach(n => n.setAttribute('aria-expanded', 'false'));
 
             // Same file tapped again → only hide (toggle off)
             if (isOpenHere) {
-              this.setAttribute('aria-expanded', 'false');
+              nameEl.setAttribute('aria-expanded', 'false');
               return;
             }
-            this.setAttribute('aria-expanded', 'true');
+            nameEl.setAttribute('aria-expanded', 'true');
             
             const drawer = document.createElement('div');
             drawer.className = 'cloud-preview-drawer';
@@ -6380,15 +6427,33 @@ function explainFetchError(e) {
               const path = fileName.split('/').map(encodeURIComponent).join('/');
               const fileUrl = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path + '?Authorization=' + encodeURIComponent(authData.authorizationToken);
               const ext = fileName.split('.').pop().toLowerCase();
-              
+              // Shown when the browser itself can't decode a format we do have a preview
+              // slot for (HEIC/HEIF stills, or HEVC-coded video inside mp4/mov/mkv/m4v) —
+              // support varies by browser/OS, so this never blocks the actual file, it
+              // just falls back to an open/download link instead of a broken player.
+              window.__cloudPreviewFallback = function(el, url, label){
+                const d = el.closest('.cloud-preview-drawer');
+                if (!d) return;
+                d.innerHTML = '<div style="color:var(--text-dim);font-size:12px;line-height:1.5;">' +
+                  '⚠ This browser can\'t preview this ' + label + ' inline (format/codec support varies by device).<br>' +
+                  '<a class="btn" href="' + url + '" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:8px 14px;font-size:12px;">Open in new tab</a>' +
+                  '</div>';
+              };
+
               if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) {
-                drawer.innerHTML = '<div class="media-wrap"><img src="' + fileUrl + '" alt="Preview" loading="lazy"></div>';
+                drawer.innerHTML = '<div class="media-wrap"><img src="' + fileUrl + '" alt="Preview" loading="lazy" onerror="window.__cloudPreviewFallback(this,\'' + fileUrl + '\',\'image\')"></div>';
+              } else if (['heic','heif'].includes(ext)) {
+                // Safari/iOS WebViews can render HEIC directly in <img>; others generally
+                // can't decode it — try it live and fall back gracefully if it fails.
+                drawer.innerHTML = '<div class="media-wrap"><img src="' + fileUrl + '" alt="Preview" loading="lazy" onerror="window.__cloudPreviewFallback(this,\'' + fileUrl + '\',\'HEIC image\')"></div>';
               } else if (['mp3','wav','ogg','m4a'].includes(ext)) {
                 drawer.innerHTML = '<audio controls preload="metadata" src="' + fileUrl + '"></audio>';
               } else if (['mp4','webm','mov','mkv','m4v'].includes(ext)) {
+                // Container is supported, but the codec inside (e.g. HEVC/H.265) may not
+                // be decodable on this browser — same graceful fallback if playback fails.
                 drawer.innerHTML =
                   '<div class="media-wrap">' +
-                  '<video controls playsinline webkit-playsinline preload="metadata" src="' + fileUrl + '"></video>' +
+                  '<video controls playsinline webkit-playsinline preload="metadata" src="' + fileUrl + '" onerror="window.__cloudPreviewFallback(this,\'' + fileUrl + '\',\'video\')"></video>' +
                   '</div>' +
                   '<div style="font-size:11px;font-weight:700;color:var(--text-dim);margin-top:8px;">Scroll if controls are tight — tap video for full controls.</div>';
               } else if (['pdf'].includes(ext)) {
@@ -6407,6 +6472,12 @@ function explainFetchError(e) {
             } catch (e) {
               drawer.innerHTML = '<div style="color:var(--error);font-size:13px;">❌ ' + (e.message || 'Preview failed') + '</div>';
             }
+          };
+          // Admin-friendly: tap/click the file itself to open it (mouse + touch),
+          // plus keyboard support (Enter/Space) since the row is a role="button".
+          nameEl.addEventListener('click', openPreview);
+          nameEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPreview(e); }
           });
         });
 
@@ -7505,8 +7576,8 @@ function explainFetchError(e) {
     { id:'night_stars', title:'Stars', desc:'Moon night', sw:'linear-gradient(135deg,#02040a,#1a2040)' },
     { id:'cyber', title:'Cyber', desc:'Neon grid', sw:'linear-gradient(135deg,#050812,#00c8a0)' },
     { id:'sakura', title:'Sakura', desc:'Petals', sw:'linear-gradient(135deg,#2a1520,#ff9ec0)' },
-    { id:'metroid', title:'Metroid', desc:'3D shards fall', sw:'linear-gradient(135deg,#020806,#00c8a0)' },
-    { id:'apex', title:'Apex', desc:'3D ember fall', sw:'linear-gradient(135deg,#120805,#c04010)' },
+    { id:'metroid', title:'Metroid', desc:'Meteor fall · sparks', sw:'linear-gradient(135deg,#020408,#050a10)' },
+    { id:'apex', title:'Apex', desc:'Ember rise · glow', sw:'linear-gradient(135deg,#0d0402,#170704)' },
     { id:'ocean', title:'Ocean', desc:'Deep blue', sw:'linear-gradient(135deg,#021018,#0a6a8a)' },
     { id:'ember', title:'Ember', desc:'Fire glow', sw:'linear-gradient(135deg,#120805,#c04010)' },
     { id:'minimal', title:'Minimal', desc:'Void', sw:'linear-gradient(135deg,#030504,#0a0c0a)' }
@@ -7545,7 +7616,7 @@ function explainFetchError(e) {
     day_sunny:'radial-gradient(circle at 80% 10%,rgba(255,200,80,.4),transparent 40%),linear-gradient(160deg,#0a1218,#0d1a14)',
     rain:'linear-gradient(160deg,#060a0e,#0a1016)', night_stars:'linear-gradient(160deg,#02040a,#050812)',
     cyber:'linear-gradient(150deg,#03010a,#050812)', sakura:'linear-gradient(160deg,#1a0c12,#120a10)',
-    metroid:'linear-gradient(160deg,#020806,#041210)', apex:'linear-gradient(165deg,#0a0604,#120805)',
+    metroid:'linear-gradient(160deg,#020408,#050a10)', apex:'linear-gradient(165deg,#0d0402,#170704)',
     ocean:'linear-gradient(165deg,#020c14,#041820)', ember:'linear-gradient(170deg,#100805,#0a0604)',
     minimal:'#030504', golden:'linear-gradient(165deg,#1a0c08,#120e0a)',
     fest_teachers:'linear-gradient(160deg,#120e08,#1a160e)', fest_children:'linear-gradient(160deg,#0c1020,#1a1830)',
