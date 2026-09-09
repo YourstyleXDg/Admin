@@ -117,12 +117,15 @@
             content: '';
             position: fixed;
             border-radius: 50%;
-            filter: blur(120px);
+            filter: blur(90px);
             z-index: -3;
             opacity: 0.8;
             pointer-events: none;
             animation: orbFloat 10s infinite alternate ease-in-out;
             transition: background 1s ease;
+            will-change: transform;
+            transform: translateZ(0);
+            backface-visibility: hidden;
         }
         body::before {
             width: 450px;
@@ -145,6 +148,34 @@
             }
             100% {
                 transform: translateY(60px) scale(1.15);
+            }
+        }
+
+        /* Pause expensive continuous animations & broad transitions while the
+           user is actively pinch-zooming, so the browser isn't re-rasterizing
+           blurred/backdrop-filter layers mid-gesture (fixes the zoom-out stutter). */
+        body.is-zooming::before,
+        body.is-zooming::after,
+        body.is-zooming .water-wave {
+            animation-play-state: paused !important;
+        }
+        body.is-zooming .glass-panel,
+        body.is-zooming .stat-card,
+        body.is-zooming .btn,
+        body.is-zooming input,
+        body.is-zooming .user-card,
+        body.is-zooming .nav-link,
+        body.is-zooming .dynamic-island,
+        body.is-zooming .mk-item,
+        body.is-zooming .info-btn,
+        body.is-zooming .manual-refresh-btn,
+        body.is-zooming .auto-notch {
+            transition: none !important;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            body::before, body::after, .water-wave {
+                animation: none !important;
             }
         }
 
@@ -590,6 +621,7 @@
             flex-direction: column;
             justify-content: center;
             cursor: pointer;
+            contain: layout style;
         }
         .stat-card:hover {
             transform: translateY(-10px) scale(1.03);
@@ -660,7 +692,7 @@
             border-radius: 14px;
             outline: none;
             font-family: monospace;
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 600;
             box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
             pointer-events: auto !important;
@@ -712,6 +744,7 @@
             border: 1px solid var(--glass-border);
             padding: 14px 16px;
             border-radius: 14px;
+            contain: layout style;
         }
         .mk-item:hover {
             background: rgba(150, 150, 150, 0.1);
@@ -772,6 +805,7 @@
             display: flex;
             flex-direction: column;
             min-height: 0;
+            contain: layout style;
         }
         .user-card:hover {
             transform: translateY(-12px) scale(1.02);
@@ -1044,6 +1078,19 @@
             color: var(--accent);
             transform: scale(1.15) rotate(10deg);
             filter: drop-shadow(0 0 10px var(--accent-glow));
+        }
+
+        /* --- SCROLL PERFORMANCE: smoother momentum scrolling + no chained pull ---- */
+        .guide-modal,
+        .device-id-box,
+        #cloudFileList,
+        #chatMessages,
+        #chatHistoryList,
+        .mk-list,
+        [style*="overflow-y: auto"],
+        [style*="overflow: auto"] {
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
         }
 
         /* --- Modern Guide Modal & Tabs (ACCORDION STYLE) --- */
@@ -1359,7 +1406,7 @@
             border: 1px solid var(--glass-border);
             background: var(--input-bg);
             color: var(--text-main);
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 700;
             margin-bottom: 12px;
             outline: none;
@@ -1618,6 +1665,28 @@
         #aiPanel .btn:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 12px var(--accent-glow);
+        }
+
+        /* Chat history hold-to-delete — visual progress so it's obvious the
+           press is registering (keep CHAT_HOLD_MS below in JS in sync: 550ms) */
+        .chat-hist-item {
+            position: relative;
+            overflow: hidden;
+        }
+        .chat-hist-item.holding {
+            transform: scale(0.97);
+        }
+        .chat-hist-item.holding::after {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0; width: 0%;
+            background: rgba(255, 59, 48, 0.35);
+            animation: chatHoldFill 550ms linear forwards;
+            pointer-events: none;
+        }
+        @keyframes chatHoldFill {
+            from { width: 0%; }
+            to { width: 100%; }
         }
 
         /* ========================================= */
@@ -2325,6 +2394,24 @@ body.cat-world-active .cat-mode-bar{display:block}
 </style>
 </head>
 <body>
+    <script>
+      // Pause heavy blurred/animated layers while the user is actively pinch-zooming
+      // or the visual viewport is otherwise changing, then resume once it settles.
+      // This is what removes the "stuck for half a second" feeling when zooming out.
+      (function () {
+        if (!window.visualViewport) return;
+        var zoomTimer = null;
+        function onVVChange() {
+          document.body.classList.add('is-zooming');
+          clearTimeout(zoomTimer);
+          zoomTimer = setTimeout(function () {
+            document.body.classList.remove('is-zooming');
+          }, 220);
+        }
+        window.visualViewport.addEventListener('resize', onVVChange, { passive: true });
+        window.visualViewport.addEventListener('scroll', onVVChange, { passive: true });
+      })();
+    </script>
 
     <div id="adminGate">
         <div class="gate-box glass-panel">
@@ -2447,7 +2534,7 @@ body.cat-world-active .cat-mode-bar{display:block}
                             </label>
                         <div style="margin-top:8px;padding:14px;border-radius:14px;border:1px solid var(--glass-border);background:rgba(0,0,0,.12);">
                             <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:8px;letter-spacing:.4px;">LOGIN ATMOSPHERE (login page)</div>
-                            <select id="loginThemeSelect" style="width:100%;padding:12px 14px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:700;margin-bottom:10px;">
+                            <select id="loginThemeSelect" style="width:100%;padding:12px 14px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:700;font-size:16px;margin-bottom:10px;">
                                 <option value="auto">Auto (day / night by clock)</option>
                                 <option value="morning">Morning · Dew & leaves</option>
                                 <option value="day_sunny">Afternoon · Sunny</option>
@@ -2607,7 +2694,7 @@ body.cat-world-active .cat-mode-bar{display:block}
 
                 <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;">
                     <label style="font-size:12px;font-weight:800;color:var(--text-dim);">Preset</label>
-                    <select id="atmThemeSelect" style="flex:1;min-width:160px;padding:12px 14px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:700;">
+                    <select id="atmThemeSelect" style="flex:1;min-width:160px;padding:12px 14px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:700;font-size:16px;">
                         <option value="auto">Auto · clock + festival + weather</option>
                         <option value="native">Native</option>
                         <option value="morning">Morning · Dew & leaves</option>
@@ -2847,7 +2934,7 @@ body.cat-world-active .cat-mode-bar{display:block}
             </div>
 
             <!-- Chat Conversation Window -->
-            <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: rgba(0,0,0,0.25); border-radius: 16px; border: 1px solid var(--glass-border);">
+            <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: rgba(0,0,0,0.25); border-radius: 16px; border: 1px solid var(--glass-border); position: relative;">
                 
                 <!-- Messages Box -->
                 <div id="chatMessages" style="flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; font-size: 14px; scroll-behavior: smooth;">
@@ -2856,9 +2943,12 @@ body.cat-world-active .cat-mode-bar{display:block}
                     </div>
                 </div>
 
-                <!-- Input Box -->
+                <!-- Jump to latest button (shows when user has scrolled up) -->
+                <button type="button" id="chatJumpBtn" onclick="scrollChatToBottom(true)" style="display:none; position:absolute; right:34px; bottom:82px; z-index:5; padding:8px 14px; border-radius:20px; background:var(--accent); color:#000; font-weight:800; font-size:11px; border:none; cursor:pointer; box-shadow:0 8px 20px rgba(0,0,0,0.4);">↓ New replies</button>
+
+                <!-- Input Box (always pinned below the conversation) -->
                 <div style="padding: 15px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; gap: 10px; background: rgba(0,0,0,0.2);">
-                    <input type="text" id="aiInputPrompt" placeholder="Ask code or logic..." style="flex: 1; padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); font-size: 13px;" autocomplete="off">
+                    <input type="text" id="aiInputPrompt" placeholder="Ask code or logic..." style="flex: 1; padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); font-size: 16px;" autocomplete="off">
                     <button class="btn" onclick="sendAiMessage()" style="background: #00f2fe; color: #000; padding: 0 20px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none;">Send</button>
                 </div>
 
@@ -7870,6 +7960,7 @@ function explainFetchError(e) {
   let chatSessions = JSON.parse(localStorage.getItem('dgxen_ai_sessions') || '{}');
   let chatHoldTimer = null;
   let isChatHolding = false;
+  let chatHoldState = null; // { id, el, startX, startY, moved, fired }
 
   // Cloudflare Worker URL (your personal endpoint)
   const WORKER_URL = "https://dgxen-ai-bot.akkumsgsjshjwej.workers.dev/";
@@ -7895,48 +7986,98 @@ function explainFetchError(e) {
               const title = session.title || 'New Chat';
               const shortTitle = title.length > 18 ? title.slice(0, 15) + '...' : title;
               
-              // Long-press (hold) to delete
+              // Long-press (hold) to delete — release/move handling is done
+              // globally in startChatHold() so a slight finger drift doesn't
+              // cancel the hold, and a clean tap doesn't need a separate
+              // click handler racing against it.
               html += `<div 
-                          onpointerdown="startChatHold(event, '${id}')" 
-                          onpointerup="cancelChatHold()" 
-                          onpointerleave="cancelChatHold()" 
-                          onpointercancel="cancelChatHold()"
-                          onclick="handleChatClick('${id}')" 
-                          style="padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid; transition: 0.2s; user-select: none; ${activeClass}"
+                          class="chat-hist-item"
+                          data-chat-id="${id}"
+                          onpointerdown="startChatHold(event, '${id}')"
+                          style="padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid; transition: 0.2s; user-select: none; touch-action: pan-y; ${activeClass}"
                        >${shortTitle}</div>`;
           });
       }
       listEl.innerHTML = html;
   }
 
-  // HOLD TO DELETE LOGIC (700ms hold)
-  window.startChatHold = function(e, id) {
-      isChatHolding = false;
-      if(e.button !== undefined && e.button !== 0) return;
-      
-      chatHoldTimer = setTimeout(() => {
-          isChatHolding = true;
-          if(navigator.vibrate) navigator.vibrate(50);
-          
-          // Use admin panel's confirmation
-          if(window.showConfirm) {
-              showConfirm("Delete Chat?", `Are you sure? "${chatSessions[id].title}"`, () => {
-                  delete chatSessions[id];
-                  if(currentChatId === id) startNewChat(); 
-                  else saveSessions();
-              });
-          } else {
-              if(confirm("Delete this chat?")) {
-                  delete chatSessions[id];
-                  if(currentChatId === id) startNewChat(); 
-                  else saveSessions();
-              }
-          }
-      }, 700);
-  };
+  // HOLD TO DELETE LOGIC — movement-tolerant, with visual hold feedback.
+  // Old version cancelled on pointerleave, which fires from tiny finger
+  // drift on a small list item — that's why the hold used to register
+  // "sometimes but not others". Now we only cancel on real movement
+  // (past CHAT_HOLD_MOVE_TOLERANCE) or on pointerup/cancel, tracked at
+  // the document level so it works reliably even if the finger strays
+  // slightly outside the row.
+  const CHAT_HOLD_MS = 550;
+  const CHAT_HOLD_MOVE_TOLERANCE = 12; // px of allowed drift while holding
+
+  function clearChatHoldListeners() {
+      document.removeEventListener('pointermove', onChatHoldMove);
+      document.removeEventListener('pointerup', onChatHoldEnd);
+      document.removeEventListener('pointercancel', onChatHoldEnd);
+  }
+
+  function onChatHoldMove(e) {
+      if (!chatHoldState) return;
+      const dx = Math.abs(e.clientX - chatHoldState.startX);
+      const dy = Math.abs(e.clientY - chatHoldState.startY);
+      if (dx > CHAT_HOLD_MOVE_TOLERANCE || dy > CHAT_HOLD_MOVE_TOLERANCE) {
+          chatHoldState.moved = true;
+          cancelChatHold();
+      }
+  }
+
+  function onChatHoldEnd() {
+      if (!chatHoldState) return;
+      const state = chatHoldState;
+      cancelChatHold();
+      // Released quickly without drifting and before the hold fired = a clean tap.
+      if (!state.fired && !state.moved) {
+          handleChatClick(state.id);
+      }
+  }
 
   window.cancelChatHold = function() {
-      if(chatHoldTimer) clearTimeout(chatHoldTimer);
+      if (chatHoldTimer) { clearTimeout(chatHoldTimer); chatHoldTimer = null; }
+      if (chatHoldState && chatHoldState.el) chatHoldState.el.classList.remove('holding');
+      clearChatHoldListeners();
+      chatHoldState = null;
+  };
+
+  window.startChatHold = function(e, id) {
+      if (e.button !== undefined && e.button !== 0) return;
+      isChatHolding = false;
+      cancelChatHold(); // clear any stray state from a previous row
+      const el = e.currentTarget;
+      chatHoldState = { id: id, el: el, startX: e.clientX, startY: e.clientY, moved: false, fired: false };
+      if (el) el.classList.add('holding');
+      document.addEventListener('pointermove', onChatHoldMove, { passive: true });
+      document.addEventListener('pointerup', onChatHoldEnd, { passive: true });
+      document.addEventListener('pointercancel', onChatHoldEnd, { passive: true });
+
+      chatHoldTimer = setTimeout(() => {
+          if (!chatHoldState) return; // already released or moved away
+          chatHoldState.fired = true;
+          isChatHolding = true;
+          if (el) el.classList.remove('holding');
+          if (navigator.vibrate) navigator.vibrate(50);
+          clearChatHoldListeners();
+
+          const session = chatSessions[id];
+          const title = session ? session.title : 'this chat';
+          const doDelete = () => {
+              delete chatSessions[id];
+              if (currentChatId === id) startNewChat();
+              else saveSessions();
+          };
+
+          if (window.showConfirm) {
+              showConfirm("Delete Chat?", `Are you sure? "${title}"`, doDelete);
+          } else if (confirm("Delete this chat?")) {
+              doDelete();
+          }
+          chatHoldState = null;
+      }, CHAT_HOLD_MS);
   };
 
   window.handleChatClick = function(id) {
@@ -7966,9 +8107,30 @@ function explainFetchError(e) {
       document.getElementById('aiInputPrompt').focus();
   }
 
-  function renderCurrentMessages() {
+  // Reliable "scroll to latest message" — waits for the browser to actually
+  // finish laying out the new bubble (double rAF) before measuring scrollHeight,
+  // so it doesn't undershoot on slower devices. force=true always jumps down
+  // (used for the user's own messages / AI replies); otherwise it only jumps
+  // if the user was already near the bottom, so it won't yank them away while
+  // they're reading older messages.
+  window.scrollChatToBottom = function(force) {
       const box = document.getElementById('chatMessages');
       if (!box) return;
+      const nearBottom = (box.scrollHeight - box.scrollTop - box.clientHeight) < 120;
+      if (!force && !nearBottom) return;
+      requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+              box.scrollTop = box.scrollHeight;
+              const jumpBtn = document.getElementById('chatJumpBtn');
+              if (jumpBtn) jumpBtn.style.display = 'none';
+          });
+      });
+  };
+
+  function renderCurrentMessages(opts) {
+      const box = document.getElementById('chatMessages');
+      if (!box) return;
+      const force = !opts || opts.force !== false;
       
       if(!currentChatId || !chatSessions[currentChatId] || chatSessions[currentChatId].messages.length === 0) {
           box.innerHTML = '<div style="text-align: center; color: var(--text-dim); margin-top: auto; margin-bottom: auto; font-size: 13px;">MiMo 2.5 Pro is ready for coding & logic tasks. Ask anything!</div>';
@@ -7989,8 +8151,21 @@ function explainFetchError(e) {
           html += `<div style="max-width: 85%; padding: 12px 16px; border-radius: 14px; ${bubbleStyle} word-break: break-word; line-height: 1.5; font-size: 13.5px;">${formattedContent}</div>`;
       });
       box.innerHTML = html;
-      box.scrollTop = box.scrollHeight;
+      scrollChatToBottom(force);
   }
+
+  // Show a "↓ New replies" pill if the admin has scrolled up to read older
+  // messages, instead of forcing them back down while they're reading.
+  document.addEventListener('DOMContentLoaded', () => {
+      const box = document.getElementById('chatMessages');
+      const jumpBtn = document.getElementById('chatJumpBtn');
+      if (box && jumpBtn) {
+          box.addEventListener('scroll', () => {
+              const nearBottom = (box.scrollHeight - box.scrollTop - box.clientHeight) < 120;
+              jumpBtn.style.display = nearBottom ? 'none' : 'block';
+          }, { passive: true });
+      }
+  });
 
   window.sendAiMessage = async function() {
       const input = document.getElementById('aiInputPrompt');
@@ -8006,10 +8181,10 @@ function explainFetchError(e) {
           chatSessions[currentChatId].title = text.slice(0, 22) + (text.length > 22 ? '...' : '');
       }
 
-      // Push user message with animation
+      // Push user message with animation — always jump to bottom, they just typed it
       chatSessions[currentChatId].messages.push({ role: 'user', content: text });
       input.value = '';
-      renderCurrentMessages();
+      renderCurrentMessages({ force: true });
       saveSessions();
 
       // Show animated loading state
@@ -8021,7 +8196,7 @@ function explainFetchError(e) {
       loadingDiv.innerHTML = '<span class="ai-thinking"></span>';
       loadingDiv.classList.add('ai-loading');
       box.appendChild(loadingDiv);
-      box.scrollTop = box.scrollHeight;
+      scrollChatToBottom(true);
 
       try {
           // 🔥 Using your Cloudflare Worker endpoint 🔥
@@ -8050,10 +8225,10 @@ function explainFetchError(e) {
               loadEl.remove();
           }
 
-          // Push assistant reply
+          // Push assistant reply — always auto-scroll down to show it
           chatSessions[currentChatId].messages.push({ role: 'assistant', content: reply });
           saveSessions();
-          renderCurrentMessages();
+          renderCurrentMessages({ force: true });
 
       } catch (err) {
           console.error(err);
@@ -8062,7 +8237,7 @@ function explainFetchError(e) {
           
           const errorMsg = `❌ Connection Failed: ${err.message}`;
           chatSessions[currentChatId].messages.push({ role: 'assistant', content: errorMsg });
-          renderCurrentMessages();
+          renderCurrentMessages({ force: true });
       }
 
   input.focus();
