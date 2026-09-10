@@ -1128,36 +1128,11 @@
         #chatHistoryList {
             touch-action: pan-y pinch-zoom;
         }
-        #chatMessages.ai-drag-over {
-            outline: 2px dashed #00f2fe;
-            outline-offset: -8px;
-            background: rgba(0,242,254,0.06);
-        }
-        .ai-msg-actions {
-            display: flex;
-            gap: 4px;
-            margin-top: 3px;
-            padding: 0 4px;
-        }
-        .ai-msg-action-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 12px;
-            padding: 3px 5px;
-            border-radius: 6px;
-            opacity: 0.55;
-            transition: opacity .15s ease, background .15s ease;
-            line-height: 1;
-        }
-        .ai-msg-action-btn:hover,
-        .ai-msg-action-btn:active {
-            opacity: 1;
-            background: rgba(255,255,255,0.08);
-        }
-        .ai-msg-action-btn.speaking {
-            opacity: 1;
-            color: #00f2fe;
+        /* Empty history area should not block 2-finger gestures on the panel */
+        #chatHistoryList {
+            height: fit-content;
+            max-height: 100%;
+            align-self: flex-start;
         }
 
         /* --- Modern Guide Modal & Tabs (ACCORDION STYLE) --- */
@@ -1747,7 +1722,7 @@
         .chat-hist-item {
             position: relative;
             overflow: hidden;
-            touch-action: pan-y pinch-zoom;
+            touch-action: pan-y;
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
             box-shadow: 0 2px 6px rgba(0,0,0,0.12);
@@ -1866,6 +1841,105 @@
             background: rgba(255,255,255,0.06);
             border: 1px solid rgba(255,255,255,0.1);
             color: var(--text-main);
+        }
+
+
+
+        #chatMessages, #chatMessages * {
+            -webkit-user-select: text !important;
+            user-select: text !important;
+        }
+        #aiInputPrompt {
+            -webkit-user-select: text !important;
+            user-select: text !important;
+        }
+
+        /* AI message action row */
+        .ai-msg-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+            opacity: 0.85;
+        }
+        .ai-msg-actions button {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: var(--text-dim);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: 0.2s;
+        }
+        .ai-msg-actions button:hover {
+            color: var(--accent);
+            border-color: var(--accent-glow);
+            background: rgba(0,255,136,0.08);
+        }
+        .ai-code-wrap {
+            position: relative;
+            margin: 8px 0;
+        }
+        .ai-code-copy {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #fff;
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-size: 10px;
+            font-weight: 800;
+            cursor: pointer;
+            z-index: 2;
+        }
+        .ai-code-copy:hover { background: var(--accent); color: #000; }
+        .ai-thought-box {
+            margin-bottom: 8px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.25);
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+        .ai-thought-box summary {
+            cursor: pointer;
+            padding: 8px 12px;
+            font-weight: 800;
+            color: var(--accent);
+            list-style: none;
+            user-select: none;
+        }
+        .ai-thought-box summary::-webkit-details-marker { display: none; }
+        .ai-thought-box[open] summary { border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .ai-thought-body {
+            padding: 10px 12px;
+            white-space: pre-wrap;
+            line-height: 1.45;
+            max-height: 220px;
+            overflow: auto;
+        }
+        .ai-attach-uploading {
+            animation: aiAttachPulse 1s ease-in-out infinite;
+        }
+        @keyframes aiAttachPulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,242,254,0.4); }
+            50% { opacity: 0.85; box-shadow: 0 0 12px 2px rgba(0,242,254,0.35); }
+        }
+        #aiAttachmentChip.ai-attach-uploading {
+            border-color: #00f2fe;
+        }
+        .ai-stream-cursor::after {
+            content: '▍';
+            animation: blink 0.8s step-end infinite;
+            color: var(--accent);
+            margin-left: 1px;
         }
 
         /* Code Block Styling */
@@ -3199,7 +3273,7 @@ body.cat-world-active .cat-mode-bar{display:block}
         <div style="display: flex; flex: 1; gap: 15px; overflow: hidden; height: calc(100% - 50px);">
             
             <!-- Chat History List -->
-            <div style="width: 220px; flex: 0 1 auto; border: 1px solid var(--glass-border); border-radius: 14px; background: rgba(127,127,127,0.05); display: flex; flex-direction: column; gap: 8px; padding: 12px; overflow-y: auto; align-self: flex-start; max-height: 100%;" id="chatHistoryList">
+            <div style="width: 220px; border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: 8px; padding-right: 10px; overflow-y: auto; align-self: flex-start; max-height: 100%; height: fit-content; flex: 0 0 auto;" id="chatHistoryList">
                 <div style="font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Recent Chats <span style="font-size: 9px; opacity: 0.75; color: var(--text-dim); text-transform: none; display: block;">(Hold to delete)</span></div>
                 <!-- Dynamic sessions will appear here -->
             </div>
@@ -3218,25 +3292,21 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <button type="button" id="chatJumpBtn" onclick="scrollChatToBottom(true)" style="display:none; position:absolute; right:34px; bottom:82px; z-index:5; padding:8px 14px; border-radius:20px; background:var(--accent); color:#000; font-weight:800; font-size:11px; border:none; cursor:pointer; box-shadow:0 8px 20px rgba(0,0,0,0.4);">↓ New replies</button>
 
                 <!-- Pasted-text-as-attachment chip (Claude-style: a large paste becomes a file, not raw text in the box) -->
-                <div id="aiAttachmentChip" style="display:none; margin:0 15px; padding:8px 12px; border-radius:10px; background:rgba(0,242,254,0.1); border:1px solid rgba(0,242,254,0.3); flex-direction:column; gap:6px; font-size:12px; font-weight:700; color:var(--text-main);">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:15px;">📄</span>
-                        <span id="aiAttachmentChipLabel" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
-                        <button type="button" onclick="removeAiAttachment()" style="background:none;border:none;color:var(--text-dim);font-size:15px;cursor:pointer;padding:0 4px;">✕</button>
-                    </div>
-                    <div id="aiAttachmentChipBarTrack" style="display:none; height:3px; border-radius:2px; background:rgba(0,242,254,0.15); overflow:hidden;">
-                        <div id="aiAttachmentChipBarFill" style="height:100%; width:0%; background:#00f2fe; border-radius:2px; transition:width .15s ease;"></div>
-                    </div>
+                <div id="aiAttachmentChip" style="display:none; margin:0 15px; padding:8px 12px; border-radius:10px; background:rgba(0,242,254,0.1); border:1px solid rgba(0,242,254,0.3); align-items:center; gap:8px; font-size:12px; font-weight:700; color:var(--text-main);">
+                    <span style="font-size:15px;">📄</span>
+                    <span id="aiAttachmentChipLabel" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+                    <button type="button" onclick="removeAiAttachment()" style="background:none;border:none;color:var(--text-dim);font-size:15px;cursor:pointer;padding:0 4px;">✕</button>
                 </div>
 
-                <!-- Input Box (always pinned below the conversation) -->
-                <div style="padding: 15px; border-top: 1px solid rgba(0,242,254,0.15); display: flex; gap: 10px; background: rgba(0,0,0,0.25); border-radius: 0 0 16px 16px;">
-                    <input type="file" id="aiFileUploader" accept=".txt,.html,.htm,.css,.js,.jsx,.ts,.tsx,.json,.py,.md,.markdown,.csv,.tsv,.log,.xml,.smali,.java,.kt,.c,.cpp,.h,.hpp,.cs,.php,.rb,.go,.rs,.swift,.sql,.yaml,.yml,.ini,.conf,.toml,.sh,.bat,.ps1,.env,.gradle,.properties" style="display:none;">
-                    <button type="button" class="btn" onclick="document.getElementById('aiFileUploader').click()" title="Attach a code/text file" style="padding: 0 14px; border-radius: 12px; background: rgba(255,255,255,0.05); color: #00f2fe; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; display:flex; align-items:center; justify-content:center;">
+                <!-- Input Box (always pinned below the conversation) + drag-drop zone -->
+                <div id="aiInputDropZone" style="padding: 15px; border-top: 1px solid rgba(0,242,254,0.15); display: flex; gap: 10px; background: rgba(0,0,0,0.25); border-radius: 0 0 16px 16px; position: relative; transition: background 0.2s, border-color 0.2s;">
+                    <input type="file" id="aiFileUploader" accept=".txt,.html,.css,.js,.ts,.tsx,.jsx,.json,.py,.md,.csv,.log,.xml,.smali,.java,.kt,.c,.cpp,.h,.hpp,.rs,.go,.rb,.php,.sh,.sql,.yaml,.yml,.toml,.ini,.cfg,.conf,.env,.swift,.dart,.r,.m,.mm,.vue,.svelte,.scss,.less,.sass,.zig,.lua,.pl,.ps1,.bat,.dockerfile,.makefile,.gradle,.properties" style="display:none;">
+                    <button type="button" class="btn" onclick="document.getElementById('aiFileUploader').click()" title="Attach a code/text file (images/videos not supported by MiMo)" style="padding: 0 14px; border-radius: 12px; background: rgba(255,255,255,0.05); color: #00f2fe; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; display:flex; align-items:center; justify-content:center;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                     </button>
-                    <input type="text" id="aiInputPrompt" placeholder="Ask code or logic..." style="flex: 1; padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); font-size: 16px;" autocomplete="off">
+                    <input type="text" id="aiInputPrompt" placeholder="Ask code or logic... (drop files here)" style="flex: 1; padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); font-size: 16px;" autocomplete="off">
                     <button class="btn" onclick="sendAiMessage()" style="background: #00f2fe; color: #000; padding: 0 20px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none;">Send</button>
+                    <div id="aiDropOverlay" style="display:none; position:absolute; inset:0; border-radius:0 0 16px 16px; background:rgba(0,242,254,0.12); border:2px dashed #00f2fe; align-items:center; justify-content:center; font-weight:800; font-size:13px; color:#00f2fe; pointer-events:none; z-index:2;">Drop file to attach</div>
                 </div>
 
             </div>
@@ -6211,22 +6281,6 @@ window.__dgxenInitVideoControls = function(vId) {
     video.muted = !video.muted;
     muteBtn.textContent = video.muted ? '🔇' : '🔊';
   });
-  // Lock the screen to match the video's own shape (landscape video → landscape
-  // screen, portrait video → portrait screen) — best-effort: the Orientation
-  // Lock API isn't supported everywhere (notably iOS Safari), so failures are
-  // swallowed and the video just keeps its normal object-fit:contain sizing.
-  function applyFullscreenOrientation() {
-    try {
-      if (!screen.orientation || !screen.orientation.lock) return;
-      const w = video.videoWidth, h = video.videoHeight;
-      if (!w || !h) return; // metadata not loaded yet — nothing to base the choice on
-      const wantLandscape = w > h;
-      screen.orientation.lock(wantLandscape ? 'landscape' : 'portrait').catch(() => {});
-    } catch (e) {}
-  }
-  function releaseFullscreenOrientation() {
-    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
-  }
   if (fullBtn) fullBtn.addEventListener('click', function() {
     const target = wrap || video;
     const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
@@ -6238,15 +6292,29 @@ window.__dgxenInitVideoControls = function(vId) {
       else if (video.webkitDisplayingFullscreen) video.webkitExitFullscreen();
       if (wrap) wrap.classList.remove('dgxen-manual-fullscreen');
       document.body.classList.remove('dgxen-fs-lock');
-      releaseFullscreenOrientation();
+      // Unlock orientation when leaving fullscreen
+      try {
+        if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+      } catch (e) {}
       syncFullBtnIcon();
       return;
     }
+    // Landscape video → lock landscape on phone (game-like); portrait stays vertical
+    try {
+      const vw = video.videoWidth || 0;
+      const vh = video.videoHeight || 0;
+      if (vw && vh && screen.orientation && screen.orientation.lock) {
+        if (vw > vh) {
+          screen.orientation.lock('landscape').catch(function(){});
+        } else {
+          screen.orientation.lock('portrait').catch(function(){});
+        }
+      }
+    } catch (e) {}
     let requested = false;
     if (target.requestFullscreen) { target.requestFullscreen().catch(() => {}); requested = true; }
     else if (target.webkitRequestFullscreen) { target.webkitRequestFullscreen(); requested = true; }
     else if (video.webkitEnterFullscreen) { video.webkitEnterFullscreen(); requested = true; } // iOS Safari native player fallback
-    applyFullscreenOrientation();
     // Fallback: some mobile WebViews accept the Fullscreen API call but never
     // actually cover the full screen (the bug seen in testing — video only
     // fills the top half). Detect that after a short delay and, if the
@@ -6258,7 +6326,6 @@ window.__dgxenInitVideoControls = function(vId) {
         wrap && wrap.classList.add('dgxen-manual-fullscreen');
         document.body.classList.add('dgxen-fs-lock');
       }
-      applyFullscreenOrientation(); // metadata may have only just loaded by now
       syncFullBtnIcon();
     }, 250);
   });
@@ -6267,7 +6334,6 @@ window.__dgxenInitVideoControls = function(vId) {
     // If the native API reports we've left fullscreen, also clear our manual fallback state.
     if (!fsEl && wrap && wrap.classList.contains('dgxen-manual-fullscreen') === false) {
       document.body.classList.remove('dgxen-fs-lock');
-      releaseFullscreenOrientation();
     }
     const isManual = wrap && wrap.classList.contains('dgxen-manual-fullscreen');
     if (fullBtn) fullBtn.textContent = (fsEl === wrap || isManual) ? '×' : '⛶';
@@ -8500,7 +8566,7 @@ function explainFetchError(e) {
                           class="chat-hist-item"
                           data-chat-id="${id}"
                           onpointerdown="startChatHold(event, '${id}')"
-                          style="padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid; transition: 0.2s; user-select: none; touch-action: pan-y pinch-zoom; ${activeClass}"
+                          style="padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid; transition: 0.2s; user-select: none; touch-action: pan-y; ${activeClass}"
                        >${shortTitle}</div>`;
           });
       }
@@ -8661,13 +8727,11 @@ function explainFetchError(e) {
       // touched by the other markdown rules, then restore them at the end.
       const codeBlocks = [];
       text = text.replace(/```([a-zA-Z0-9]*)\n?([\s\S]*?)```/g, (m, lang, code) => {
+          const clean = code.replace(/\n$/, '');
+          const escAttr = clean.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
           codeBlocks.push(
-              '<div style="position:relative; margin: 8px 0;">' +
-              '<button type="button" class="ai-code-copy-btn" onclick="copyCodeBlock(this)" ' +
-              'style="position:absolute; top:6px; right:6px; z-index:1; padding:3px 9px; font-size:10.5px; font-weight:700; ' +
-              'border-radius:6px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.08); color:#cfd8dc; cursor:pointer;">Copy</button>' +
-              '<pre style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 12px; margin: 0;"><code>' +
-              code.replace(/\n$/, '') +
+              '<div class="ai-code-wrap"><button type="button" class="ai-code-copy" onclick="event.stopPropagation(); copyMessage(this.getAttribute(\'data-code\'))" data-code="' + escAttr.replace(/'/g, '&#39;') + '">Copy</button><pre style="background: rgba(0,0,0,0.4); padding: 10px; padding-top: 28px; border-radius: 8px; overflow-x: auto; font-size: 12px; margin: 0;"><code>' +
+              clean +
               '</code></pre></div>'
           );
           return '\u0000CODEBLOCK' + (codeBlocks.length - 1) + '\u0000';
@@ -8731,158 +8795,29 @@ function explainFetchError(e) {
           const bubbleStyle = isUser 
               ? 'align-self: flex-end; background: linear-gradient(135deg, rgba(0,242,254,0.22), rgba(0,242,254,0.1)); border: 1px solid rgba(0,242,254,0.35); color: #fff; border-radius: 16px 16px 4px 16px; box-shadow: 0 4px 14px rgba(0,242,254,0.08);' 
               : 'align-self: flex-start; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); border-radius: 16px 16px 16px 4px; box-shadow: 0 4px 14px rgba(0,0,0,0.15);';
-          // AI replies get full markdown formatting (bold, headers, lists, code);
-          // user messages are kept simpler (still safe-escaped) since they're
-          // plain typed text, not markdown-formatted responses.
-          const formattedContent = formatAiMarkdown(msg.content);
 
-          // Collapsible "thinking" block, only when this reply actually carried reasoning.
-          let reasoningHtml = '';
+          let thoughtHtml = '';
           if (!isUser && msg.reasoning) {
-              reasoningHtml = '<details style="margin-bottom:8px; font-size:12px; color:var(--text-dim);">' +
-                  '<summary style="cursor:pointer; font-weight:700; user-select:none;">💭 Thinking</summary>' +
-                  '<div style="margin-top:6px; padding:8px 10px; background:rgba(0,0,0,0.2); border-radius:8px; white-space:pre-wrap; line-height:1.5;">' +
-                  formatAiMarkdown(msg.reasoning) + '</div></details>';
+              const safeThought = String(msg.reasoning)
+                  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              thoughtHtml = '<details class="ai-thought-box"><summary>💭 Thought process</summary><div class="ai-thought-body">' + safeThought + '</div></details>';
           }
 
-          // Action row: copy is on every message; edit is user-only; Listen (TTS) is assistant-only.
-          let actions = '<button type="button" class="ai-msg-action-btn" onclick="copyAiMessage(' + idx + ')" title="Copy">📋</button>';
+          const formattedContent = formatAiMarkdown(msg.content || '');
+          let actions = '<div class="ai-msg-actions">';
+          actions += '<button type="button" onclick="copyMessage(chatSessions[currentChatId].messages[' + idx + '].content)" title="Copy">📋 Copy</button>';
           if (isUser) {
-              actions += '<button type="button" class="ai-msg-action-btn" onclick="editAiMessage(' + idx + ')" title="Edit &amp; resend">✏️</button>';
+              actions += '<button type="button" onclick="editUserMessage(' + idx + ')" title="Edit & resend">✏️ Edit</button>';
           } else {
-              actions += '<button type="button" class="ai-msg-action-btn" id="aiSpeakBtn' + idx + '" onclick="speakAiMessage(' + idx + ')" title="Listen">🔊</button>';
+              actions += '<button type="button" onclick="speakAiMessage(' + idx + ')" title="Listen">🔊 Listen</button>';
           }
-          const actionsRow = '<div class="ai-msg-actions" style="' + (isUser ? 'justify-content:flex-end;' : 'justify-content:flex-start;') + '">' + actions + '</div>';
+          actions += '</div>';
 
-          const bubble = '<div style="max-width: 85%; padding: 12px 16px; ' + bubbleStyle + ' word-break: break-word; line-height: 1.5; font-size: 13.5px; animation: aiMsgIn 0.25s ease-out;">' +
-              reasoningHtml + formattedContent + '</div>';
-          html += '<div style="display:flex; flex-direction:column; max-width:85%; ' + (isUser ? 'align-self:flex-end;' : 'align-self:flex-start;') + '">' + bubble + actionsRow + '</div>';
+          html += '<div class="ai-msg-bubble" data-msg-idx="' + idx + '" style="max-width: 85%; padding: 12px 16px; ' + bubbleStyle + ' word-break: break-word; line-height: 1.5; font-size: 13.5px; animation: aiMsgIn 0.25s ease-out;">' + thoughtHtml + formattedContent + actions + '</div>';
       });
       box.innerHTML = html;
       scrollChatToBottom(force);
   }
-
-  // --- Clipboard helper with a lightweight "Copied!" toast, and a fallback
-  // for WebViews without navigator.clipboard permission. ---
-  function copyToClipboard(text, onDone) {
-      const done = () => { if (onDone) onDone(); };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
-      } else {
-          fallbackCopy(text, done);
-      }
-  }
-  function fallbackCopy(text, done) {
-      try {
-          const ta = document.createElement('textarea');
-          ta.value = text;
-          ta.style.position = 'fixed';
-          ta.style.opacity = '0';
-          document.body.appendChild(ta);
-          ta.focus(); ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-      } catch (e) {}
-      done();
-  }
-
-  window.copyCodeBlock = function(btn) {
-      const codeEl = btn.nextElementSibling && btn.nextElementSibling.querySelector('code');
-      if (!codeEl) return;
-      copyToClipboard(codeEl.textContent, () => {
-          const original = btn.textContent;
-          btn.textContent = 'Copied!';
-          setTimeout(() => { btn.textContent = original; }, 1200);
-      });
-  };
-
-  window.copyAiMessage = function(idx) {
-      if (!currentChatId || !chatSessions[currentChatId]) return;
-      const msg = chatSessions[currentChatId].messages[idx];
-      if (!msg) return;
-      copyToClipboard(msg.content, () => {
-          const btn = box_findActionBtn(idx, '📋');
-          if (btn) flashBtn(btn, '✅');
-      });
-  };
-
-  function box_findActionBtn(idx, glyph) {
-      const box = document.getElementById('chatMessages');
-      if (!box) return null;
-      const rows = box.querySelectorAll('.ai-msg-actions');
-      // idx-th message → idx-th action row (rendered 1:1 in order)
-      const row = rows[idx];
-      if (!row) return null;
-      return Array.from(row.querySelectorAll('button')).find(b => b.textContent === glyph) || null;
-  }
-  function flashBtn(btn, glyph) {
-      const original = btn.textContent;
-      btn.textContent = glyph;
-      setTimeout(() => { btn.textContent = original; }, 1000);
-  }
-
-  // Edit & resend: drop this message and everything after it back into the
-  // input box, then remove them from history — sending again regenerates
-  // the reply from that point, same pattern as Claude/ChatGPT's edit.
-  window.editAiMessage = function(idx) {
-      if (!currentChatId || !chatSessions[currentChatId]) return;
-      const msg = chatSessions[currentChatId].messages[idx];
-      if (!msg || msg.role !== 'user') return;
-      const input = document.getElementById('aiInputPrompt');
-      if (input) { input.value = msg.content; input.focus(); }
-      chatSessions[currentChatId].messages = chatSessions[currentChatId].messages.slice(0, idx);
-      saveSessions();
-      renderCurrentMessages({ force: true });
-  };
-
-  // --- Text-to-Speech: reads an assistant reply aloud with a natural
-  // Hindi/Indian-accented voice, skipping code blocks. ---
-  let __ttsVoices = [];
-  function refreshTtsVoices() {
-      try { __ttsVoices = window.speechSynthesis.getVoices() || []; } catch (e) { __ttsVoices = []; }
-  }
-  if (window.speechSynthesis) {
-      refreshTtsVoices();
-      window.speechSynthesis.onvoiceschanged = refreshTtsVoices;
-  }
-  function pickTtsVoice() {
-      const candidates = __ttsVoices.filter(v => v.lang === 'hi-IN' || v.lang === 'en-IN');
-      if (!candidates.length) return null;
-      // Prioritize a "Google" voice for a less robotic, more natural accent.
-      return candidates.find(v => /google/i.test(v.name)) || candidates[0];
-  }
-  window.speakAiMessage = function(idx) {
-      if (!window.speechSynthesis) { alert('Text-to-speech is not supported in this browser.'); return; }
-      const wasSpeakingThis = window.__ttsSpeakingIdx === idx;
-      // Stop any ongoing speech before starting a new one (or just stopping, on toggle-off).
-      window.speechSynthesis.cancel();
-      document.querySelectorAll('.ai-msg-action-btn.speaking').forEach(b => { b.classList.remove('speaking'); b.textContent = '🔊'; });
-      window.__ttsSpeakingIdx = null;
-      if (wasSpeakingThis) return; // tap-to-stop
-
-      if (!currentChatId || !chatSessions[currentChatId]) return;
-      const msg = chatSessions[currentChatId].messages[idx];
-      if (!msg) return;
-      // Strip fenced code blocks so the TTS doesn't read out raw syntax.
-      const clean = msg.content.replace(/```[\s\S]*?```/g, '').trim();
-      if (!clean) return;
-
-      const utterance = new SpeechSynthesisUtterance(clean);
-      utterance.lang = 'hi-IN';
-      utterance.rate = 1.0;
-      utterance.pitch = 1.1;
-      const voice = pickTtsVoice();
-      if (voice) utterance.voice = voice;
-
-      const btn = document.getElementById('aiSpeakBtn' + idx);
-      window.__ttsSpeakingIdx = idx;
-      if (btn) { btn.classList.add('speaking'); btn.textContent = '⏹️'; }
-      utterance.onend = utterance.onerror = function() {
-          if (window.__ttsSpeakingIdx === idx) window.__ttsSpeakingIdx = null;
-          if (btn) { btn.classList.remove('speaking'); btn.textContent = '🔊'; }
-      };
-      window.speechSynthesis.speak(utterance);
-  };
 
   // Show a "↓ New replies" pill if the admin has scrolled up to read older
   // messages, instead of forcing them back down while they're reading.
@@ -8897,23 +8832,86 @@ function explainFetchError(e) {
       }
   });
 
-  // Pull a <think>...</think> block (or a model's separate reasoning_content
-  // field, handled at the call site) out of the main reply text so it can be
-  // rendered as its own collapsible block instead of mixed into the answer.
-  function extractReasoning(content) {
-      const match = content.match(/<think>([\s\S]*?)<\/think>/i);
-      if (!match) return { content: content, reasoning: null };
-      const reasoning = match[1].trim();
-      const cleaned = (content.slice(0, match.index) + content.slice(match.index + match[0].length)).trim();
-      return { content: cleaned, reasoning: reasoning || null };
-  }
+  // ---- Text-to-Speech (Indian/Hindi accent, skip code blocks) ----
+  window.speakAiMessage = function(idx) {
+      try {
+          if (!window.speechSynthesis) {
+              alert('Speech synthesis not supported on this browser.');
+              return;
+          }
+          window.speechSynthesis.cancel();
+          if (!currentChatId || !chatSessions[currentChatId]) return;
+          const msg = chatSessions[currentChatId].messages[idx];
+          if (!msg || msg.role !== 'assistant') return;
+          let text = String(msg.content || '');
+          // Strip fenced code blocks so TTS doesn't read syntax
+          text = text.replace(/```[\s\S]*?```/g, ' ');
+          text = text.replace(/`[^`\n]+`/g, ' ');
+          text = text.replace(/\s+/g, ' ').trim();
+          if (!text) return;
 
-  // Conservative client-side guard: a payload this large is very likely what's
-  // behind the "large file → Worker Error: 500" reports — most edge-worker /
-  // model-context limits sit well under this, so it's better to say so clearly
-  // up front than to burn a slow round-trip on a request that's going to fail
-  // with an opaque 500 anyway.
-  const AI_PAYLOAD_WARN_CHARS = 300000;
+          const utter = new SpeechSynthesisUtterance(text);
+          utter.lang = 'hi-IN';
+          utter.rate = 1.0;
+          utter.pitch = 1.1;
+
+          const pickVoice = () => {
+              const voices = window.speechSynthesis.getVoices() || [];
+              let preferred = voices.filter(v => v.lang === 'hi-IN' || v.lang === 'en-IN');
+              preferred.sort((a, b) => {
+                  const ag = /google/i.test(a.name) ? 0 : 1;
+                  const bg = /google/i.test(b.name) ? 0 : 1;
+                  return ag - bg;
+              });
+              if (preferred.length) {
+                  utter.voice = preferred[0];
+                  utter.lang = preferred[0].lang || 'hi-IN';
+              }
+              window.speechSynthesis.speak(utter);
+          };
+
+          const voices = window.speechSynthesis.getVoices();
+          if (voices && voices.length) pickVoice();
+          else window.speechSynthesis.onvoiceschanged = function() {
+              window.speechSynthesis.onvoiceschanged = null;
+              pickVoice();
+          };
+      } catch (e) {
+          console.error('TTS error', e);
+      }
+  };
+
+  window.editUserMessage = function(idx) {
+      if (!currentChatId || !chatSessions[currentChatId]) return;
+      const msgs = chatSessions[currentChatId].messages;
+      const msg = msgs[idx];
+      if (!msg || msg.role !== 'user') return;
+      const input = document.getElementById('aiInputPrompt');
+      if (!input) return;
+      // Truncate history to just before this message so "edit & resend" rewrites from here
+      const content = msg.content || '';
+      msgs.splice(idx); // remove this user msg and everything after
+      saveSessions();
+      renderCurrentMessages({ force: true });
+      input.value = content;
+      input.focus();
+      try { input.setSelectionRange(content.length, content.length); } catch (e) {}
+  };
+
+  // Extract reasoning from content (<think>…</think>) or separate field
+  function extractReasoning(rawContent, apiMsg) {
+      let reasoning = '';
+      let content = rawContent || '';
+      if (apiMsg && (apiMsg.reasoning_content || apiMsg.reasoning)) {
+          reasoning = apiMsg.reasoning_content || apiMsg.reasoning;
+      }
+      const thinkMatch = content.match(/<think>([\s\S]*?)<\/think>/i);
+      if (thinkMatch) {
+          reasoning = (reasoning ? reasoning + '\n' : '') + thinkMatch[1].trim();
+          content = content.replace(/<think>[\s\S]*?<\/think>/ig, '').trim();
+      }
+      return { content, reasoning };
+  }
 
   window.sendAiMessage = async function() {
       const input = document.getElementById('aiInputPrompt');
@@ -8921,9 +8919,10 @@ function explainFetchError(e) {
       let text = input.value.trim();
       if (!text && !pendingAiAttachment) return;
 
-      // Fold the pasted-file attachment into the outgoing message.
+      // Fold attachment as a file reference + content (not dumped as raw input text)
       if (pendingAiAttachment) {
-          const wrapped = '[Attached file: ' + pendingAiAttachment.name + ']\n\n' + pendingAiAttachment.content;
+          const att = pendingAiAttachment;
+          const wrapped = '[Attached file: ' + att.name + ']\n\n' + (att.content || '');
           text = text ? (text + '\n\n' + wrapped) : wrapped;
       }
       removeAiAttachment();
@@ -8936,240 +8935,288 @@ function explainFetchError(e) {
           chatSessions[currentChatId].title = text.slice(0, 22) + (text.length > 22 ? '...' : '');
       }
 
-      // Push user message with animation — always jump to bottom, they just typed it
       chatSessions[currentChatId].messages.push({ role: 'user', content: text });
       input.value = '';
       renderCurrentMessages({ force: true });
       saveSessions();
 
-      const outgoing = chatSessions[currentChatId].messages.map(m => ({ role: m.role, content: m.content }));
-      const payloadStr = JSON.stringify({ model: "xiaomi/mimo-v2.5-pro", messages: outgoing, stream: true });
-
-      if (payloadStr.length > AI_PAYLOAD_WARN_CHARS) {
-          chatSessions[currentChatId].messages.push({
-              role: 'assistant',
-              content: '❌ This message is too large to send (' + payloadStr.length.toLocaleString() +
-                  ' characters). Try attaching a smaller section of the file, or splitting it into a few messages.'
-          });
-          saveSessions();
-          renderCurrentMessages({ force: true });
-          input.focus();
-          return;
-      }
-
-      // Live streaming bubble — replaces the loading spinner once the first
-      // chunk arrives, and grows in place as more text streams in.
       const box = document.getElementById('chatMessages');
       const loadingId = 'load_' + Date.now();
       const loadingDiv = document.createElement('div');
       loadingDiv.id = loadingId;
-      loadingDiv.style.cssText = 'align-self: flex-start; background: rgba(255,255,255,0.06); padding: 12px 16px; border-radius: 14px; color: var(--text-dim); font-size: 13px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center;';
+      loadingDiv.style.cssText = 'align-self: flex-start; background: rgba(255,255,255,0.06); padding: 12px 16px; border-radius: 14px; color: var(--text-dim); font-size: 13px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; max-width: 85%;';
       loadingDiv.innerHTML = '<span class="ai-thinking"></span>';
       loadingDiv.classList.add('ai-loading');
       box.appendChild(loadingDiv);
       scrollChatToBottom(true);
 
-      let liveBubble = null;
-      let fullContent = '';
+      // Live streaming bubble (replaced after complete)
+      let streamBubble = null;
+      let streamTextEl = null;
+      let fullReply = '';
       let fullReasoning = '';
-      let dirty = false;
-      function ensureLiveBubble() {
-          if (liveBubble) return;
-          const el = document.getElementById(loadingId);
-          if (el) el.remove();
-          liveBubble = document.createElement('div');
-          liveBubble.style.cssText = 'align-self: flex-start; max-width: 85%; padding: 12px 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); border-radius: 16px 16px 16px 4px; box-shadow: 0 4px 14px rgba(0,0,0,0.15); word-break: break-word; line-height: 1.5; font-size: 13.5px;';
-          box.appendChild(liveBubble);
-      }
-      function flushLiveBubble() {
-          if (!dirty || !liveBubble) return;
-          dirty = false;
-          liveBubble.innerHTML = formatAiMarkdown(fullContent + '▌');
-          scrollChatToBottom(true);
-      }
-      let flushTimer = setInterval(flushLiveBubble, 120);
+
+      const ensureStreamBubble = () => {
+          if (streamBubble) return;
+          const loadEl = document.getElementById(loadingId);
+          if (loadEl) loadEl.remove();
+          streamBubble = document.createElement('div');
+          streamBubble.style.cssText = 'align-self: flex-start; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); border-radius: 16px 16px 16px 4px; box-shadow: 0 4px 14px rgba(0,0,0,0.15); max-width: 85%; padding: 12px 16px; word-break: break-word; line-height: 1.5; font-size: 13.5px;';
+          streamTextEl = document.createElement('div');
+          streamTextEl.className = 'ai-stream-cursor';
+          streamBubble.appendChild(streamTextEl);
+          box.appendChild(streamBubble);
+      };
 
       try {
-          const response = await fetch(WORKER_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: payloadStr
-          });
+          const messagesPayload = chatSessions[currentChatId].messages.map(m => ({ role: m.role, content: m.content }));
 
-          if (!response.ok) {
-              // Try to surface the upstream/worker's real error text instead of just the status code.
-              let detail = '';
-              try {
-                  const errBody = await response.clone().json();
-                  detail = (errBody && (errBody.error?.message || errBody.error || errBody.message)) || '';
-              } catch (e) {
-                  try { detail = (await response.text()).slice(0, 200); } catch (e2) {}
-              }
-              throw new Error('Worker Error: ' + response.status + (detail ? ' — ' + detail : ''));
+          async function finalizeAssistant(rawContent, apiMsg) {
+              const parsed = extractReasoning(rawContent || '', apiMsg || {});
+              const loadEl = document.getElementById(loadingId);
+              if (loadEl) loadEl.remove();
+              if (streamBubble) { streamBubble.remove(); streamBubble = null; }
+              chatSessions[currentChatId].messages.push({
+                  role: 'assistant',
+                  content: parsed.content,
+                  reasoning: parsed.reasoning || undefined
+              });
+              saveSessions();
+              renderCurrentMessages({ force: true });
           }
 
-          const contentType = response.headers.get('content-type') || '';
-          if (response.body && contentType.includes('text/event-stream')) {
-              // --- SSE streaming path ---
+          async function callWorker(useStream) {
+              const payload = {
+                  model: "xiaomi/mimo-v2.5-pro",
+                  messages: messagesPayload
+              };
+              if (useStream) payload.stream = true;
+              return fetch(WORKER_URL, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload)
+              });
+          }
+
+          // Prefer streaming; if worker returns 4xx/5xx or non-SSE, fall back to non-stream JSON
+          let response = await callWorker(true);
+          let ctype = (response.headers.get('content-type') || '').toLowerCase();
+          const looksSSE = ctype.includes('text/event-stream') || ctype.includes('event-stream');
+
+          if (!response.ok || !response.body || !looksSSE) {
+              // Retry once without stream if first attempt failed or returned JSON
+              if (!response.ok || (response.ok && !looksSSE && ctype.includes('json'))) {
+                  if (!response.ok) {
+                      try { await response.text(); } catch (e) {}
+                      response = await callWorker(false);
+                      ctype = (response.headers.get('content-type') || '').toLowerCase();
+                  }
+                  if (!response.ok) throw new Error('Worker Error: ' + response.status);
+                  const data = await response.json();
+                  const apiMsg = data.choices && data.choices[0] && data.choices[0].message;
+                  let reply = (apiMsg && apiMsg.content) ? apiMsg.content
+                      : (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
+                      || 'Error: Invalid response structure.';
+                  await finalizeAssistant(reply, apiMsg || data.choices?.[0]?.message || {});
+              } else {
+                  throw new Error('Worker Error: ' + response.status);
+              }
+          } else {
+              // SSE streaming path
               const reader = response.body.getReader();
               const decoder = new TextDecoder();
               let buffer = '';
+              ensureStreamBubble();
+
               while (true) {
                   const { done, value } = await reader.read();
                   if (done) break;
                   buffer += decoder.decode(value, { stream: true });
-                  const events = buffer.split('\n\n');
-                  buffer = events.pop(); // last chunk may be incomplete — keep it for next read
-                  for (const evt of events) {
-                      const line = evt.trim();
-                      if (!line.startsWith('data:')) continue;
-                      const dataStr = line.slice(5).trim();
-                      if (dataStr === '[DONE]') continue;
+                  const parts = buffer.split('\n');
+                  buffer = parts.pop() || '';
+                  for (const line of parts) {
+                      const trimmed = line.trim();
+                      if (!trimmed || trimmed === 'data: [DONE]') continue;
+                      if (!trimmed.startsWith('data:')) continue;
+                      const jsonStr = trimmed.slice(5).trim();
+                      if (!jsonStr || jsonStr === '[DONE]') continue;
                       try {
-                          const json = JSON.parse(dataStr);
-                          const delta = json.choices && json.choices[0] && json.choices[0].delta;
+                          const chunk = JSON.parse(jsonStr);
+                          const delta = chunk.choices && chunk.choices[0] && chunk.choices[0].delta;
+                          const msg = chunk.choices && chunk.choices[0] && chunk.choices[0].message;
                           if (delta) {
-                              if (delta.content) { fullContent += delta.content; ensureLiveBubble(); dirty = true; }
-                              if (delta.reasoning_content) { fullReasoning += delta.reasoning_content; }
+                              if (delta.reasoning_content || delta.reasoning) {
+                                  fullReasoning += (delta.reasoning_content || delta.reasoning || '');
+                              }
+                              if (delta.content) {
+                                  fullReply += delta.content;
+                                  let preview = fullReply.replace(/<think>[\s\S]*?(<\/think>|$)/ig, '');
+                                  streamTextEl.innerHTML = formatAiMarkdown(preview);
+                                  scrollChatToBottom(true);
+                              }
+                          } else if (msg && msg.content) {
+                              fullReply = msg.content;
+                              if (msg.reasoning_content || msg.reasoning) {
+                                  fullReasoning = msg.reasoning_content || msg.reasoning;
+                              }
                           }
-                      } catch (e) { /* ignore malformed/partial SSE line */ }
+                      } catch (parseErr) { /* partial JSON */ }
                   }
               }
-          } else {
-              // --- Fallback: worker ignored stream:true and replied with plain JSON ---
-              const data = await response.json();
-              fullContent = data.choices?.[0]?.message?.content
-                  ? data.choices[0].message.content
-                  : 'Error: Invalid response structure.';
-              if (data.choices?.[0]?.message?.reasoning_content) {
-                  fullReasoning = data.choices[0].message.reasoning_content;
+
+              if (!fullReply && !fullReasoning) {
+                  // Empty stream — retry non-stream
+                  const response2 = await callWorker(false);
+                  if (!response2.ok) throw new Error('Worker Error: ' + response2.status);
+                  const data = await response2.json();
+                  const apiMsg = data.choices && data.choices[0] && data.choices[0].message;
+                  let reply = (apiMsg && apiMsg.content) ? apiMsg.content : 'Error: Empty stream response.';
+                  await finalizeAssistant(reply, apiMsg || {});
+              } else {
+                  await finalizeAssistant(fullReply, { reasoning_content: fullReasoning });
               }
           }
 
-          clearInterval(flushTimer);
-          const loadEl = document.getElementById(loadingId);
-          if (loadEl) loadEl.remove();
-          if (liveBubble) liveBubble.remove();
-
-          // Fold in a <think> block from the content itself if the model used
-          // that convention instead of (or alongside) a separate reasoning field.
-          const extracted = extractReasoning(fullContent);
-          const finalReasoning = fullReasoning.trim() || extracted.reasoning;
-
-          chatSessions[currentChatId].messages.push({
-              role: 'assistant',
-              content: extracted.content,
-              reasoning: finalReasoning || undefined
-          });
-          saveSessions();
-          renderCurrentMessages({ force: true });
-
       } catch (err) {
-          clearInterval(flushTimer);
           console.error(err);
           const loadEl = document.getElementById(loadingId);
           if (loadEl) loadEl.remove();
-          if (liveBubble) liveBubble.remove();
-
-          const errorMsg = `❌ Connection Failed: ${err.message}`;
+          if (streamBubble) streamBubble.remove();
+          const errorMsg = '❌ Connection Failed: ' + err.message;
           chatSessions[currentChatId].messages.push({ role: 'assistant', content: errorMsg });
-          saveSessions();
           renderCurrentMessages({ force: true });
       }
 
-  input.focus();
+      input.focus();
   };
 
   // --- Paste-as-attachment (Claude-style): a large paste becomes a file
   // chip instead of dumping thousands of characters into the input box. ---
   let pendingAiAttachment = null;
   const AI_PASTE_ATTACH_THRESHOLD = 600; // chars
+  const AI_MAX_ATTACH_CHARS = 400000; // ~400k chars soft limit to avoid OOM / worker payload errors
+  const AI_MAX_ATTACH_BYTES = 2 * 1024 * 1024; // 2 MB hard limit for text files
 
   window.removeAiAttachment = function() {
       pendingAiAttachment = null;
       const chip = document.getElementById('aiAttachmentChip');
-      if (chip) chip.style.display = 'none';
+      if (chip) {
+          chip.style.display = 'none';
+          chip.classList.remove('ai-attach-uploading');
+      }
   };
 
-  function attachAiPastedText(pasted) {
-      const lines = pasted.split('\n').length;
-      const name = 'Pasted text (' + lines + ' line' + (lines === 1 ? '' : 's') + ', ' + pasted.length.toLocaleString() + ' chars)';
-      pendingAiAttachment = { name: name, content: pasted };
+  function showAiAttachChip(name, extraClass) {
       const chip = document.getElementById('aiAttachmentChip');
       const label = document.getElementById('aiAttachmentChipLabel');
       if (label) label.textContent = name;
-      if (chip) { chip.style.display = 'flex'; }
+      if (chip) {
+          chip.style.display = 'flex';
+          if (extraClass) chip.classList.add(extraClass);
+          else chip.classList.remove('ai-attach-uploading');
+      }
   }
 
-  // --- Paperclip file-attach: reads a selected code/text file and drops it
-  // into the same attachment chip used for large pastes, so both paths lead
-  // to one consistent "one attachment queued" UI + send-time behavior. ---
-  const AI_ALLOWED_EXT = ['.txt','.html','.htm','.css','.js','.jsx','.ts','.tsx','.json','.py','.md','.markdown',
-      '.csv','.tsv','.log','.xml','.smali','.java','.kt','.c','.cpp','.h','.hpp','.cs','.php','.rb','.go','.rs',
-      '.swift','.sql','.yaml','.yml','.ini','.conf','.toml','.sh','.bat','.ps1','.env','.gradle','.properties'];
+  function attachAiPastedText(pasted) {
+      const lines = pasted.split('\n').length;
+      let content = pasted;
+      if (content.length > AI_MAX_ATTACH_CHARS) {
+          content = content.slice(0, AI_MAX_ATTACH_CHARS) + '\n\n…[truncated: file too large for chat attach]';
+      }
+      const name = 'Pasted text (' + lines + ' line' + (lines === 1 ? '' : 's') + ', ' + pasted.length.toLocaleString() + ' chars)';
+      pendingAiAttachment = { name: name, content: content };
+      showAiAttachChip(name);
+  }
 
+  function isAiRejectedMedia(file) {
+      const t = (file.type || '').toLowerCase();
+      const n = (file.name || '').toLowerCase();
+      if (t.startsWith('image/') || t.startsWith('video/') || t.startsWith('audio/')) return true;
+      if (/\.(png|jpe?g|gif|webp|bmp|svg|mp4|webm|mov|avi|mkv|mp3|wav|ogg|m4a)$/i.test(n)) return true;
+      return false;
+  }
+
+  // --- Paperclip / drag-drop: queue as chip (never dump into the text field).
+  // Large files are truncated or rejected with a clear message instead of crashing.
   function attachAiFile(file) {
-      const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
-      if (!AI_ALLOWED_EXT.includes(ext)) {
-          alert('MiMo can\'t read that file type (' + ext + ') — video and images aren\'t supported. Try a text/code file instead.');
+      if (!file) return;
+      if (isAiRejectedMedia(file)) {
+          alert('MiMo cannot read images/videos/audio in this chat.\nPlease attach code or text files only (.js, .py, .txt, …).');
           return;
       }
-      const chip = document.getElementById('aiAttachmentChip');
-      const label = document.getElementById('aiAttachmentChipLabel');
-      const barTrack = document.getElementById('aiAttachmentChipBarTrack');
-      const barFill = document.getElementById('aiAttachmentChipBarFill');
-      if (label) label.textContent = 'Reading ' + file.name + '…';
-      if (chip) chip.style.display = 'flex';
-      if (barTrack) barTrack.style.display = 'block';
-      if (barFill) barFill.style.width = '0%';
+      if (file.size > AI_MAX_ATTACH_BYTES) {
+          alert('File too large for AI attach (max ~2 MB text).\nSize: ' + (file.size / 1024 / 1024).toFixed(2) + ' MB\nTip: paste a relevant snippet, or split the file.');
+          return;
+      }
+
+      showAiAttachChip('Uploading ' + file.name + '…', 'ai-attach-uploading');
 
       const reader = new FileReader();
-      reader.onprogress = function(evt) {
-          if (evt.lengthComputable && barFill) {
-              barFill.style.width = Math.round((evt.loaded / evt.total) * 100) + '%';
-          }
-      };
       reader.onload = function(evt) {
-          const content = String(evt.target.result || '');
+          let content = String(evt.target.result || '');
+          const originalLen = content.length;
+          if (content.length > AI_MAX_ATTACH_CHARS) {
+              content = content.slice(0, AI_MAX_ATTACH_CHARS) + '\n\n…[truncated: ' + originalLen.toLocaleString() + ' chars total]';
+          }
+          // Detect mostly-binary garbage (null bytes)
+          if (content.indexOf('\u0000') !== -1) {
+              removeAiAttachment();
+              alert('This looks like a binary file. Attach text/code only.');
+              return;
+          }
           pendingAiAttachment = { name: file.name, content: content };
-          if (barFill) barFill.style.width = '100%';
-          setTimeout(() => { if (barTrack) barTrack.style.display = 'none'; }, 250);
-          if (label) label.textContent = file.name + ' (' + content.length.toLocaleString() + ' chars)';
+          const label = file.name + ' (' + originalLen.toLocaleString() + ' chars)';
+          showAiAttachChip(label);
           const input = document.getElementById('aiInputPrompt');
           if (input) input.focus();
       };
       reader.onerror = function() {
-          if (barTrack) barTrack.style.display = 'none';
-          if (chip) chip.style.display = 'none';
-          alert('Could not read that file — please try again.');
+          removeAiAttachment();
+          alert('Could not read that file — please try a smaller text/code file.');
       };
-      reader.readAsText(file);
+      reader.onprogress = function(e) {
+          if (e.lengthComputable) {
+              const pct = Math.round((e.loaded / e.total) * 100);
+              showAiAttachChip('Uploading ' + file.name + '… ' + pct + '%', 'ai-attach-uploading');
+          }
+      };
+      try {
+          reader.readAsText(file);
+      } catch (err) {
+          removeAiAttachment();
+          alert('Read failed: ' + (err.message || err));
+      }
   }
 
-  // --- Drag & drop: drop a file anywhere on the conversation area to attach it,
-  // same chip/flow as the paperclip button. ---
-  document.addEventListener('DOMContentLoaded', () => {
-      const dropZone = document.getElementById('chatMessages');
-      if (!dropZone) return;
+  function bindAiDragDrop() {
+      const zone = document.getElementById('aiInputDropZone');
+      const overlay = document.getElementById('aiDropOverlay');
+      if (!zone) return;
       let dragDepth = 0;
-      dropZone.addEventListener('dragenter', (e) => {
-          e.preventDefault();
+      const show = () => { if (overlay) { overlay.style.display = 'flex'; } zone.style.background = 'rgba(0,242,254,0.08)'; };
+      const hide = () => { if (overlay) { overlay.style.display = 'none'; } zone.style.background = ''; dragDepth = 0; };
+
+      zone.addEventListener('dragenter', (e) => {
+          e.preventDefault(); e.stopPropagation();
           dragDepth++;
-          dropZone.classList.add('ai-drag-over');
+          show();
       });
-      dropZone.addEventListener('dragover', (e) => { e.preventDefault(); });
-      dropZone.addEventListener('dragleave', () => {
+      zone.addEventListener('dragover', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+      });
+      zone.addEventListener('dragleave', (e) => {
+          e.preventDefault(); e.stopPropagation();
           dragDepth = Math.max(0, dragDepth - 1);
-          if (dragDepth === 0) dropZone.classList.remove('ai-drag-over');
+          if (dragDepth === 0) hide();
       });
-      dropZone.addEventListener('drop', (e) => {
-          e.preventDefault();
-          dragDepth = 0;
-          dropZone.classList.remove('ai-drag-over');
-          const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-          if (file) attachAiFile(file);
+      zone.addEventListener('drop', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          hide();
+          const files = e.dataTransfer && e.dataTransfer.files;
+          if (files && files.length) attachAiFile(files[0]);
       });
-  });
+  }
 
   // DOMContentLoaded initialization
   document.addEventListener('DOMContentLoaded', () => {
@@ -9195,22 +9242,13 @@ function explainFetchError(e) {
           // scrollIntoView() also nudges the page horizontally on first
           // focus, causing a visible left-shift glitch on mobile.
           input.addEventListener('focus', () => {
-              const savedScrollLeft = (document.scrollingElement || document.documentElement).scrollLeft;
-              const savedWinX = window.scrollX;
-              const savedWinY = window.scrollY;
-              const restore = () => {
-                  (document.scrollingElement || document.documentElement).scrollLeft = savedScrollLeft;
-                  // window.scrollTo also corrects the pinch-zoom pan offset on a
-                  // zoomed page, which a plain scrollLeft fix alone doesn't reach —
-                  // this is what the very first (slower) keyboard-open needs.
-                  window.scrollTo(savedWinX, savedWinY);
+              setTimeout(() => {
+                  const savedScrollLeft = (document.scrollingElement || document.documentElement).scrollLeft;
                   scrollChatToBottom(true);
-              };
-              // Repeated corrections instead of a single 300ms check: the first
-              // keyboard-open on a device is often slower than later ones (cold
-              // IME start-up), so one fixed delay isn't reliable — keep nudging
-              // it back for a bit so whichever timing the shift lands on gets caught.
-              [0, 60, 160, 350, 650].forEach(delay => setTimeout(restore, delay));
+                  // Restore horizontal scroll position in case the keyboard/focus
+                  // event caused the browser to shift the page sideways.
+                  (document.scrollingElement || document.documentElement).scrollLeft = savedScrollLeft;
+              }, 300);
           });
           if (window.visualViewport) {
               window.visualViewport.addEventListener('resize', () => {
@@ -9231,6 +9269,10 @@ function explainFetchError(e) {
               e.target.value = ''; // allow re-selecting the same file next time
           });
       }
+      // Drag & drop files onto the chat input bar
+      if (typeof bindAiDragDrop === 'function') bindAiDragDrop();
+      // Pre-warm TTS voices (Chrome loads them async)
+      try { if (window.speechSynthesis) window.speechSynthesis.getVoices(); } catch (e) {}
       
       if(Object.keys(chatSessions).length > 0) {
           renderChatHistoryList();
@@ -9301,11 +9343,32 @@ function explainFetchError(e) {
       }
   };
 
-  // Copy message to clipboard
+  // Copy message / code to clipboard (one-click, subtle feedback)
   window.copyMessage = function(text) {
-      navigator.clipboard.writeText(text).then(() => {
-          alert('Message copied to clipboard!');
-      }).catch(err => console.error('Copy failed:', err));
+      const t = text == null ? '' : String(text);
+      const done = () => {
+          // tiny non-blocking toast via status-like flash on document title or temporary node
+          const n = document.createElement('div');
+          n.textContent = 'Copied';
+          n.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;background:var(--accent);color:#000;font-weight:800;font-size:12px;padding:8px 16px;border-radius:20px;box-shadow:0 8px 24px rgba(0,0,0,0.35);pointer-events:none;';
+          document.body.appendChild(n);
+          setTimeout(() => n.remove(), 1200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(t).then(done).catch(() => {
+              try {
+                  const ta = document.createElement('textarea');
+                  ta.value = t; document.body.appendChild(ta); ta.select();
+                  document.execCommand('copy'); ta.remove(); done();
+              } catch (err) { console.error('Copy failed:', err); }
+          });
+      } else {
+          try {
+              const ta = document.createElement('textarea');
+              ta.value = t; document.body.appendChild(ta); ta.select();
+              document.execCommand('copy'); ta.remove(); done();
+          } catch (err) { console.error('Copy failed:', err); }
+      }
   };
 
   // =========================================================
