@@ -2702,6 +2702,30 @@ body.cat-world-active .cat-mode-bar{display:block}
            (seen on some Android WebViews with this page's fixed-width
            viewport). Forces a true full-viewport fixed overlay via JS class
            toggle instead of relying on :fullscreen alone. */
+        
+        /* Force landscape layout for wide videos when OS orientation.lock is blocked */
+        .dgxen-video-wrap.dgxen-manual-fullscreen.dgxen-force-landscape {
+            width: 100vh !important;
+            height: 100vw !important;
+            width: 100dvh !important;
+            height: 100dvw !important;
+            top: 50% !important;
+            left: 50% !important;
+            right: auto !important;
+            bottom: auto !important;
+            transform: translate(-50%, -50%) rotate(90deg) !important;
+            transform-origin: center center !important;
+        }
+        .dgxen-video-wrap.dgxen-manual-fullscreen.dgxen-force-landscape video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain !important;
+        }
+        body.dgxen-fs-lock {
+            overflow: hidden !important;
+            touch-action: none !important;
+        }
+
         .dgxen-video-wrap.dgxen-manual-fullscreen {
             position: fixed !important;
             inset: 0 !important;
@@ -2757,7 +2781,7 @@ body.cat-world-active .cat-mode-bar{display:block}
             <button class="btn" id="gateFpBtn" type="button" style="background:var(--accent);color:#000;">FINGERPRINT</button>
             <div id="gateCodeWrap">
                 <div style="margin:14px 0 8px;font-size:11px;font-weight:800;color:var(--text-dim);">ADMIN CODE</div>
-                <input type="password" id="gateCodeInput" placeholder="Admin code" autocomplete="off">
+                <input type="password" id="gateCodeInput" placeholder="Admin code" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other" name="admin_gate_code">
                 <button class="btn" id="gateCodeBtn" type="button">ENTER WITH CODE</button>
             </div>
             <div class="gate-status" id="gateStatus"></div>
@@ -3200,7 +3224,7 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Key ID</label>
                 <input type="text" id="b2KeyId" placeholder="0056…" style="width:100%;margin:4px 0 10px;" autocomplete="off">
                 <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Application Key</label>
-                <input type="password" id="b2AppKey" placeholder="Paste application key" style="width:100%;margin:4px 0 10px;" autocomplete="off">
+                <input type="text" id="b2AppKey" placeholder="Paste application key" style="width:100%;margin:4px 0 10px;" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" name="b2_app_key_not_login">
                 <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Bucket name</label>
                 <input type="text" id="b2BucketName" value="DGXEN-storage" style="width:100%;margin:4px 0 10px;" autocomplete="off">
                 <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Bucket ID</label>
@@ -3300,7 +3324,7 @@ body.cat-world-active .cat-mode-bar{display:block}
 
                 <!-- Input Box (always pinned below the conversation) + drag-drop zone -->
                 <div id="aiInputDropZone" style="padding: 15px; border-top: 1px solid rgba(0,242,254,0.15); display: flex; gap: 10px; background: rgba(0,0,0,0.25); border-radius: 0 0 16px 16px; position: relative; transition: background 0.2s, border-color 0.2s;">
-                    <input type="file" id="aiFileUploader" accept=".txt,.html,.css,.js,.ts,.tsx,.jsx,.json,.py,.md,.csv,.log,.xml,.smali,.java,.kt,.c,.cpp,.h,.hpp,.rs,.go,.rb,.php,.sh,.sql,.yaml,.yml,.toml,.ini,.cfg,.conf,.env,.swift,.dart,.r,.m,.mm,.vue,.svelte,.scss,.less,.sass,.zig,.lua,.pl,.ps1,.bat,.dockerfile,.makefile,.gradle,.properties" style="display:none;">
+                    <input type="file" id="aiFileUploader" accept=".txt,.html,.css,.js,.ts,.tsx,.jsx,.json,.py,.md,.csv,.log,.xml,.smali,.java,.kt,.c,.cpp,.h,.hpp,.rs,.go,.rb,.php,.sh,.sql,.yaml,.yml,.toml,.ini,.cfg,.conf,.env,.swift,.dart,.r,.m,.mm,.vue,.svelte,.scss,.less,.sass,.zig,.lua,.pl,.ps1,.bat,.dockerfile,.makefile,.gradle,.properties,.pdf,.docx,.rtf" style="display:none;">
                     <button type="button" class="btn" onclick="document.getElementById('aiFileUploader').click()" title="Attach a code/text file (images/videos not supported by MiMo)" style="padding: 0 14px; border-radius: 12px; background: rgba(255,255,255,0.05); color: #00f2fe; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; display:flex; align-items:center; justify-content:center;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                     </button>
@@ -6290,7 +6314,10 @@ window.__dgxenInitVideoControls = function(vId) {
       else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
       else if (document.webkitCancelFullScreen) document.webkitCancelFullScreen();
       else if (video.webkitDisplayingFullscreen) video.webkitExitFullscreen();
-      if (wrap) wrap.classList.remove('dgxen-manual-fullscreen');
+      if (wrap) {
+        wrap.classList.remove('dgxen-manual-fullscreen');
+        wrap.classList.remove('dgxen-force-landscape');
+      }
       document.body.classList.remove('dgxen-fs-lock');
       // Unlock orientation when leaving fullscreen
       try {
@@ -6300,11 +6327,12 @@ window.__dgxenInitVideoControls = function(vId) {
       return;
     }
     // Landscape video → lock landscape on phone (game-like); portrait stays vertical
+    const vw = video.videoWidth || 0;
+    const vh = video.videoHeight || 0;
+    const isLandscapeVid = vw > 0 && vh > 0 && vw > vh;
     try {
-      const vw = video.videoWidth || 0;
-      const vh = video.videoHeight || 0;
       if (vw && vh && screen.orientation && screen.orientation.lock) {
-        if (vw > vh) {
+        if (isLandscapeVid) {
           screen.orientation.lock('landscape').catch(function(){});
         } else {
           screen.orientation.lock('portrait').catch(function(){});
@@ -6316,15 +6344,20 @@ window.__dgxenInitVideoControls = function(vId) {
     else if (target.webkitRequestFullscreen) { target.webkitRequestFullscreen(); requested = true; }
     else if (video.webkitEnterFullscreen) { video.webkitEnterFullscreen(); requested = true; } // iOS Safari native player fallback
     // Fallback: some mobile WebViews accept the Fullscreen API call but never
-    // actually cover the full screen (the bug seen in testing — video only
-    // fills the top half). Detect that after a short delay and, if the
-    // element still isn't the true fullscreen element, force a manual
-    // full-screen overlay via CSS class instead.
+    // actually cover the full screen. Also apply CSS rotate for landscape videos
+    // when orientation.lock is denied (common on Android Chrome without fullscreen gesture grants).
     setTimeout(() => {
       const nowFsEl = document.fullscreenElement || document.webkitFullscreenElement;
       if (!nowFsEl || nowFsEl !== target) {
-        wrap && wrap.classList.add('dgxen-manual-fullscreen');
+        if (wrap) {
+          wrap.classList.add('dgxen-manual-fullscreen');
+          if (isLandscapeVid) wrap.classList.add('dgxen-force-landscape');
+          else wrap.classList.remove('dgxen-force-landscape');
+        }
         document.body.classList.add('dgxen-fs-lock');
+      } else if (wrap && isLandscapeVid) {
+        // Native FS worked; still try lock again after FS is active
+        try { screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(function(){}); } catch (e) {}
       }
       syncFullBtnIcon();
     }, 250);
@@ -7515,7 +7548,11 @@ function explainFetchError(e) {
                 // can't decode it — try it live and fall back gracefully if it fails.
                 drawer.innerHTML = '<div class="media-wrap"><img src="' + fileUrl + '" alt="Preview" loading="lazy" onerror="window.__cloudPreviewFallback(this,\'' + fileUrl + '\',\'HEIC image\')"></div>';
               } else if (['mp3','wav','ogg','m4a'].includes(ext)) {
-                drawer.innerHTML = '<audio controls preload="metadata" src="' + fileUrl + '"></audio>';
+                drawer.innerHTML = '<audio id="cloudAud_' + Date.now() + '" controls preload="auto" autoplay src="' + fileUrl + '"></audio>';
+                setTimeout(function() {
+                  const a = drawer.querySelector('audio');
+                  if (a) { const p = a.play(); if (p && p.catch) p.catch(function(){}); }
+                }, 80);
               } else if (['mp4','webm','mov','mkv','m4v'].includes(ext)) {
                 // Container is supported, but the codec inside (e.g. HEVC/H.265) may not
                 // be decodable on this browser — same graceful fallback if playback fails.
@@ -7525,7 +7562,7 @@ function explainFetchError(e) {
                 drawer.innerHTML =
                   '<div class="media-wrap">' +
                   '<div class="dgxen-video-wrap" id="' + vId + '_wrap">' +
-                  '<video id="' + vId + '" playsinline webkit-playsinline preload="metadata" src="' + fileUrl + '" onerror="window.__cloudPreviewFallback(this,\'' + fileUrl + '\',\'video\')"></video>' +
+                  '<video id="' + vId + '" playsinline webkit-playsinline preload="auto" src="' + fileUrl + '" onerror="window.__cloudPreviewFallback(this,\'' + fileUrl + '\',\'video\')"></video>' +
                   '<div class="dgxen-video-controls">' +
                   '<button type="button" id="' + vId + '_play" aria-label="Play/Pause">▶</button>' +
                   '<span class="dgxen-time" id="' + vId + '_time">0:00 / 0:00</span>' +
@@ -7536,6 +7573,16 @@ function explainFetchError(e) {
                   '</div>' +
                   '</div>';
                 if (window.__dgxenInitVideoControls) window.__dgxenInitVideoControls(vId);
+                // Auto-start playback when admin opens the preview (no extra Play tap)
+                setTimeout(function() {
+                  try {
+                    const v = document.getElementById(vId);
+                    if (v) {
+                      const p = v.play();
+                      if (p && p.catch) p.catch(function(){ /* autoplay policy — user gesture already happened on row tap */ });
+                    }
+                  } catch (e) {}
+                }, 120);
               } else if (['pdf'].includes(ext)) {
                 drawer.innerHTML =
                   '<iframe src="' + fileUrl + '#toolbar=1&navpanes=0" title="PDF"></iframe>' +
@@ -8515,6 +8562,10 @@ function explainFetchError(e) {
           );
 
       } else {
+        try {
+          const ae = document.activeElement;
+          if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) ae.blur();
+        } catch (e) {}
         p.classList.add('closing');
         if (bd) bd.classList.remove('open');
         setTimeout(() => { p.classList.remove('open', 'closing'); }, 380);
@@ -8833,10 +8884,19 @@ function explainFetchError(e) {
   });
 
   // ---- Text-to-Speech (Indian/Hindi accent, skip code blocks) ----
+  // Track which message is currently being spoken (tap again to stop)
+  window.__aiSpeakingIdx = null;
+
   window.speakAiMessage = function(idx) {
       try {
           if (!window.speechSynthesis) {
               alert('Speech synthesis not supported on this browser.');
+              return;
+          }
+          // Toggle off if same message is already speaking (or anything is speaking)
+          if (window.speechSynthesis.speaking || window.__aiSpeakingIdx === idx) {
+              window.speechSynthesis.cancel();
+              window.__aiSpeakingIdx = null;
               return;
           }
           window.speechSynthesis.cancel();
@@ -8851,33 +8911,58 @@ function explainFetchError(e) {
           if (!text) return;
 
           const utter = new SpeechSynthesisUtterance(text);
-          utter.lang = 'hi-IN';
-          utter.rate = 1.0;
-          utter.pitch = 1.1;
+          // Slightly slower + neutral pitch = less robotic on most engines
+          utter.lang = 'en-IN';
+          utter.rate = 0.95;
+          utter.pitch = 1.0;
+          utter.volume = 1.0;
+          window.__aiSpeakingIdx = idx;
+          utter.onend = function() { window.__aiSpeakingIdx = null; };
+          utter.onerror = function() { window.__aiSpeakingIdx = null; };
 
           const pickVoice = () => {
               const voices = window.speechSynthesis.getVoices() || [];
-              let preferred = voices.filter(v => v.lang === 'hi-IN' || v.lang === 'en-IN');
+              // Prefer natural neural / Google / Microsoft Indian voices
+              let preferred = voices.filter(v => {
+                  const lang = (v.lang || '').toLowerCase();
+                  return lang === 'hi-in' || lang === 'en-in' || lang.startsWith('hi') || lang.startsWith('en-in');
+              });
               preferred.sort((a, b) => {
-                  const ag = /google/i.test(a.name) ? 0 : 1;
-                  const bg = /google/i.test(b.name) ? 0 : 1;
-                  return ag - bg;
+                  const score = (v) => {
+                      const n = (v.name || '').toLowerCase();
+                      let s = 0;
+                      if (/google|neural|natural|premium|enhanced|microsoft/.test(n)) s -= 10;
+                      if (/female|raveena|heera|neerja|priya/.test(n)) s -= 3;
+                      if (/en-in|hi-in/.test((v.lang||'').toLowerCase())) s -= 2;
+                      return s;
+                  };
+                  return score(a) - score(b);
               });
               if (preferred.length) {
                   utter.voice = preferred[0];
-                  utter.lang = preferred[0].lang || 'hi-IN';
+                  utter.lang = preferred[0].lang || 'en-IN';
+              } else {
+                  // Fallback: any English voice that isn't obviously legacy
+                  const en = voices.filter(v => /^en/i.test(v.lang || ''));
+                  en.sort((a,b) => (/google|neural|natural/i.test(a.name)?0:1) - (/google|neural|natural/i.test(b.name)?0:1));
+                  if (en.length) { utter.voice = en[0]; utter.lang = en[0].lang; }
               }
               window.speechSynthesis.speak(utter);
           };
 
           const voices = window.speechSynthesis.getVoices();
           if (voices && voices.length) pickVoice();
-          else window.speechSynthesis.onvoiceschanged = function() {
-              window.speechSynthesis.onvoiceschanged = null;
-              pickVoice();
-          };
+          else {
+              window.speechSynthesis.onvoiceschanged = function() {
+                  window.speechSynthesis.onvoiceschanged = null;
+                  pickVoice();
+              };
+              // Some browsers need a tick
+              setTimeout(pickVoice, 250);
+          }
       } catch (e) {
           console.error('TTS error', e);
+          window.__aiSpeakingIdx = null;
       }
   };
 
@@ -8944,8 +9029,8 @@ function explainFetchError(e) {
       const loadingId = 'load_' + Date.now();
       const loadingDiv = document.createElement('div');
       loadingDiv.id = loadingId;
-      loadingDiv.style.cssText = 'align-self: flex-start; background: rgba(255,255,255,0.06); padding: 12px 16px; border-radius: 14px; color: var(--text-dim); font-size: 13px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; max-width: 85%;';
-      loadingDiv.innerHTML = '<span class="ai-thinking"></span>';
+      loadingDiv.style.cssText = 'align-self: flex-start; background: rgba(255,255,255,0.06); padding: 12px 16px; border-radius: 14px; color: var(--text-dim); font-size: 13px; border: 1px solid rgba(255,255,255,0.1); max-width: 85%; display: flex; flex-direction: column; gap: 8px;';
+      loadingDiv.innerHTML = '<div style="display:flex;align-items:center;gap:8px;"><span class="ai-thinking"></span><span style="font-size:11px;font-weight:700;opacity:0.8;">Thinking…</span></div><details class="ai-thought-box" id="' + loadingId + '_thought" style="display:none;"><summary>💭 Thought process</summary><div class="ai-thought-body" id="' + loadingId + '_thoughtBody"></div></details>';
       loadingDiv.classList.add('ai-loading');
       box.appendChild(loadingDiv);
       scrollChatToBottom(true);
@@ -8953,15 +9038,39 @@ function explainFetchError(e) {
       // Live streaming bubble (replaced after complete)
       let streamBubble = null;
       let streamTextEl = null;
+      let streamThoughtEl = null;
       let fullReply = '';
       let fullReasoning = '';
+
+      const updateLiveThought = (reasonText) => {
+          if (!reasonText) return;
+          const live = document.getElementById(loadingId + '_thought');
+          const body = document.getElementById(loadingId + '_thoughtBody');
+          if (live && body) {
+              live.style.display = 'block';
+              body.textContent = reasonText;
+          }
+          if (streamThoughtEl) {
+              streamThoughtEl.style.display = 'block';
+              const b = streamThoughtEl.querySelector('.ai-thought-body');
+              if (b) b.textContent = reasonText;
+          }
+      };
 
       const ensureStreamBubble = () => {
           if (streamBubble) return;
           const loadEl = document.getElementById(loadingId);
+          // Keep thought HTML if we already streamed reasoning during loading
+          let thoughtHtml = '';
+          if (fullReasoning) {
+              const safe = String(fullReasoning).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              thoughtHtml = '<details class="ai-thought-box" open><summary>💭 Thought process</summary><div class="ai-thought-body">' + safe + '</div></details>';
+          }
           if (loadEl) loadEl.remove();
           streamBubble = document.createElement('div');
           streamBubble.style.cssText = 'align-self: flex-start; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); border-radius: 16px 16px 16px 4px; box-shadow: 0 4px 14px rgba(0,0,0,0.15); max-width: 85%; padding: 12px 16px; word-break: break-word; line-height: 1.5; font-size: 13.5px;';
+          streamBubble.innerHTML = thoughtHtml;
+          streamThoughtEl = streamBubble.querySelector('.ai-thought-box');
           streamTextEl = document.createElement('div');
           streamTextEl.className = 'ai-stream-cursor';
           streamBubble.appendChild(streamTextEl);
@@ -9047,11 +9156,15 @@ function explainFetchError(e) {
                           if (delta) {
                               if (delta.reasoning_content || delta.reasoning) {
                                   fullReasoning += (delta.reasoning_content || delta.reasoning || '');
+                                  updateLiveThought(fullReasoning);
+                                  scrollChatToBottom(true);
                               }
                               if (delta.content) {
                                   fullReply += delta.content;
+                                  ensureStreamBubble();
                                   let preview = fullReply.replace(/<think>[\s\S]*?(<\/think>|$)/ig, '');
                                   streamTextEl.innerHTML = formatAiMarkdown(preview);
+                                  updateLiveThought(fullReasoning);
                                   scrollChatToBottom(true);
                               }
                           } else if (msg && msg.content) {
@@ -9131,9 +9244,43 @@ function explainFetchError(e) {
   function isAiRejectedMedia(file) {
       const t = (file.type || '').toLowerCase();
       const n = (file.name || '').toLowerCase();
+      // MiMo is text-only: block pure media (images/video/audio). PDF/DOCX allowed as attach (text extract best-effort).
       if (t.startsWith('image/') || t.startsWith('video/') || t.startsWith('audio/')) return true;
-      if (/\.(png|jpe?g|gif|webp|bmp|svg|mp4|webm|mov|avi|mkv|mp3|wav|ogg|m4a)$/i.test(n)) return true;
+      if (/\.(png|jpe?g|gif|webp|bmp|svg|ico|mp4|webm|mov|avi|mkv|mp3|wav|ogg|m4a|flac)$/i.test(n)) return true;
       return false;
+  }
+
+  // Best-effort text from PDF (no external lib): extract readable ASCII/UTF-8 streams.
+  // Not a full PDF parser — works for many simple text PDFs; complex/scanned PDFs need paste.
+  function extractTextFromPdfBytes(u8) {
+      try {
+          let raw = '';
+          // Decode as latin1 so binary survives, then pull text between BT/ET and parentheses strings
+          const decoder = new TextDecoder('latin1');
+          raw = decoder.decode(u8);
+          const chunks = [];
+          // Common PDF literal strings ( ... )
+          const re = /\((?:\\.|[^\\)])*\)/g;
+          let m;
+          while ((m = re.exec(raw)) !== null) {
+              let s = m[0].slice(1, -1);
+              s = s.replace(/\\n/g, '\n').replace(/\\r/g, '').replace(/\\t/g, ' ');
+              s = s.replace(/\\\(/g, '(').replace(/\\\)/g, ')').replace(/\\\\/g, '\\');
+              // Skip tiny binary-looking fragments
+              if (s.length >= 2 && /[A-Za-z]{2,}/.test(s)) chunks.push(s);
+          }
+          // Also grab sequences of printable ASCII runs longer than 20 chars
+          const runs = raw.match(/[\x20-\x7E]{20,}/g) || [];
+          for (const r of runs) {
+              if (/[A-Za-z]{4,}/.test(r) && !/^[%\/]/.test(r.trim())) chunks.push(r);
+          }
+          let out = chunks.join('\n');
+          out = out.replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\u024F]/g, ' ');
+          out = out.replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+          return out;
+      } catch (e) {
+          return '';
+      }
   }
 
   // --- Paperclip / drag-drop: queue as chip (never dump into the text field).
@@ -9141,27 +9288,28 @@ function explainFetchError(e) {
   function attachAiFile(file) {
       if (!file) return;
       if (isAiRejectedMedia(file)) {
-          alert('MiMo cannot read images/videos/audio in this chat.\nPlease attach code or text files only (.js, .py, .txt, …).');
+          alert('MiMo cannot read images/videos/audio in this chat.\nPlease attach code, text, or PDF files (.js, .py, .txt, .pdf …).');
           return;
       }
       if (file.size > AI_MAX_ATTACH_BYTES) {
-          alert('File too large for AI attach (max ~2 MB text).\nSize: ' + (file.size / 1024 / 1024).toFixed(2) + ' MB\nTip: paste a relevant snippet, or split the file.');
+          alert('File too large for AI attach (max ~2 MB).\nSize: ' + (file.size / 1024 / 1024).toFixed(2) + ' MB\nTip: paste a relevant snippet, or split the file.');
           return;
       }
 
       showAiAttachChip('Uploading ' + file.name + '…', 'ai-attach-uploading');
 
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-          let content = String(evt.target.result || '');
-          const originalLen = content.length;
+      const lower = (file.name || '').toLowerCase();
+      const isPdf = lower.endsWith('.pdf') || (file.type || '') === 'application/pdf';
+
+      const finish = function(content, originalLen) {
           if (content.length > AI_MAX_ATTACH_CHARS) {
               content = content.slice(0, AI_MAX_ATTACH_CHARS) + '\n\n…[truncated: ' + originalLen.toLocaleString() + ' chars total]';
           }
-          // Detect mostly-binary garbage (null bytes)
-          if (content.indexOf('\u0000') !== -1) {
+          if (!content || content.trim().length < 3) {
               removeAiAttachment();
-              alert('This looks like a binary file. Attach text/code only.');
+              alert(isPdf
+                  ? 'Could not extract text from this PDF (scanned/image PDF).\nOpen the PDF, copy the text, and paste it here instead.'
+                  : 'File appears empty or unreadable as text.');
               return;
           }
           pendingAiAttachment = { name: file.name, content: content };
@@ -9169,6 +9317,39 @@ function explainFetchError(e) {
           showAiAttachChip(label);
           const input = document.getElementById('aiInputPrompt');
           if (input) input.focus();
+      };
+
+      if (isPdf) {
+          const reader = new FileReader();
+          reader.onload = function(evt) {
+              try {
+                  const buf = evt.target.result;
+                  const u8 = new Uint8Array(buf);
+                  let content = extractTextFromPdfBytes(u8);
+                  finish(content, content.length);
+              } catch (e) {
+                  removeAiAttachment();
+                  alert('PDF read failed. Paste the text instead.');
+              }
+          };
+          reader.onerror = function() {
+              removeAiAttachment();
+              alert('Could not read PDF.');
+          };
+          reader.readAsArrayBuffer(file);
+          return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+          let content = String(evt.target.result || '');
+          const originalLen = content.length;
+          if (content.indexOf('\u0000') !== -1) {
+              removeAiAttachment();
+              alert('This looks like a binary file. Attach text/code/PDF only.');
+              return;
+          }
+          finish(content, originalLen);
       };
       reader.onerror = function() {
           removeAiAttachment();
@@ -9480,6 +9661,12 @@ function explainFetchError(e) {
               btn.style.transform = 'scale(0)';
           }
       } else {
+          // Blur inputs so browser password managers don't fire "save password" on leave
+          try {
+            const ae = document.activeElement;
+            if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) ae.blur();
+            window.speechSynthesis && window.speechSynthesis.cancel();
+          } catch (e) {}
           p.classList.add('closing');
           if (bd) bd.classList.remove('open');
           
