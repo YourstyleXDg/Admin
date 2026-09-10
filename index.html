@@ -1126,7 +1126,13 @@
         }
         #chatMessages,
         #chatHistoryList {
-            touch-action: pan-y pinch-zoom;
+            touch-action: pan-x pan-y pinch-zoom;
+        }
+        #aiPanel, #aiPanel * {
+            touch-action: manipulation;
+        }
+        #chatMessages, #chatHistoryList {
+            touch-action: pan-x pan-y pinch-zoom;
         }
         /* Empty history area should not block 2-finger gestures on the panel */
         #chatHistoryList {
@@ -1722,7 +1728,7 @@
         .chat-hist-item {
             position: relative;
             overflow: hidden;
-            touch-action: pan-y;
+            touch-action: pan-x pan-y;
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
             box-shadow: 0 2px 6px rgba(0,0,0,0.12);
@@ -3324,12 +3330,13 @@ body.cat-world-active .cat-mode-bar{display:block}
 
                 <!-- Input Box (always pinned below the conversation) + drag-drop zone -->
                 <div id="aiInputDropZone" style="padding: 15px; border-top: 1px solid rgba(0,242,254,0.15); display: flex; gap: 10px; background: rgba(0,0,0,0.25); border-radius: 0 0 16px 16px; position: relative; transition: background 0.2s, border-color 0.2s;">
-                    <input type="file" id="aiFileUploader" accept=".txt,.html,.css,.js,.ts,.tsx,.jsx,.json,.py,.md,.csv,.log,.xml,.smali,.java,.kt,.c,.cpp,.h,.hpp,.rs,.go,.rb,.php,.sh,.sql,.yaml,.yml,.toml,.ini,.cfg,.conf,.env,.swift,.dart,.r,.m,.mm,.vue,.svelte,.scss,.less,.sass,.zig,.lua,.pl,.ps1,.bat,.dockerfile,.makefile,.gradle,.properties,.pdf,.docx,.rtf" style="display:none;">
+                    <input type="file" id="aiFileUploader" accept="*/*" style="display:none;">
                     <button type="button" class="btn" onclick="document.getElementById('aiFileUploader').click()" title="Attach a code/text file (images/videos not supported by MiMo)" style="padding: 0 14px; border-radius: 12px; background: rgba(255,255,255,0.05); color: #00f2fe; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; display:flex; align-items:center; justify-content:center;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                     </button>
                     <input type="text" id="aiInputPrompt" placeholder="Ask code or logic... (drop files here)" style="flex: 1; padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); font-size: 16px;" autocomplete="off">
-                    <button class="btn" onclick="sendAiMessage()" style="background: #00f2fe; color: #000; padding: 0 20px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none;">Send</button>
+                    <button type="button" id="aiStopBtn" class="btn" onclick="stopAiGeneration()" title="Stop AI" style="display:none; background: rgba(255,59,48,0.15); color: var(--error); border: 1px solid rgba(255,59,48,0.4); padding: 0 14px; border-radius: 12px; font-weight: 800; cursor: pointer;">Stop</button>
+                    <button type="button" id="aiSendBtn" class="btn" onclick="sendAiMessage()" style="background: #00f2fe; color: #000; padding: 0 20px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none;">Send</button>
                     <div id="aiDropOverlay" style="display:none; position:absolute; inset:0; border-radius:0 0 16px 16px; background:rgba(0,242,254,0.12); border:2px dashed #00f2fe; align-items:center; justify-content:center; font-weight:800; font-size:13px; color:#00f2fe; pointer-events:none; z-index:2;">Drop file to attach</div>
                 </div>
 
@@ -8777,11 +8784,13 @@ function explainFetchError(e) {
       // Pull out fenced code blocks first so nothing inside them gets
       // touched by the other markdown rules, then restore them at the end.
       const codeBlocks = [];
+      if (!window.__aiCodeStore) window.__aiCodeStore = [];
       text = text.replace(/```([a-zA-Z0-9]*)\n?([\s\S]*?)```/g, (m, lang, code) => {
           const clean = code.replace(/\n$/, '');
-          const escAttr = clean.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+          const storeIdx = window.__aiCodeStore.length;
+          window.__aiCodeStore.push(clean);
           codeBlocks.push(
-              '<div class="ai-code-wrap"><button type="button" class="ai-code-copy" onclick="event.stopPropagation(); copyMessage(this.getAttribute(\'data-code\'))" data-code="' + escAttr.replace(/'/g, '&#39;') + '">Copy</button><pre style="background: rgba(0,0,0,0.4); padding: 10px; padding-top: 28px; border-radius: 8px; overflow-x: auto; font-size: 12px; margin: 0;"><code>' +
+              '<div class="ai-code-wrap"><button type="button" class="ai-code-copy" onclick="event.stopPropagation(); copyMessage(window.__aiCodeStore[' + storeIdx + '])">Copy</button><pre style="background: rgba(0,0,0,0.4); padding: 10px; padding-top: 28px; border-radius: 8px; overflow-x: auto; font-size: 12px; margin: 0;"><code>' +
               clean +
               '</code></pre></div>'
           );
@@ -8834,6 +8843,7 @@ function explainFetchError(e) {
       const box = document.getElementById('chatMessages');
       if (!box) return;
       const force = !opts || opts.force !== false;
+      window.__aiCodeStore = []; // reset so Copy buttons keep correct indices
       
       if(!currentChatId || !chatSessions[currentChatId] || chatSessions[currentChatId].messages.length === 0) {
           box.innerHTML = '<div style="text-align: center; color: var(--text-dim); margin-top: auto; margin-bottom: auto; font-size: 13px;">MiMo 2.5 Pro is ready for coding & logic tasks. Ask anything!</div>';
@@ -8851,12 +8861,12 @@ function explainFetchError(e) {
           if (!isUser && msg.reasoning) {
               const safeThought = String(msg.reasoning)
                   .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-              thoughtHtml = '<details class="ai-thought-box"><summary>💭 Thought process</summary><div class="ai-thought-body">' + safeThought + '</div></details>';
+              thoughtHtml = '<details class="ai-thought-box" open><summary>💭 Thought process</summary><div class="ai-thought-body">' + safeThought + '</div></details>';
           }
 
           const formattedContent = formatAiMarkdown(msg.content || '');
           let actions = '<div class="ai-msg-actions">';
-          actions += '<button type="button" onclick="copyMessage(chatSessions[currentChatId].messages[' + idx + '].content)" title="Copy">📋 Copy</button>';
+          actions += '<button type="button" onclick="copyChatMessage(' + idx + ')" title="Copy">📋 Copy</button>';
           if (isUser) {
               actions += '<button type="button" onclick="editUserMessage(' + idx + ')" title="Edit & resend">✏️ Edit</button>';
           } else {
@@ -8904,9 +8914,18 @@ function explainFetchError(e) {
           const msg = chatSessions[currentChatId].messages[idx];
           if (!msg || msg.role !== 'assistant') return;
           let text = String(msg.content || '');
-          // Strip fenced code blocks so TTS doesn't read syntax
+          // Strip code + markdown so TTS doesn't read #, **, *, _, etc.
           text = text.replace(/```[\s\S]*?```/g, ' ');
           text = text.replace(/`[^`\n]+`/g, ' ');
+          text = text.replace(/!\[[^\]]*\]\([^)]*\)/g, ' '); // images
+          text = text.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1'); // links → label
+          text = text.replace(/^#{1,6}\s+/gm, ''); // headers
+          text = text.replace(/(\*\*|__)(.*?)\1/g, '$2'); // bold
+          text = text.replace(/(\*|_)(.*?)\1/g, '$2'); // italic
+          text = text.replace(/~~(.*?)~~/g, '$1'); // strike
+          text = text.replace(/^[\s]*[-*+]\s+/gm, ''); // bullets
+          text = text.replace(/^[\s]*\d+\.\s+/gm, ''); // numbered
+          text = text.replace(/[#*_`~>|=]+/g, ' '); // leftover symbols
           text = text.replace(/\s+/g, ' ').trim();
           if (!text) return;
 
@@ -8966,6 +8985,9 @@ function explainFetchError(e) {
       }
   };
 
+  // Pending edit: messages stay visible until you press Send (then history is trimmed)
+  window.__pendingEditIdx = null;
+
   window.editUserMessage = function(idx) {
       if (!currentChatId || !chatSessions[currentChatId]) return;
       const msgs = chatSessions[currentChatId].messages;
@@ -8973,30 +8995,75 @@ function explainFetchError(e) {
       if (!msg || msg.role !== 'user') return;
       const input = document.getElementById('aiInputPrompt');
       if (!input) return;
-      // Truncate history to just before this message so "edit & resend" rewrites from here
       const content = msg.content || '';
-      msgs.splice(idx); // remove this user msg and everything after
-      saveSessions();
-      renderCurrentMessages({ force: true });
+      window.__pendingEditIdx = idx;
+      // Highlight that we're editing — do NOT remove messages yet
       input.value = content;
       input.focus();
       try { input.setSelectionRange(content.length, content.length); } catch (e) {}
+      // Visual cue on the bubble
+      document.querySelectorAll('.ai-msg-bubble').forEach(function(el) {
+          el.style.outline = '';
+      });
+      const bubble = document.querySelector('.ai-msg-bubble[data-msg-idx="' + idx + '"]');
+      if (bubble) bubble.style.outline = '2px solid var(--accent)';
   };
 
   // Extract reasoning from content (<think>…</think>) or separate field
   function extractReasoning(rawContent, apiMsg) {
       let reasoning = '';
       let content = rawContent || '';
-      if (apiMsg && (apiMsg.reasoning_content || apiMsg.reasoning)) {
-          reasoning = apiMsg.reasoning_content || apiMsg.reasoning;
+      if (apiMsg) {
+          if (apiMsg.reasoning_content) reasoning = String(apiMsg.reasoning_content);
+          else if (apiMsg.reasoning) reasoning = String(apiMsg.reasoning);
+          else if (apiMsg.thinking) reasoning = String(apiMsg.thinking);
       }
-      const thinkMatch = content.match(/<think>([\s\S]*?)<\/think>/i);
-      if (thinkMatch) {
-          reasoning = (reasoning ? reasoning + '\n' : '') + thinkMatch[1].trim();
-          content = content.replace(/<think>[\s\S]*?<\/think>/ig, '').trim();
+      // Common tag variants used by reasoning models / proxies
+      const tagPatterns = [
+          /<think>([\s\S]*?)<\/think>/ig,
+          /<thinking>([\s\S]*?)<\/thinking>/ig,
+          /<reasoning>([\s\S]*?)<\/reasoning>/ig,
+          /<thought>([\s\S]*?)<\/thought>/ig
+      ];
+      for (const re of tagPatterns) {
+          let m;
+          const r = new RegExp(re.source, re.flags);
+          while ((m = r.exec(content)) !== null) {
+              const part = (m[1] || '').trim();
+              if (part) reasoning = reasoning ? (reasoning + '\n' + part) : part;
+          }
+          content = content.replace(re, '').trim();
       }
-      return { content, reasoning };
+      // Some models emit "Thought:" or "Reasoning:" prefix blocks before the final answer
+      const prefix = content.match(/^(?:Thought|Reasoning|Analysis)\s*:\s*([\s\S]*?)(?:\n\n|\n(?=[A-Z#]))/);
+      if (prefix && prefix[1] && prefix[1].length > 40) {
+          reasoning = reasoning ? (reasoning + '\n' + prefix[1].trim()) : prefix[1].trim();
+      }
+      return { content: content.trim(), reasoning: (reasoning || '').trim() };
   }
+
+
+  window.__aiAbort = null;
+
+  window.setAiBusy = function(busy) {
+      const stopBtn = document.getElementById('aiStopBtn');
+      const sendBtn = document.getElementById('aiSendBtn');
+      if (stopBtn) stopBtn.style.display = busy ? 'inline-flex' : 'none';
+      if (sendBtn) {
+          sendBtn.disabled = !!busy;
+          sendBtn.style.opacity = busy ? '0.5' : '1';
+      }
+  };
+
+  window.stopAiGeneration = function() {
+      try {
+          if (window.__aiAbort) {
+              window.__aiAbort.abort();
+              window.__aiAbort = null;
+          }
+      } catch (e) {}
+      window.setAiBusy(false);
+  };
 
   window.sendAiMessage = async function() {
       const input = document.getElementById('aiInputPrompt');
@@ -9016,6 +9083,15 @@ function explainFetchError(e) {
           startNewChat();
       }
 
+      // Edit flow: only NOW remove the old message + everything after it
+      if (window.__pendingEditIdx != null && window.__pendingEditIdx >= 0) {
+          const ei = window.__pendingEditIdx;
+          window.__pendingEditIdx = null;
+          if (chatSessions[currentChatId].messages.length > ei) {
+              chatSessions[currentChatId].messages.splice(ei);
+          }
+      }
+
       if (chatSessions[currentChatId].title === 'New Chat') {
           chatSessions[currentChatId].title = text.slice(0, 22) + (text.length > 22 ? '...' : '');
       }
@@ -9024,6 +9100,8 @@ function explainFetchError(e) {
       input.value = '';
       renderCurrentMessages({ force: true });
       saveSessions();
+      window.setAiBusy(true);
+      window.__aiAbort = typeof AbortController !== 'undefined' ? new AbortController() : null;
 
       const box = document.getElementById('chatMessages');
       const loadingId = 'load_' + Date.now();
@@ -9092,6 +9170,8 @@ function explainFetchError(e) {
               });
               saveSessions();
               renderCurrentMessages({ force: true });
+              window.setAiBusy(false);
+              window.__aiAbort = null;
           }
 
           async function callWorker(useStream) {
@@ -9100,11 +9180,13 @@ function explainFetchError(e) {
                   messages: messagesPayload
               };
               if (useStream) payload.stream = true;
-              return fetch(WORKER_URL, {
+              const opts = {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify(payload)
-              });
+              };
+              if (window.__aiAbort) opts.signal = window.__aiAbort.signal;
+              return fetch(WORKER_URL, opts);
           }
 
           // Prefer streaming; if worker returns 4xx/5xx or non-SSE, fall back to non-stream JSON
@@ -9195,9 +9277,12 @@ function explainFetchError(e) {
           const loadEl = document.getElementById(loadingId);
           if (loadEl) loadEl.remove();
           if (streamBubble) streamBubble.remove();
-          const errorMsg = '❌ Connection Failed: ' + err.message;
+          const aborted = (err && (err.name === 'AbortError' || /abort/i.test(err.message || '')));
+          const errorMsg = aborted ? '⏹ Generation stopped.' : ('❌ Connection Failed: ' + err.message);
           chatSessions[currentChatId].messages.push({ role: 'assistant', content: errorMsg });
           renderCurrentMessages({ force: true });
+          window.setAiBusy(false);
+          window.__aiAbort = null;
       }
 
       input.focus();
@@ -9207,8 +9292,8 @@ function explainFetchError(e) {
   // chip instead of dumping thousands of characters into the input box. ---
   let pendingAiAttachment = null;
   const AI_PASTE_ATTACH_THRESHOLD = 600; // chars
-  const AI_MAX_ATTACH_CHARS = 400000; // ~400k chars soft limit to avoid OOM / worker payload errors
-  const AI_MAX_ATTACH_BYTES = 2 * 1024 * 1024; // 2 MB hard limit for text files
+  const AI_MAX_ATTACH_CHARS = 1500000; // ~1.5M chars (~1–1.5 MB text) so large HTML/code files send fully
+  const AI_MAX_ATTACH_BYTES = 3 * 1024 * 1024; // 3 MB hard limit for text files
 
   window.removeAiAttachment = function() {
       pendingAiAttachment = null;
@@ -9524,31 +9609,51 @@ function explainFetchError(e) {
       }
   };
 
-  // Copy message / code to clipboard (one-click, subtle feedback)
+  // Copy message / code to clipboard (works on mobile + non-HTTPS fallback)
   window.copyMessage = function(text) {
       const t = text == null ? '' : String(text);
-      const done = () => {
-          // tiny non-blocking toast via status-like flash on document title or temporary node
+      if (!t) return;
+      const toast = (msg) => {
           const n = document.createElement('div');
-          n.textContent = 'Copied';
+          n.textContent = msg || 'Copied';
           n.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;background:var(--accent);color:#000;font-weight:800;font-size:12px;padding:8px 16px;border-radius:20px;box-shadow:0 8px 24px rgba(0,0,0,0.35);pointer-events:none;';
           document.body.appendChild(n);
-          setTimeout(() => n.remove(), 1200);
+          setTimeout(() => n.remove(), 1400);
       };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(t).then(done).catch(() => {
-              try {
-                  const ta = document.createElement('textarea');
-                  ta.value = t; document.body.appendChild(ta); ta.select();
-                  document.execCommand('copy'); ta.remove(); done();
-              } catch (err) { console.error('Copy failed:', err); }
-          });
-      } else {
+      const fallback = () => {
           try {
               const ta = document.createElement('textarea');
-              ta.value = t; document.body.appendChild(ta); ta.select();
-              document.execCommand('copy'); ta.remove(); done();
-          } catch (err) { console.error('Copy failed:', err); }
+              ta.value = t;
+              ta.setAttribute('readonly', '');
+              ta.style.cssText = 'position:fixed;top:0;left:0;width:2px;height:2px;padding:0;border:none;opacity:0.01;z-index:99999;';
+              document.body.appendChild(ta);
+              ta.focus();
+              ta.select();
+              ta.setSelectionRange(0, t.length);
+              const ok = document.execCommand('copy');
+              ta.remove();
+              if (ok) toast('Copied');
+              else toast('Copy failed — long-press text instead');
+          } catch (err) {
+              console.error('Copy failed:', err);
+              toast('Copy failed');
+          }
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(t).then(() => toast('Copied')).catch(fallback);
+      } else {
+          fallback();
+      }
+  };
+
+  window.copyChatMessage = function(idx) {
+      try {
+          if (!currentChatId || !chatSessions[currentChatId]) return;
+          const msg = chatSessions[currentChatId].messages[idx];
+          if (!msg) return;
+          copyMessage(msg.content || '');
+      } catch (e) {
+          console.error(e);
       }
   };
 
