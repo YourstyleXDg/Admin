@@ -9471,6 +9471,23 @@ function explainFetchError(e) {
               window.__aiAbort = null;
           }
 
+          function extractReplyFromJson(data) {
+              if (!data) return { reply: '', apiMsg: null };
+              const choice = data.choices && data.choices[0];
+              if (choice) {
+                  const apiMsg = choice.message || choice.delta || {};
+                  const reply = apiMsg.content || choice.text || data.content || '';
+                  return { reply, apiMsg };
+              }
+              if (data.message && data.message.content) return { reply: data.message.content, apiMsg: data.message };
+              if (typeof data.content === 'string') return { reply: data.content, apiMsg: data };
+              if (typeof data.reply === 'string') return { reply: data.reply, apiMsg: data };
+              if (typeof data.response === 'string') return { reply: data.response, apiMsg: data };
+              if (typeof data.output === 'string') return { reply: data.output, apiMsg: data };
+              if (data.error) return { reply: '', apiMsg: null, error: typeof data.error === 'string' ? data.error : JSON.stringify(data.error) };
+              return { reply: '', apiMsg: null, error: 'Invalid response structure: ' + JSON.stringify(data).slice(0, 200) };
+          }
+
           async function callWorker(useStream) {
               const payload = {
                   model: "xiaomi/mimo-v2.5-pro",
@@ -9486,31 +9503,28 @@ function explainFetchError(e) {
               return fetch(WORKER_URL, opts);
           }
 
-          // Prefer streaming; if worker returns 4xx/5xx or non-SSE, fall back to non-stream JSON
+          // Prefer streaming; fall back to non-stream JSON
           let response = await callWorker(true);
           let ctype = (response.headers.get('content-type') || '').toLowerCase();
           const looksSSE = ctype.includes('text/event-stream') || ctype.includes('event-stream');
 
           if (!response.ok || !response.body || !looksSSE) {
-              // Retry once without stream if first attempt failed or returned JSON
-              if (!response.ok || (response.ok && !looksSSE && ctype.includes('json'))) {
-                  if (!response.ok) {
-                      try { await response.text(); } catch (e) {}
-                      response = await callWorker(false);
-                      ctype = (response.headers.get('content-type') || '').toLowerCase();
-                  }
-                  if (!response.ok) throw new Error('Worker Error: ' + response.status);
-                  const data = await response.json();
-                  const apiMsg = data.choices && data.choices[0] && data.choices[0].message;
-                  let reply = (apiMsg && apiMsg.content) ? apiMsg.content
-                      : (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
-                      || 'Error: Invalid response structure.';
-                  await finalizeAssistant(reply, apiMsg || data.choices?.[0]?.message || {});
-              } else {
-                  throw new Error('Worker Error: ' + response.status);
+              if (!response.ok) {
+                  try { await response.text(); } catch (e) {}
+                  response = await callWorker(false);
               }
+              if (!response.ok) {
+                  const errBody = await response.text().catch(() => '');
+                  throw new Error('Worker Error: ' + response.status + (errBody ? ' — ' + errBody.slice(0, 120) : ''));
+              }
+              const rawText = await response.text();
+              let data;
+              try { data = JSON.parse(rawText); }
+              catch (e) { throw new Error('Invalid response structure: ' + rawText.slice(0, 160)); }
+              const extracted = extractReplyFromJson(data);
+              if (extracted.error && !extracted.reply) throw new Error(extracted.error);
+              await finalizeAssistant(extracted.reply, extracted.apiMsg || {});
           } else {
-              // SSE streaming path
               const reader = response.body.getReader();
               const decoder = new TextDecoder();
               let buffer = '';
@@ -9557,13 +9571,12 @@ function explainFetchError(e) {
               }
 
               if (!fullReply && !fullReasoning) {
-                  // Empty stream — retry non-stream
                   const response2 = await callWorker(false);
                   if (!response2.ok) throw new Error('Worker Error: ' + response2.status);
                   const data = await response2.json();
-                  const apiMsg = data.choices && data.choices[0] && data.choices[0].message;
-                  let reply = (apiMsg && apiMsg.content) ? apiMsg.content : 'Error: Empty stream response.';
-                  await finalizeAssistant(reply, apiMsg || {});
+                  const extracted = extractReplyFromJson(data);
+                  if (extracted.error && !extracted.reply) throw new Error(extracted.error);
+                  await finalizeAssistant(extracted.reply, extracted.apiMsg || {});
               } else {
                   await finalizeAssistant(fullReply, { reasoning_content: fullReasoning });
               }
