@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=1366">
     <title>DGXEN | Premium Admin OS</title>
+    <!-- Fetch the Firebase SDK as early as possible, in parallel with the
+         rest of the page, instead of only starting the download once the
+         parser reaches the module script further down. This is what was
+         making the fingerprint prompt on the admin gate feel slow to show up
+         — the actual WebAuthn call can't start until these modules (and the
+         Firebase read they gate) have loaded. -->
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js">
     <!-- APP LOGO ICONS -->
     <link rel="icon" type="image/png" href="./logo.png">
     <link rel="apple-touch-icon" href="./logo.png">
@@ -1105,16 +1113,20 @@
            container has nothing to scroll internally, and "contain" also
            blocks the touch from falling through to scroll the page — one
            finger does nothing at all in that area. */
-        .guide-modal,
-        #chatMessages,
-        #chatHistoryList {
+        .guide-modal {
             -webkit-overflow-scrolling: touch;
             overscroll-behavior: contain;
         }
         .device-id-box,
         #cloudFileList,
+        #chatMessages,
+        #chatHistoryList,
         .mk-list {
             -webkit-overflow-scrolling: touch;
+        }
+        #chatMessages,
+        #chatHistoryList {
+            touch-action: pan-y;
         }
 
         /* --- Modern Guide Modal & Tabs (ACCORDION STYLE) --- */
@@ -1619,17 +1631,23 @@
             0% { transform: scale(1); opacity: 1; border-radius: 24px; }
             100% { transform: scale(0); opacity: 0; border-radius: 50%; }
         }
+        @keyframes aiStatusPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+        @keyframes aiMsgIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
         body.light-mode .ai-fab { 
             background: linear-gradient(135deg, #00f2fe, #4facfe, #8a2be2, #ff0844);
             border-color: rgba(255, 255, 255, 0.8);
         }
         body.light-mode #aiPanel { 
-            background: rgba(255,255,255,.78) !important;
-            box-shadow: 0 20px 60px rgba(0,0,0,.16) !important;
+            background: rgba(255, 255, 255, 0.75); 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
         }
-        body.light-mode #aiPanel::before { opacity: .25; }
-        body.max-mode #aiPanel { background: rgba(3,8,16,.7) !important; }
 
         /* ========================================= */
         /* AI CHAT CUSTOMIZATIONS - THEME AWARE */
@@ -1641,9 +1659,9 @@
         #chatHistoryList > div {
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        #chatHistoryList > div:not(:first-child) { width: max-content; max-width: 100%; }
         #chatHistoryList > div:not(:first-child):hover {
             background: rgba(var(--accent-rgb), 0.1) !important;
+            transform: translateX(4px);
         }
 
         /* Scrollbar - Dynamic Theme Colors */
@@ -1699,6 +1717,9 @@
             position: relative;
             overflow: hidden;
             touch-action: pan-y;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
         }
         .chat-hist-item.holding {
             transform: scale(0.97);
@@ -1786,7 +1807,6 @@
         body.light-mode #chatHistoryList > div:not(:first-child):hover {
             background: rgba(0,184,107,0.08) !important;
         }
-        body.light-mode #chatHistoryList > div:not(:first-child) { width: max-content; max-width: 100%; }
 
         /* Max Pro Mode - Cyan Glow */
         body.max-mode #aiInputPrompt {
@@ -2208,320 +2228,6 @@
         #noticePanel {
             display: none;
         }
-
-        /* =========================================================
-           AI ENGINE v2 — ONE-FINGER TOUCH SCROLLING, SLIM HISTORY
-           RAIL, THEME-AWARE COMPACT ROWS, BETTER GLASS & VISUALS
-           ========================================================= */
-        #aiPanel {
-            /* Layered glass with a soft 3D rim + sheen so the panel reads
-               as a distinct floating layer instead of flat tinted glass. */
-            background:
-                linear-gradient(150deg, rgba(10,8,26,.62), rgba(10,5,20,.5) 38%, rgba(24,8,42,.55) 72%, rgba(6,10,26,.6)),
-                rgba(10,5,20,.72);
-            border: 1px solid rgba(0,242,254,.18);
-            box-shadow:
-                0 30px 80px rgba(0,0,0,.85),
-                0 0 0 1px rgba(255,255,255,.035) inset,
-                0 0 60px rgba(138,43,226,.14),
-                0 1px 0 rgba(255,255,255,.06) inset;
-            backdrop-filter: blur(44px) saturate(175%);
-            -webkit-backdrop-filter: blur(44px) saturate(175%);
-            overscroll-behavior: contain;
-        }
-        #aiPanel::before {
-            /* top sheen, theme-aware */
-            content: '';
-            position: absolute;
-            top: 0; left: 5%; right: 5%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--accent-glow), rgba(0,242,254,.6), var(--accent-glow), transparent);
-            opacity: .7;
-            pointer-events: none;
-            z-index: 2;
-        }
-
-        /* ---- History rail: slim, no fat white card, rows fit text ---- */
-        #chatHistoryList {
-            width: 190px;
-            flex: 0 0 190px;
-            min-width: 0;
-            background: rgba(255,255,255,.028);
-            border: 1px solid rgba(255,255,255,.07);
-            border-radius: 18px;
-            padding: 10px 10px 12px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            overscroll-behavior: contain;
-            -webkit-overflow-scrolling: touch;
-        }
-        /* kill the separator "line" style, use soft card instead */
-        #chatHistoryList > div:first-child {
-            border-bottom: 1px solid rgba(255,255,255,.06);
-            padding-bottom: 9px;
-            margin-bottom: 8px;
-        }
-        #chatHistoryRail {
-            display: flex;
-            flex-direction: column;
-            gap: 7px;
-        }
-        .chat-hist-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            /* Fit the text only — removes the full-width white strip */
-            width: max-content;
-            max-width: 100%;
-            padding: 8px 11px;
-            border-radius: 999px;   /* pill */
-            background: rgba(255,255,255,.05);
-            color: var(--text-main);
-            border: 1px solid rgba(255,255,255,.09);
-            font-weight: 700;
-            font-size: 12px;
-            cursor: pointer;
-            line-height: 1.25;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: pan-y;
-            transition: transform .16s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease, color .2s ease;
-        }
-        .chat-hist-item:hover {
-            background: rgba(255,255,255,.1);
-            transform: translateY(-1px);
-        }
-        .chat-hist-item .hist-dot {
-            flex: 0 0 auto;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--text-dim);
-            opacity: .6;
-        }
-        /* Active chat: neon pill — impossible to confuse with the panel bg */
-        .chat-hist-item.active {
-            background: linear-gradient(135deg, rgba(0,255,136,.20), rgba(0,242,254,.14));
-            border-color: rgba(0,255,136,.5);
-            color: #ffffff;
-            box-shadow: 0 0 16px rgba(0,255,136,.18), 0 0 0 1px rgba(0,255,136,.14) inset;
-        }
-        .chat-hist-item.active .hist-dot {
-            background: var(--accent);
-            box-shadow: 0 0 8px var(--accent-glow);
-        }
-        body.max-mode .chat-hist-item.active {
-            border-color: rgba(0,255,213,.55);
-            box-shadow: 0 0 16px rgba(0,255,213,.22);
-        }
-        body.theme-cute .chat-hist-item.active {
-            border-color: rgba(255,107,157,.55);
-        }
-        .chat-hist-item.holding {
-            transform: scale(.96);
-        }
-        .chat-hist-item.holding::after {
-            content: '';
-            position: absolute;
-            left: 0; top: 0; bottom: 0;
-            width: 0%;
-            border-radius: inherit;
-            background: rgba(255,59,48,.35);
-            animation: chatHoldFill 550ms linear forwards;
-            pointer-events: none;
-        }
-        body.light-mode #chatHistoryList {
-            background: rgba(15,23,42,.04);
-            border-color: rgba(15,23,42,.1);
-        }
-        body.light-mode .chat-hist-item {
-            background: rgba(255,255,255,.72);
-            border-color: rgba(15,23,42,.12);
-            color: #0f172a;
-        }
-        body.light-mode .chat-hist-item:hover { background: #fff; }
-        body.light-mode .chat-hist-item.active {
-            background: linear-gradient(135deg, rgba(0,184,107,.18), rgba(0,150,255,.12));
-            border-color: rgba(0,184,107,.5);
-            color: #06301c;
-        }
-        body.light-mode .chat-hist-item .hist-dot { background: #64748b; }
-
-        /* ---- Chat scroll rail: reliable single-finger momentum scroll ---- */
-        #chatMessages {
-            overscroll-behavior: contain;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: thin;
-            scrollbar-color: var(--accent-glow) rgba(0,0,0,.1);
-        }
-        /* chat bubbles: softer glass */
-        #chatMessages > div {
-            max-width: 88%;
-        }
-        #chatMessages .ai-user-bubble {
-            background: linear-gradient(135deg, rgba(0,242,254,.16), rgba(0,255,136,.10)) !important;
-            border-color: rgba(0,242,254,.34) !important;
-            box-shadow: 0 6px 18px rgba(0,242,254,.07);
-        }
-        #chatMessages .ai-assistant-bubble {
-            background: linear-gradient(135deg, rgba(255,255,255,.075), rgba(255,255,255,.028)) !important;
-            border-color: rgba(255,255,255,.12) !important;
-        }
-        body.light-mode #chatMessages .ai-assistant-bubble {
-            background: rgba(255,255,255,.55) !important;
-            border-color: rgba(15,23,42,.1) !important;
-        }
-        #chatMessages code {
-            font-family: 'Courier New', ui-monospace, monospace;
-        }
-
-        /* ---- Input dock: glass pill bar + auto-growing textarea ---- */
-        .ai-input-dock {
-            background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-            border-top: 1px solid rgba(255,255,255,.07);
-        }
-        body.light-mode .ai-input-dock {
-            background: linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,.3));
-            border-top: 1px solid rgba(15,23,42,.08);
-        }
-        #aiInputPrompt {
-            flex: 1;
-            min-height: 44px;
-            max-height: 150px;
-            height: auto;
-            padding: 12px 16px;
-            border-radius: 16px;
-            background: rgba(0,0,0,.32);
-            border: 1px solid rgba(255,255,255,.12);
-            color: var(--text-main);
-            font-family: inherit;
-            font-size: 14.5px;
-            line-height: 1.5;
-            outline: none;
-            resize: none;
-            overflow-y: auto;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
-            -webkit-user-select: auto !important;
-            user-select: auto !important;
-            overscroll-behavior: contain;
-        }
-        #aiInputPrompt::placeholder { color: var(--text-dim); opacity: .65; }
-        #aiInputPrompt:focus {
-            background: rgba(0,0,0,.4);
-            border-color: rgba(0,242,254,.55);
-            box-shadow: 0 0 0 4px rgba(0,242,254,.08), 0 0 18px rgba(0,242,254,.12);
-        }
-        body.light-mode #aiInputPrompt {
-            background: rgba(255,255,255,.85);
-            border-color: rgba(15,23,42,.12);
-            color: #0f172a;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
-        }
-        body.max-mode #aiInputPrompt {
-            background: rgba(0,255,213,.05);
-            border-color: rgba(0,255,213,.22);
-        }
-        body.max-mode #aiInputPrompt:focus {
-            background: rgba(0,255,213,.09);
-            border-color: rgba(0,255,213,.5);
-            box-shadow: 0 0 20px rgba(0,255,213,.25);
-        }
-
-        /* paperclip button */
-        #aiAttachBtn {
-            flex: 0 0 auto;
-            width: 44px;
-            height: 44px;
-            border-radius: 14px;
-            background: rgba(255,255,255,.06);
-            border: 1px solid rgba(255,255,255,.1);
-            color: #00f2fe;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform .18s ease, background .2s ease, border-color .2s ease, color .2s ease;
-        }
-        #aiAttachBtn:hover { background: rgba(0,242,254,.14); border-color: rgba(0,242,254,.4); transform: translateY(-1px); }
-        #aiAttachBtn:active { transform: scale(.93); }
-        #aiAttachBtn svg { width: 21px; height: 21px; display: block; }
-        body.light-mode #aiAttachBtn {
-            background: rgba(15,23,42,.05);
-            border-color: rgba(15,23,42,.14);
-            color: #0891b2;
-        }
-        #aiSendBtn {
-            flex: 0 0 auto;
-            height: 44px;
-            padding: 0 22px;
-            border-radius: 14px;
-        }
-        /* file chip that appears above the input dock */
-        #aiFileChip {
-            display: none;
-            align-items: center;
-            gap: 8px;
-            margin: 0 15px 6px;
-            padding: 7px 10px;
-            border-radius: 11px;
-            font-size: 11.5px;
-            font-weight: 800;
-            color: var(--text-main);
-            background: rgba(0,242,254,.1);
-            border: 1px solid rgba(0,242,254,.3);
-            overflow: hidden;
-        }
-        #aiFileChip.show { display: flex; }
-        #aiFileChip .fl{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        #aiFileChip button {
-            background: none; border: none; color: var(--text-dim);
-            cursor: pointer; font-size: 15px; padding: 0 2px; line-height: 1;
-        }
-        #aiFileChip button:hover { color: var(--error); }
-
-        /* Jump-to-bottom pill polished */
-        #chatJumpBtn {
-            background: linear-gradient(135deg, rgba(0,255,136,.9), rgba(0,242,254,.85)) !important;
-            color: #000 !important;
-            border: none !important;
-            box-shadow: 0 6px 18px rgba(0,0,0,.35), 0 0 14px rgba(0,242,254,.2);
-        }
-
-        /* auto-grow textarea */
-        #aiInputPrompt { overflow-y: auto; }
-
-        /* ---- morph badge + subtle orb behind panel ---- */
-        .ai-orb-badge {
-            width: 8px; height: 8px; border-radius: 50%;
-            background: linear-gradient(135deg, #00f2fe, #8a2be2);
-            box-shadow: 0 0 10px rgba(0,242,254,.8);
-            animation: orbFluid 3.4s ease infinite;
-        }
-
-        /* ===== responsive: make whole section one-finger usable ===== */
-        @media (max-width: 640px) {
-            #aiPanel { left: 10px; right: 10px; top: 8px; bottom: 8px; padding: 16px; }
-            #chatHistoryList {
-                position: fixed;
-                left: 10px; top: 70px; bottom: 74px;
-                width: 205px;
-                flex: 0 0 auto;
-                z-index: 1390;
-                margin: 0;
-                background: rgba(10,8,26,.9);
-                border: 1px solid rgba(0,242,254,.2);
-                box-shadow: 0 18px 50px rgba(0,0,0,.5);
-            }
-            #chatHistoryList.hide { display: none !important; }
-            .chat-hist-item { max-width: 100%; }
-            #chatMessages { min-height: 0; }
-            .ai-input-dock { flex-wrap: nowrap; }
-            #aiAttachBtn { width: 42px; height: 42px; }
-        }
-
 
         /* --- CAT WORLD EASTER EGG --- */
         body.theme-cute {
@@ -3445,32 +3151,33 @@ body.cat-world-active .cat-mode-bar{display:block}
     <div id="aiPanel" class="glass-panel">
         <button type="button" class="sec-panel-close" onclick="toggleAIPanel(false)" aria-label="Close" style="color: var(--accent); border-color: var(--accent-glow);">×</button>
         
-        <!-- AI header: brand chip + New Chat / History toggle (mobile) -->
+        <!-- FIX: Added padding-right: 50px so it doesn't overlap the 'X' button -->
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; padding-right: 50px;">
-            <h2 style="display:flex;align-items:center;gap:10px;color: var(--accent); font-size:22px; font-weight:900; margin:0;">
-                <span class="ai-orb-badge"></span> AI Engine</h2>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <button type="button" class="btn" id="aiHistoryToggle" onclick="toggleAiHistoryRail()" style="padding:8px 12px;font-size:11px;background:rgba(255,255,255,.06);color:var(--text-main);border:1px solid var(--glass-border);border-radius:8px;cursor:pointer;font-weight:700;white-space:nowrap;display:none;">History</button>
-                <button class="btn" onclick="startNewChat()" style="padding: 8px 14px; font-size: 11px; background: rgba(var(--accent-rgb), 0.15); color: var(--accent); border: 1px solid var(--accent-glow); border-radius: 8px; cursor: pointer; font-weight: 700; white-space: nowrap;">+ New Chat</button>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <h2 style="color: var(--accent); font-size:22px; font-weight:900; margin:0;">AI Engine</h2>
+                <span style="display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:800; color: var(--text-dim); text-transform:uppercase; letter-spacing:0.5px;">
+                    <span style="width:7px; height:7px; border-radius:50%; background:#2ecc71; box-shadow:0 0 8px #2ecc71; animation: aiStatusPulse 2s ease-in-out infinite;"></span>
+                    Online
+                </span>
             </div>
+            <button class="btn" onclick="startNewChat()" style="padding: 8px 14px; font-size: 11px; background: rgba(var(--accent-rgb), 0.15); color: var(--accent); border: 1px solid var(--accent-glow); border-radius: 8px; cursor: pointer; font-weight: 700; white-space: nowrap;">+ New Chat</button>
         </div>
+        <div style="height:1px; margin-bottom:15px; background:linear-gradient(90deg, var(--accent-glow), transparent 70%); opacity:0.6;"></div>
 
-        <!-- Main Workspace (History Rail + Chat Area) -->
-        <div style="display: flex; flex: 1; gap: 12px; overflow: hidden; height: calc(100% - 50px); min-height: 0;">
-
-            <!-- Chat History Rail: slim list, items fit text only -->
-            <div id="chatHistoryList">
-                <div id="chatHistoryRail">
-                    <div style="font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;">Recent Chats <span style="font-size: 9px; opacity: 0.6; text-transform: none; display: block;">(hold to delete)</span></div>
-                    <!-- Dynamic sessions appear here -->
-                </div>
+        <!-- Main Workspace (History Sidebar + Chat Area) -->
+        <div style="display: flex; flex: 1; gap: 15px; overflow: hidden; height: calc(100% - 50px);">
+            
+            <!-- Chat History List -->
+            <div style="width: 220px; border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: 8px; padding-right: 10px; overflow-y: auto; align-self: flex-start; max-height: 100%;" id="chatHistoryList">
+                <div style="font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Recent Chats <span style="font-size: 9px; opacity: 0.75; color: var(--text-dim); text-transform: none; display: block;">(Hold to delete)</span></div>
+                <!-- Dynamic sessions will appear here -->
             </div>
 
             <!-- Chat Conversation Window -->
-            <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; min-height: 0; background: rgba(0,0,0,0.22); border-radius: 18px; border: 1px solid var(--glass-border); position: relative; box-shadow: inset 0 1px 0 rgba(255,255,255,.05);">
-
-                <!-- Messages Box: its own touch scroll rail -->
-                <div id="chatMessages" style="flex: 1; padding: 18px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; font-size: 14px; scroll-behavior: smooth; min-height: 0;">
+            <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: rgba(0,0,0,0.25); border-radius: 16px; border: 1px solid var(--glass-border); position: relative;">
+                
+                <!-- Messages Box -->
+                <div id="chatMessages" style="flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; font-size: 14px; scroll-behavior: smooth;">
                     <div style="text-align: center; color: var(--text-dim); margin-top: auto; margin-bottom: auto; font-size: 13px;">
                         MiMo 2.5 Pro is ready for coding & logic tasks. Ask anything!
                     </div>
@@ -3486,28 +3193,19 @@ body.cat-world-active .cat-mode-bar{display:block}
                     <button type="button" onclick="removeAiAttachment()" style="background:none;border:none;color:var(--text-dim);font-size:15px;cursor:pointer;padding:0 4px;">✕</button>
                 </div>
 
-                <!-- Input Box (always pinned below the conversation) — paperclip + auto-growing textarea -->
-                <div class="ai-input-dock" style="padding: 12px 14px; display: flex; gap: 10px; align-items: flex-end;">
-                    <input type="file" id="aiFileUploader" accept=".txt,.html,.htm,.css,.js,.mjs,.json,.py,.md,.csv,.log,.xml,.yml,.yaml,.sh,.java,.kt,.smali" multiple style="display: none;">
-                    <button type="button" id="aiAttachBtn" onclick="document.getElementById('aiFileUploader').click()" title="Attach code / text file">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                <!-- Input Box (always pinned below the conversation) -->
+                <div style="padding: 15px; border-top: 1px solid rgba(0,242,254,0.15); display: flex; gap: 10px; background: rgba(0,0,0,0.25); border-radius: 0 0 16px 16px;">
+                    <input type="file" id="aiFileUploader" accept=".txt,.html,.css,.js,.json,.py,.md,.csv,.log,.xml,.smali" style="display:none;">
+                    <button type="button" class="btn" onclick="document.getElementById('aiFileUploader').click()" title="Attach a code/text file" style="padding: 0 14px; border-radius: 12px; background: rgba(255,255,255,0.05); color: #00f2fe; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; display:flex; align-items:center; justify-content:center;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                     </button>
-                    <textarea id="aiInputPrompt" rows="1" placeholder="Ask code or logic... (Enter to send, Shift+Enter for new line)" autocomplete="off" spellcheck="false"></textarea>
-                    <button type="button" class="btn" id="aiSendBtn" onclick="sendAiMessage()" style="background: #00f2fe; color: #000; font-weight: 800; cursor: pointer; border: none;">Send</button>
+                    <input type="text" id="aiInputPrompt" placeholder="Ask code or logic..." style="flex: 1; padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); font-size: 16px;" autocomplete="off">
+                    <button class="btn" onclick="sendAiMessage()" style="background: #00f2fe; color: #000; padding: 0 20px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none;">Send</button>
                 </div>
 
             </div>
         </div>
     </div>
-
-    <!-- Attached-file chip (above the input dock) -->
-    <div id="aiFileChip">
-        <span style="font-size:15px;">📎</span>
-        <span id="aiFileChipLabel" class="fl"></span>
-        <button type="button" onclick="removeAiFileAttachment()" title="Remove attachment">✕</button>
-    </div>
-    <div id="aiHistBackdrop" onclick="toggleAiHistoryRail(false)" style="display:none;position:fixed;inset:0;z-index:1385;background:rgba(0,0,0,.4);"></div>
-
 
     <button class="info-btn" onclick="openGuideModal()">i</button>
 
@@ -3653,31 +3351,26 @@ body.cat-world-active .cat-mode-bar{display:block}
                         </ul>
                     </div>
                 </div>
+
+                <div class="acc-item" id="acc-man-6">
+                    <div class="acc-header" onclick="toggleAccordion('acc-man-6')">
+                        Cloud Storage Download Limit (B2)
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="acc-body">
+                        <ul class="check-list">
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Backblaze B2's free tier includes <b>1024MB (1GB) of download bandwidth per day</b> across the whole bucket.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Once that daily quota is used up, further file <b>downloads are temporarily blocked</b> — uploads and other admin functions are unaffected.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> The block is not permanent: it <b>resets automatically the next day</b> (B2's UTC billing day rollover), no action needed.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> If downloads suddenly fail for everyone at once, this daily cap is the most likely cause — check again after the reset before assuming it's a bug.</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
 
             <!-- TAB CONTENT: DOWNLOADS (ACCORDION STYLE) -->
             <div id="tab-downloads" class="m-content">
                 <p style="margin-bottom: 20px; color: var(--text-dim); font-size: 14px;">Download core module components for local integration. Offline bundles are fully updated.</p>
-
-                <!-- B2 bandwidth meter: 1024 MB resets at midnight IST -->
-                <div style="margin-bottom: 22px; padding: 16px 18px; border-radius: 16px; border: 1px solid rgba(92,200,255,.35); background: linear-gradient(135deg, rgba(92,200,255,.08), rgba(0,255,136,.05));">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-                        <div>
-                            <div style="font-size:12px;font-weight:800;color:#5cc8ff;letter-spacing:.5px;">B2 DAILY DOWNLOAD BANDWIDTH</div>
-                            <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">All Download-Modules files share this quota. Resets every day.</div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div id="bwMeterLabel" style="font-size:14px;font-weight:900;color:var(--text-main);font-variant-numeric:tabular-nums;">…</div>
-                            <div id="bwResetLabel" style="font-size:11px;color:var(--text-dim);margin-top:3px;">reset: —</div>
-                        </div>
-                    </div>
-                    <div class="cloud-stat-bar" style="height:8px;margin:12px 0 6px;"><i id="bwMeterBar"></i></div>
-                    <div style="font-size:11px;font-weight:700;color:var(--text-dim);display:flex;justify-content:space-between;">
-                        <span id="bwUsedLabel">Used: —</span>
-                        <span>Limit: 1024 MB / day</span>
-                    </div>
-                    <p id="bwMeterHint" style="font-size:11px;font-weight:700;color:var(--text-dim);min-height:14px;margin:8px 0 0;"></p>
-                </div>
 
                 <!-- Category 1: Admin Panel -->
                 <div class="acc-item" id="acc-admin">
@@ -4031,11 +3724,9 @@ body.cat-world-active .cat-mode-bar{display:block}
                 return;
             }
             try {
-                // Fast path: use the copy that was pre-fetched at gate open so we
-                // don't wait on a second Firebase read before showing the prompt.
-                let ids = getLocalFpIds();
-                if (!ids || !ids.length) ids = await getFirebaseFpIds();
-                if (!ids || !ids.length) {
+                setGateStatus('Checking Firebase…', true);
+                const ids = await getFirebaseFpIds();
+                if (!ids.length) {
                     setGateStatus('No fingerprint in Firebase. Use code (hold FP 10s), then enroll in Security.');
                     return;
                 }
@@ -4350,10 +4041,7 @@ body.cat-world-active .cat-mode-bar{display:block}
             if (codeBtn) codeBtn.onclick = () => tryCodeLogin();
             if (codeIn) codeIn.addEventListener('keydown', e => { if (e.key === 'Enter') tryCodeLogin(); });
 
-            // ---- FINGERPRINT BUTTON ----
-            // TAP (or <3s hold)  → fingerprint capture, instantly
-            // HOLD 3s             → quick-capture shortcut (re-arms sensor)
-            // HOLD 10s            → reveals the admin code box (kept unchanged)
+            // ---- FINGERPRINT BUTTON: TAP = FINGERPRINT, HOLD 10s = CODE ----
             if (fpBtn) {
                 let holdTimer = null;
                 let holdFired = false;
@@ -4372,35 +4060,8 @@ body.cat-world-active .cat-mode-bar{display:block}
                     fpBtn.classList.add('holding');
                     fpBtn.style.background = 'rgba(255,200,0,0.3)';
                     fpBtn.textContent = 'HOLD 10s...';
-                    // At 3s: if the sensor isn't already open, pop it up again.
-                    // This makes a second capture as fast as the first one —
-                    // you no longer have to wait for the whole 10s flow.
                     holdTimer = setTimeout(() => {
                         holdFired = true;
-                        fpBtn.classList.remove('holding');
-                        fpBtn.style.background = 'var(--accent)';
-                        fpBtn.textContent = 'FINGERPRINT';
-                        tryFingerprintLogin();
-                    }, 3000);
-                    // The real 10s code-unlock timer lives in its own closure
-                    // below so a quick hold can't accidentally trip it.
-                };
-
-                const endHold = () => {
-                    clearHold();
-                    if (!holdFired) {
-                        // short tap → fingerprint
-                        tryFingerprintLogin();
-                    }
-                };
-
-                // 10-second hold reveals code entry (unchanged behaviour)
-                let codeTimer = null;
-                const codeClear = () => { if (codeTimer) { clearTimeout(codeTimer); codeTimer = null; } };
-                const codeStart = () => {
-                    codeClear();
-                    codeTimer = setTimeout(() => {
-                        codeTimer = null;
                         const wrap = document.getElementById('gateCodeWrap');
                         if (wrap) wrap.classList.add('show');
                         setGateStatus('✅ Code entry unlocked (hold 10s).', true);
@@ -4413,27 +4074,33 @@ body.cat-world-active .cat-mode-bar{display:block}
                     }, 10000);
                 };
 
+                const endHold = () => {
+                    clearHold();
+                    if (!holdFired) {
+                        // short tap → fingerprint
+                        tryFingerprintLogin();
+                    }
+                };
+
                 // Use pointer events for both desktop & mobile
-                fpBtn.addEventListener('pointerdown', function() { startHold(); codeStart(); });
+                fpBtn.addEventListener('pointerdown', startHold);
                 fpBtn.addEventListener('pointerup', endHold);
-                fpBtn.addEventListener('pointerleave', function() { clearHold(); codeClear(); });
-                fpBtn.addEventListener('pointercancel', function() { clearHold(); codeClear(); });
+                fpBtn.addEventListener('pointerleave', clearHold);
+                fpBtn.addEventListener('pointercancel', clearHold);
                 fpBtn.addEventListener('contextmenu', e => e.preventDefault());
             }
 
             // ---- Auto fingerprint on open if registered in Firebase ----
-            // Fingerprint list is pre-warmed in parallel with the gate so that
-            // when the scanner is triggered it can use the cached copy instead
-            // of doing another Firebase round-trip (that extra wait is what
-            // used to make the prompt feel slow to appear).
-            const fpPromise = getFirebaseFpIds();
-            fpPromise.then(ids => {
+            getFirebaseFpIds().then(ids => {
                 if (adminUnlocked) return;
                 if (ids && ids.length) {
-                    setLocalFpIds(ids);
-                    setGateStatus('Verifying fingerprint…', true);
-                    // Fire the WebAuthn prompt as soon as the first frame paints
-                    // (150ms instead of the old 450ms).
+                    setGateStatus('🔐 Fingerprint found — opening scanner…', true);
+                    // The gate UI is already visible by the time we get here
+                    // (this only runs after DOMContentLoaded + the Firebase
+                    // round-trip), so WebAuthn's "page must be visible"
+                    // requirement is already satisfied — this just needs to
+                    // be enough for the status text above to actually paint
+                    // before the OS fingerprint dialog takes over the screen.
                     setTimeout(function() {
                         if (!adminUnlocked) tryFingerprintLogin();
                     }, 150);
@@ -4535,71 +4202,8 @@ body.cat-world-active .cat-mode-bar{display:block}
                     btnElement.style.borderColor = "var(--accent)";
                 }, 2000);
             }, 100);
-            return blob; // caller can record bandwidth used
         }
 
-
-        // ================================================================
-        //  B2 DAILY DOWNLOAD QUOTA — 1024 MB/day, resets at local midnight.
-        //  Bytes are tracked on this device (localStorage). This matches
-        //  Backblaze B2's free egress allowance and freezes downloads for
-        //  the rest of the day once the cap is reached.
-        // ================================================================
-        const BW_LIMIT = 1024 * 1024 * 1024; // 1024 MB per calendar day
-        const BW_KEY = 'dgxen_dl_bw_v1';
-
-        function nextBwReset() {
-            const now = new Date();
-            const nxt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1, 0);
-            return nxt.getTime();
-        }
-        function bwGet() {
-            try {
-                const o = JSON.parse(localStorage.getItem(BW_KEY) || 'null');
-                if (o && o.day === new Date().toDateString() && typeof o.used === 'number') return { day: o.day, used: o.used };
-            } catch (e) {}
-            return { day: new Date().toDateString(), used: 0 };
-        }
-        function bwSet(used) {
-            try { localStorage.setItem(BW_KEY, JSON.stringify({ day: new Date().toDateString(), used: used })); } catch (e) {}
-        }
-        function fmtMB(n) {
-            return (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + ' MB';
-        }
-        function paintBwMeter() {
-            const s = bwGet();
-            const pct = Math.min(100, (s.used / BW_LIMIT) * 100);
-            const bar = document.getElementById('bwMeterBar');
-            const usedL = document.getElementById('bwUsedLabel');
-            const lab = document.getElementById('bwMeterLabel');
-            const rst = document.getElementById('bwResetLabel');
-            const hint = document.getElementById('bwMeterHint');
-            if (bar) bar.style.width = pct.toFixed(2) + '%';
-            if (usedL) usedL.textContent = 'Used: ' + fmtMB(s.used) + ' / 1024 MB';
-            if (lab) lab.textContent = fmtMB(s.used) + ' / 1024 MB';
-            if (rst) rst.textContent = 'reset: ' + new Date(nextBwReset()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            if (hint) {
-                hint.textContent = (s.used >= BW_LIMIT) ? 'Quota reached — downloads resume after midnight.'
-                    : fmtMB(BW_LIMIT - s.used) + ' left today.';
-                hint.style.color = (s.used >= BW_LIMIT) ? 'var(--error)' : 'var(--text-dim)';
-            }
-        }
-        function bwHit() { return bwGet().used >= BW_LIMIT; }
-
-        // Re-check daily; call paint at load so the meter shows instantly
-        try {
-            if (typeof localStorage !== 'undefined') {
-                paintBwMeter();
-                setInterval(function() {
-                    // new calendar day → roll the counter over automatically
-                    const s = bwGet();
-                    if (s.day !== new Date().toDateString()) { bwSet(0); }
-                    paintBwMeter();
-                }, 30000);
-            }
-        } catch (e) {}
-
-        window.resetBwMeterForTesting = function() { bwSet(0); paintBwMeter(); };
 
         window.downloadSpecificFile = async function(fileId, btnElement) {
             const originalText = btnElement.innerText;
@@ -4608,13 +4212,6 @@ body.cat-world-active .cat-mode-bar{display:block}
             btnElement.style.pointerEvents = "none";
 
             try {
-                // Quota gate: no bandwidth left → refuse before doing any work
-                if (bwHit()) {
-                    const msg = 'Daily download limit reached (1024 MB). Downloads resume after midnight.';
-                    showConfirm("Bandwidth limit reached", msg, null);
-                    if (btnElement) { btnElement.innerText = originalText; btnElement.style.opacity = "1"; btnElement.style.pointerEvents = "auto"; }
-                    return;
-                }
                 let content = "";
                 let finalName = "";
 
@@ -4730,12 +4327,6 @@ body.cat-world-active .cat-mode-bar{display:block}
                     const blob = new Blob([content], { type: finalName.endsWith('.smali') ? 'text/plain;charset=utf-8' :
                             'text/html;charset=utf-8' });
                     triggerDownload(blob, finalName, btnElement, originalText);
-                    // Record the bandwidth used for today and refresh the meter
-                    try {
-                        const s = bwGet();
-                        bwSet(s.used + blob.size);
-                        paintBwMeter();
-                    } catch (e2) {}
                 }
 
             } catch (error) {
@@ -8832,9 +8423,8 @@ function explainFetchError(e) {
   function renderChatHistoryList() {
       const listEl = document.getElementById('chatHistoryList');
       if (!listEl) return;
-      const rail = document.getElementById('chatHistoryRail') || listEl;
-
-      let html = '<div style="font-size: 11px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;">Recent Chats <span style="font-size: 9px; opacity: 0.6; text-transform: none; display: block;">(hold to delete)</span></div>';
+      
+      let html = '<div style="font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Recent Chats <span style="font-size: 9px; opacity: 0.75; color: var(--text-dim); text-transform: none; display: block;">(Hold to delete)</span></div>';
       
       const ids = Object.keys(chatSessions).sort((a,b) => b - a);
       if(ids.length === 0) {
@@ -8842,26 +8432,23 @@ function explainFetchError(e) {
       } else {
           ids.forEach(id => {
               const session = chatSessions[id];
-              const isActive = id === currentChatId;
+              const activeClass = id === currentChatId ? 'background: rgba(var(--accent-rgb), 0.2); color: var(--accent); border-color: var(--accent-glow);' : 'background: rgba(150,150,150,0.05); color: var(--text-main); border-color: transparent;';
               const title = session.title || 'New Chat';
-              const shortTitle = title.length > 22 ? title.slice(0, 19) + '…' : title;
+              const shortTitle = title.length > 18 ? title.slice(0, 15) + '...' : title;
               
               // Long-press (hold) to delete — release/move handling is done
               // globally in startChatHold() so a slight finger drift doesn't
               // cancel the hold, and a clean tap doesn't need a separate
               // click handler racing against it.
-              // Items shrink to fit their text (no full-width white strip);
-              // the active chat gets a neon pill + dot so the title never
-              // blends into the panel background.
               html += `<div 
-                          class="chat-hist-item${isActive ? ' active' : ''}"
+                          class="chat-hist-item"
                           data-chat-id="${id}"
                           onpointerdown="startChatHold(event, '${id}')"
-                       ><span class="hist-dot"></span><span>${shortTitle}</span></div>`;
+                          style="padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid; transition: 0.2s; user-select: none; touch-action: pan-y; ${activeClass}"
+                       >${shortTitle}</div>`;
           });
       }
-      rail.innerHTML = html;
-      updateAiHistoryToggleVisibility();
+      listEl.innerHTML = html;
   }
 
   // HOLD TO DELETE LOGIC — movement-tolerant, with visual hold feedback.
@@ -8971,9 +8558,7 @@ function explainFetchError(e) {
       };
       saveSessions();
       renderCurrentMessages();
-      const input = document.getElementById('aiInputPrompt');
-      if (input && input.focus) { try { input.focus(); } catch (e) {} }
-      if (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) toggleAiHistoryRail(false);
+      document.getElementById('aiInputPrompt').focus();
   };
 
   window.loadChat = function(id) {
@@ -8981,9 +8566,7 @@ function explainFetchError(e) {
       currentChatId = id;
       renderCurrentMessages();
       renderChatHistoryList();
-      const input = document.getElementById('aiInputPrompt');
-      if (input && input.focus) { try { input.focus(); } catch (e) {} }
-      if (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) toggleAiHistoryRail(false);
+      document.getElementById('aiInputPrompt').focus();
   }
 
   // Reliable "scroll to latest message" — waits for the browser to actually
@@ -9086,13 +8669,13 @@ function explainFetchError(e) {
       chatSessions[currentChatId].messages.forEach(msg => {
           const isUser = msg.role === 'user';
           const bubbleStyle = isUser 
-              ? 'align-self: flex-end; background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.3); color: #fff;' 
-              : 'align-self: flex-start; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main);';
+              ? 'align-self: flex-end; background: linear-gradient(135deg, rgba(0,242,254,0.22), rgba(0,242,254,0.1)); border: 1px solid rgba(0,242,254,0.35); color: #fff; border-radius: 16px 16px 4px 16px; box-shadow: 0 4px 14px rgba(0,242,254,0.08);' 
+              : 'align-self: flex-start; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); border-radius: 16px 16px 16px 4px; box-shadow: 0 4px 14px rgba(0,0,0,0.15);';
           // AI replies get full markdown formatting (bold, headers, lists, code);
           // user messages are kept simpler (still safe-escaped) since they're
           // plain typed text, not markdown-formatted responses.
           const formattedContent = formatAiMarkdown(msg.content);
-          html += `<div style="max-width: 85%; padding: 12px 16px; border-radius: 14px; ${bubbleStyle} word-break: break-word; line-height: 1.5; font-size: 13.5px;">${formattedContent}</div>`;
+          html += `<div style="max-width: 85%; padding: 12px 16px; ${bubbleStyle} word-break: break-word; line-height: 1.5; font-size: 13.5px; animation: aiMsgIn 0.25s ease-out;">${formattedContent}</div>`;
       });
       box.innerHTML = html;
       scrollChatToBottom(force);
@@ -9123,12 +8706,6 @@ function explainFetchError(e) {
           text = text ? (text + '\n\n' + wrapped) : wrapped;
       }
       removeAiAttachment();
-      // Fold the paperclip file attachment into the outgoing message too.
-      if (pendingAiFile) {
-          const wrapped = '[Attached file: ' + pendingAiFile.name + ']\n\n```\n' + pendingAiFile.content + '\n```';
-          text = text ? (text + '\n\n' + wrapped) : wrapped;
-      }
-      removeAiFileAttachment();
 
       if (!currentChatId || !chatSessions[currentChatId]) {
           startNewChat();
@@ -9141,8 +8718,6 @@ function explainFetchError(e) {
       // Push user message with animation — always jump to bottom, they just typed it
       chatSessions[currentChatId].messages.push({ role: 'user', content: text });
       input.value = '';
-      if (input.style) input.style.height = '';
-      autoGrowAiInput(input);
       renderCurrentMessages({ force: true });
       saveSessions();
 
@@ -9223,127 +8798,34 @@ function explainFetchError(e) {
       if (chip) { chip.style.display = 'flex'; }
   }
 
-  // ---- Paperclip file attachment (reads text/code files into the box) ----
-  let pendingAiFile = null;   // { name, content }
-
-  window.removeAiFileAttachment = function() {
-      pendingAiFile = null;
-      const chip = document.getElementById('aiFileChip');
-      if (chip) chip.classList.remove('show');
-  };
-
-  function setAiFileChip(name) {
-      const chip = document.getElementById('aiFileChip');
-      const label = document.getElementById('aiFileChipLabel');
-      if (label) label.textContent = name;
-      if (chip) chip.classList.add('show');
-  }
-
-  const MAX_FILE_READ_CHARS = 60000;
-
-  window.attachAiFiles = function(fileList) {
-      const files = Array.prototype.slice.call(fileList || []);
-      if (!files.length) return;
-      const uploader = document.getElementById('aiFileUploader');
-      const textLike = /\.(txt|html?|css|js|mjs|json|py|md|csv|log|xml|ya?ml|sh|java|kt|smali|ini|cfg)$/i;
-      const oversized = [];
-
-      const inputEl = document.getElementById('aiInputPrompt');
-
-      files.forEach((file, idx) => {
-          if (!file) return;
-          const name = String(file.name || 'file');
-          if (!textLike.test(name)) { oversized.push(name); return; }
-
-          const reader = new FileReader();
-          reader.onload = function(evt) {
-              let content = String(evt.target.result || '');
-              if (content.length > MAX_FILE_READ_CHARS) content = content.slice(0, MAX_FILE_READ_CHARS) +
-                  '\n… [truncated — file too large to paste fully]';
-              const label = name + ' (' + (content.length / 1024).toFixed(1) + ' KB)';
-              pendingAiFile = { name: name, content: content };
-              setAiFileChip(label);
-              // Autoscroll the message list to the input so the chip is visible
-              try { scrollChatToBottom(true); } catch (e) {}
-          };
-          reader.onerror = function() {
-              if (typeof alert === 'function') alert('Could not read file: ' + name);
-          };
-          reader.readAsText(file);
-      });
-
-      // Reset the picker so the same file can be chosen again later
-      if (uploader) uploader.value = '';
-      if (oversized.length) {
-          if (typeof alert === 'function') alert(
-              'Skipped ' + oversized.length + ' non-text file(s):\n' + oversized.slice(0, 5).join('\n') +
-              (oversized.length > 5 ? '\n…' : '')
-          );
-      }
-      if (inputEl) { try { inputEl.focus(); } catch (e) {} }
-  };
-
-  // ---- History rail toggle (mobile: overlays so messages stay full-screen) ----
-  window.toggleAiHistoryRail = function(force) {
-      const list = document.getElementById('chatHistoryList');
-      const bd = document.getElementById('aiHistBackdrop');
-      const btn = document.getElementById('aiHistoryToggle');
-      if (!list) return;
-      const narrow = window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
-      if (narrow) {
-          const show = force === undefined ? list.classList.contains('hide') : !!force;
-          list.classList.toggle('hide', !show);
-          if (bd) bd.style.display = show ? 'block' : 'none';
-          if (btn) btn.style.background = show ? 'rgba(0,255,136,.18)' : '';
-          if (show) {
-              try { list.scrollTop = 0; } catch (e) {}
-          }
-      } else {
-          // wide: rail is always visible
-          list.classList.remove('hide');
-          if (bd) bd.style.display = 'none';
-      }
-  };
-
-  function updateAiHistoryToggleVisibility() {
-      const btn = document.getElementById('aiHistoryToggle');
-      if (!btn) return;
-      if (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) {
-          btn.style.display = 'inline-flex';
-          const list = document.getElementById('chatHistoryList');
-          // on very narrow screens, start with the rail hidden
-          if (list && !list._aiInit) {
-              list._aiInit = true;
-              list.classList.add('hide');
-          }
-      } else {
-          btn.style.display = 'none';
-      }
-  }
-
-  // ---- auto-grow the textarea ----
-  function autoGrowAiInput(el) {
-      if (!el) return;
-      el.style.height = 'auto';
-      const max = 150;
-      el.style.height = Math.min(Math.max(el.scrollHeight, 44), max) + 'px';
+  // --- Paperclip file-attach: reads a selected code/text file and drops it
+  // into the same attachment chip used for large pastes, so both paths lead
+  // to one consistent "one attachment queued" UI + send-time behavior. ---
+  function attachAiFile(file) {
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+          const content = String(evt.target.result || '');
+          pendingAiAttachment = { name: file.name, content: content };
+          const chip = document.getElementById('aiAttachmentChip');
+          const label = document.getElementById('aiAttachmentChipLabel');
+          if (label) label.textContent = file.name + ' (' + content.length.toLocaleString() + ' chars)';
+          if (chip) { chip.style.display = 'flex'; }
+          const input = document.getElementById('aiInputPrompt');
+          if (input) input.focus();
+      };
+      reader.onerror = function() {
+          alert('Could not read that file — please try again.');
+      };
+      reader.readAsText(file);
   }
 
   // DOMContentLoaded initialization
   document.addEventListener('DOMContentLoaded', () => {
       const input = document.getElementById('aiInputPrompt');
-      const uploader = document.getElementById('aiFileUploader');
-      const attachBtn = document.getElementById('aiAttachBtn');
-
-      if (input) {
-          // Enter sends, Shift+Enter inserts a new line
+      if(input) {
           input.addEventListener('keydown', (e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendAiMessage();
-              }
+              if(e.key === 'Enter') sendAiMessage();
           });
-          input.addEventListener('input', function(){ autoGrowAiInput(this); });
           input.addEventListener('paste', (e) => {
               const pasted = (e.clipboardData || window.clipboardData).getData('text');
               if (pasted && pasted.length > AI_PASTE_ATTACH_THRESHOLD) {
@@ -9351,7 +8833,6 @@ function explainFetchError(e) {
                   attachAiPastedText(pasted);
               }
               // short pastes: let the browser insert them into the field as normal
-              requestAnimationFrame(() => autoGrowAiInput(input));
           });
           // Mobile: keep the input bar visible above the on-screen keyboard,
           // and keep the conversation scrolled to the latest message once
@@ -9379,34 +8860,16 @@ function explainFetchError(e) {
           }
       }
 
-      // Paperclip: pick text/code files and read them into the prompt
+      // Paperclip: read the selected file and queue it as an attachment
+      // (same chip/flow as the paste-attach feature above).
+      const uploader = document.getElementById('aiFileUploader');
       if (uploader) {
-          uploader.addEventListener('change', function(e) {
-              window.attachAiFiles(e.target && e.target.files);
+          uploader.addEventListener('change', (e) => {
+              const file = e.target.files[0];
+              if (file) attachAiFile(file);
+              e.target.value = ''; // allow re-selecting the same file next time
           });
       }
-      if (attachBtn && !attachBtn.__aiAttachBound) {
-          attachBtn.__aiAttachBound = true;
-          attachBtn.addEventListener('click', function() { if (uploader) uploader.click(); });
-      }
-      if (uploader && !uploader.__aiDropBound) {
-          uploader.__aiDropBound = true;
-          // Allow dragging a file anywhere over the input dock to attach it
-          const dock = (attachBtn && attachBtn.closest('.ai-input-dock'));
-          if (dock) {
-              dock.addEventListener('dragover', function(e){ e.preventDefault(); dock.style.background='rgba(0,242,254,.06)'; });
-              dock.addEventListener('dragleave', function(){ dock.style.background=''; });
-              dock.addEventListener('drop', function(e){
-                  e.preventDefault();
-                  dock.style.background = '';
-                  window.attachAiFiles(e.dataTransfer && e.dataTransfer.files);
-              });
-          }
-      }
-
-      // History rail + toggle behavior (wide vs narrow)
-      updateAiHistoryToggleVisibility();
-      if (window.addEventListener) window.addEventListener('resize', function(){ updateAiHistoryToggleVisibility(); });
       
       if(Object.keys(chatSessions).length > 0) {
           renderChatHistoryList();
@@ -9948,5 +9411,5 @@ function explainFetchError(e) {
 
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a387c653ea803026',t:'MTc4ODk3MzQ5NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
