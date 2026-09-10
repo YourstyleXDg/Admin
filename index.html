@@ -1126,7 +1126,38 @@
         }
         #chatMessages,
         #chatHistoryList {
-            touch-action: pan-y;
+            touch-action: pan-y pinch-zoom;
+        }
+        #chatMessages.ai-drag-over {
+            outline: 2px dashed #00f2fe;
+            outline-offset: -8px;
+            background: rgba(0,242,254,0.06);
+        }
+        .ai-msg-actions {
+            display: flex;
+            gap: 4px;
+            margin-top: 3px;
+            padding: 0 4px;
+        }
+        .ai-msg-action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 3px 5px;
+            border-radius: 6px;
+            opacity: 0.55;
+            transition: opacity .15s ease, background .15s ease;
+            line-height: 1;
+        }
+        .ai-msg-action-btn:hover,
+        .ai-msg-action-btn:active {
+            opacity: 1;
+            background: rgba(255,255,255,0.08);
+        }
+        .ai-msg-action-btn.speaking {
+            opacity: 1;
+            color: #00f2fe;
         }
 
         /* --- Modern Guide Modal & Tabs (ACCORDION STYLE) --- */
@@ -1716,7 +1747,7 @@
         .chat-hist-item {
             position: relative;
             overflow: hidden;
-            touch-action: pan-y;
+            touch-action: pan-y pinch-zoom;
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
             box-shadow: 0 2px 6px rgba(0,0,0,0.12);
@@ -3168,7 +3199,7 @@ body.cat-world-active .cat-mode-bar{display:block}
         <div style="display: flex; flex: 1; gap: 15px; overflow: hidden; height: calc(100% - 50px);">
             
             <!-- Chat History List -->
-            <div style="width: 220px; border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; gap: 8px; padding-right: 10px; overflow-y: auto; align-self: flex-start; max-height: 100%;" id="chatHistoryList">
+            <div style="width: 220px; flex: 0 1 auto; border: 1px solid var(--glass-border); border-radius: 14px; background: rgba(127,127,127,0.05); display: flex; flex-direction: column; gap: 8px; padding: 12px; overflow-y: auto; align-self: flex-start; max-height: 100%;" id="chatHistoryList">
                 <div style="font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;">Recent Chats <span style="font-size: 9px; opacity: 0.75; color: var(--text-dim); text-transform: none; display: block;">(Hold to delete)</span></div>
                 <!-- Dynamic sessions will appear here -->
             </div>
@@ -3187,15 +3218,20 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <button type="button" id="chatJumpBtn" onclick="scrollChatToBottom(true)" style="display:none; position:absolute; right:34px; bottom:82px; z-index:5; padding:8px 14px; border-radius:20px; background:var(--accent); color:#000; font-weight:800; font-size:11px; border:none; cursor:pointer; box-shadow:0 8px 20px rgba(0,0,0,0.4);">↓ New replies</button>
 
                 <!-- Pasted-text-as-attachment chip (Claude-style: a large paste becomes a file, not raw text in the box) -->
-                <div id="aiAttachmentChip" style="display:none; margin:0 15px; padding:8px 12px; border-radius:10px; background:rgba(0,242,254,0.1); border:1px solid rgba(0,242,254,0.3); align-items:center; gap:8px; font-size:12px; font-weight:700; color:var(--text-main);">
-                    <span style="font-size:15px;">📄</span>
-                    <span id="aiAttachmentChipLabel" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
-                    <button type="button" onclick="removeAiAttachment()" style="background:none;border:none;color:var(--text-dim);font-size:15px;cursor:pointer;padding:0 4px;">✕</button>
+                <div id="aiAttachmentChip" style="display:none; margin:0 15px; padding:8px 12px; border-radius:10px; background:rgba(0,242,254,0.1); border:1px solid rgba(0,242,254,0.3); flex-direction:column; gap:6px; font-size:12px; font-weight:700; color:var(--text-main);">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:15px;">📄</span>
+                        <span id="aiAttachmentChipLabel" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+                        <button type="button" onclick="removeAiAttachment()" style="background:none;border:none;color:var(--text-dim);font-size:15px;cursor:pointer;padding:0 4px;">✕</button>
+                    </div>
+                    <div id="aiAttachmentChipBarTrack" style="display:none; height:3px; border-radius:2px; background:rgba(0,242,254,0.15); overflow:hidden;">
+                        <div id="aiAttachmentChipBarFill" style="height:100%; width:0%; background:#00f2fe; border-radius:2px; transition:width .15s ease;"></div>
+                    </div>
                 </div>
 
                 <!-- Input Box (always pinned below the conversation) -->
                 <div style="padding: 15px; border-top: 1px solid rgba(0,242,254,0.15); display: flex; gap: 10px; background: rgba(0,0,0,0.25); border-radius: 0 0 16px 16px;">
-                    <input type="file" id="aiFileUploader" accept=".txt,.html,.css,.js,.json,.py,.md,.csv,.log,.xml,.smali" style="display:none;">
+                    <input type="file" id="aiFileUploader" accept=".txt,.html,.htm,.css,.js,.jsx,.ts,.tsx,.json,.py,.md,.markdown,.csv,.tsv,.log,.xml,.smali,.java,.kt,.c,.cpp,.h,.hpp,.cs,.php,.rb,.go,.rs,.swift,.sql,.yaml,.yml,.ini,.conf,.toml,.sh,.bat,.ps1,.env,.gradle,.properties" style="display:none;">
                     <button type="button" class="btn" onclick="document.getElementById('aiFileUploader').click()" title="Attach a code/text file" style="padding: 0 14px; border-radius: 12px; background: rgba(255,255,255,0.05); color: #00f2fe; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; display:flex; align-items:center; justify-content:center;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                     </button>
@@ -6175,6 +6211,22 @@ window.__dgxenInitVideoControls = function(vId) {
     video.muted = !video.muted;
     muteBtn.textContent = video.muted ? '🔇' : '🔊';
   });
+  // Lock the screen to match the video's own shape (landscape video → landscape
+  // screen, portrait video → portrait screen) — best-effort: the Orientation
+  // Lock API isn't supported everywhere (notably iOS Safari), so failures are
+  // swallowed and the video just keeps its normal object-fit:contain sizing.
+  function applyFullscreenOrientation() {
+    try {
+      if (!screen.orientation || !screen.orientation.lock) return;
+      const w = video.videoWidth, h = video.videoHeight;
+      if (!w || !h) return; // metadata not loaded yet — nothing to base the choice on
+      const wantLandscape = w > h;
+      screen.orientation.lock(wantLandscape ? 'landscape' : 'portrait').catch(() => {});
+    } catch (e) {}
+  }
+  function releaseFullscreenOrientation() {
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+  }
   if (fullBtn) fullBtn.addEventListener('click', function() {
     const target = wrap || video;
     const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
@@ -6186,6 +6238,7 @@ window.__dgxenInitVideoControls = function(vId) {
       else if (video.webkitDisplayingFullscreen) video.webkitExitFullscreen();
       if (wrap) wrap.classList.remove('dgxen-manual-fullscreen');
       document.body.classList.remove('dgxen-fs-lock');
+      releaseFullscreenOrientation();
       syncFullBtnIcon();
       return;
     }
@@ -6193,6 +6246,7 @@ window.__dgxenInitVideoControls = function(vId) {
     if (target.requestFullscreen) { target.requestFullscreen().catch(() => {}); requested = true; }
     else if (target.webkitRequestFullscreen) { target.webkitRequestFullscreen(); requested = true; }
     else if (video.webkitEnterFullscreen) { video.webkitEnterFullscreen(); requested = true; } // iOS Safari native player fallback
+    applyFullscreenOrientation();
     // Fallback: some mobile WebViews accept the Fullscreen API call but never
     // actually cover the full screen (the bug seen in testing — video only
     // fills the top half). Detect that after a short delay and, if the
@@ -6204,6 +6258,7 @@ window.__dgxenInitVideoControls = function(vId) {
         wrap && wrap.classList.add('dgxen-manual-fullscreen');
         document.body.classList.add('dgxen-fs-lock');
       }
+      applyFullscreenOrientation(); // metadata may have only just loaded by now
       syncFullBtnIcon();
     }, 250);
   });
@@ -6212,6 +6267,7 @@ window.__dgxenInitVideoControls = function(vId) {
     // If the native API reports we've left fullscreen, also clear our manual fallback state.
     if (!fsEl && wrap && wrap.classList.contains('dgxen-manual-fullscreen') === false) {
       document.body.classList.remove('dgxen-fs-lock');
+      releaseFullscreenOrientation();
     }
     const isManual = wrap && wrap.classList.contains('dgxen-manual-fullscreen');
     if (fullBtn) fullBtn.textContent = (fsEl === wrap || isManual) ? '×' : '⛶';
@@ -8444,7 +8500,7 @@ function explainFetchError(e) {
                           class="chat-hist-item"
                           data-chat-id="${id}"
                           onpointerdown="startChatHold(event, '${id}')"
-                          style="padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid; transition: 0.2s; user-select: none; touch-action: pan-y; ${activeClass}"
+                          style="padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid; transition: 0.2s; user-select: none; touch-action: pan-y pinch-zoom; ${activeClass}"
                        >${shortTitle}</div>`;
           });
       }
@@ -8606,9 +8662,13 @@ function explainFetchError(e) {
       const codeBlocks = [];
       text = text.replace(/```([a-zA-Z0-9]*)\n?([\s\S]*?)```/g, (m, lang, code) => {
           codeBlocks.push(
-              '<pre style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 12px; margin: 8px 0;"><code>' +
+              '<div style="position:relative; margin: 8px 0;">' +
+              '<button type="button" class="ai-code-copy-btn" onclick="copyCodeBlock(this)" ' +
+              'style="position:absolute; top:6px; right:6px; z-index:1; padding:3px 9px; font-size:10.5px; font-weight:700; ' +
+              'border-radius:6px; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.08); color:#cfd8dc; cursor:pointer;">Copy</button>' +
+              '<pre style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 12px; margin: 0;"><code>' +
               code.replace(/\n$/, '') +
-              '</code></pre>'
+              '</code></pre></div>'
           );
           return '\u0000CODEBLOCK' + (codeBlocks.length - 1) + '\u0000';
       });
@@ -8666,7 +8726,7 @@ function explainFetchError(e) {
       }
 
       let html = '';
-      chatSessions[currentChatId].messages.forEach(msg => {
+      chatSessions[currentChatId].messages.forEach((msg, idx) => {
           const isUser = msg.role === 'user';
           const bubbleStyle = isUser 
               ? 'align-self: flex-end; background: linear-gradient(135deg, rgba(0,242,254,0.22), rgba(0,242,254,0.1)); border: 1px solid rgba(0,242,254,0.35); color: #fff; border-radius: 16px 16px 4px 16px; box-shadow: 0 4px 14px rgba(0,242,254,0.08);' 
@@ -8675,11 +8735,154 @@ function explainFetchError(e) {
           // user messages are kept simpler (still safe-escaped) since they're
           // plain typed text, not markdown-formatted responses.
           const formattedContent = formatAiMarkdown(msg.content);
-          html += `<div style="max-width: 85%; padding: 12px 16px; ${bubbleStyle} word-break: break-word; line-height: 1.5; font-size: 13.5px; animation: aiMsgIn 0.25s ease-out;">${formattedContent}</div>`;
+
+          // Collapsible "thinking" block, only when this reply actually carried reasoning.
+          let reasoningHtml = '';
+          if (!isUser && msg.reasoning) {
+              reasoningHtml = '<details style="margin-bottom:8px; font-size:12px; color:var(--text-dim);">' +
+                  '<summary style="cursor:pointer; font-weight:700; user-select:none;">💭 Thinking</summary>' +
+                  '<div style="margin-top:6px; padding:8px 10px; background:rgba(0,0,0,0.2); border-radius:8px; white-space:pre-wrap; line-height:1.5;">' +
+                  formatAiMarkdown(msg.reasoning) + '</div></details>';
+          }
+
+          // Action row: copy is on every message; edit is user-only; Listen (TTS) is assistant-only.
+          let actions = '<button type="button" class="ai-msg-action-btn" onclick="copyAiMessage(' + idx + ')" title="Copy">📋</button>';
+          if (isUser) {
+              actions += '<button type="button" class="ai-msg-action-btn" onclick="editAiMessage(' + idx + ')" title="Edit &amp; resend">✏️</button>';
+          } else {
+              actions += '<button type="button" class="ai-msg-action-btn" id="aiSpeakBtn' + idx + '" onclick="speakAiMessage(' + idx + ')" title="Listen">🔊</button>';
+          }
+          const actionsRow = '<div class="ai-msg-actions" style="' + (isUser ? 'justify-content:flex-end;' : 'justify-content:flex-start;') + '">' + actions + '</div>';
+
+          const bubble = '<div style="max-width: 85%; padding: 12px 16px; ' + bubbleStyle + ' word-break: break-word; line-height: 1.5; font-size: 13.5px; animation: aiMsgIn 0.25s ease-out;">' +
+              reasoningHtml + formattedContent + '</div>';
+          html += '<div style="display:flex; flex-direction:column; max-width:85%; ' + (isUser ? 'align-self:flex-end;' : 'align-self:flex-start;') + '">' + bubble + actionsRow + '</div>';
       });
       box.innerHTML = html;
       scrollChatToBottom(force);
   }
+
+  // --- Clipboard helper with a lightweight "Copied!" toast, and a fallback
+  // for WebViews without navigator.clipboard permission. ---
+  function copyToClipboard(text, onDone) {
+      const done = () => { if (onDone) onDone(); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+      } else {
+          fallbackCopy(text, done);
+      }
+  }
+  function fallbackCopy(text, done) {
+      try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.focus(); ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+      } catch (e) {}
+      done();
+  }
+
+  window.copyCodeBlock = function(btn) {
+      const codeEl = btn.nextElementSibling && btn.nextElementSibling.querySelector('code');
+      if (!codeEl) return;
+      copyToClipboard(codeEl.textContent, () => {
+          const original = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(() => { btn.textContent = original; }, 1200);
+      });
+  };
+
+  window.copyAiMessage = function(idx) {
+      if (!currentChatId || !chatSessions[currentChatId]) return;
+      const msg = chatSessions[currentChatId].messages[idx];
+      if (!msg) return;
+      copyToClipboard(msg.content, () => {
+          const btn = box_findActionBtn(idx, '📋');
+          if (btn) flashBtn(btn, '✅');
+      });
+  };
+
+  function box_findActionBtn(idx, glyph) {
+      const box = document.getElementById('chatMessages');
+      if (!box) return null;
+      const rows = box.querySelectorAll('.ai-msg-actions');
+      // idx-th message → idx-th action row (rendered 1:1 in order)
+      const row = rows[idx];
+      if (!row) return null;
+      return Array.from(row.querySelectorAll('button')).find(b => b.textContent === glyph) || null;
+  }
+  function flashBtn(btn, glyph) {
+      const original = btn.textContent;
+      btn.textContent = glyph;
+      setTimeout(() => { btn.textContent = original; }, 1000);
+  }
+
+  // Edit & resend: drop this message and everything after it back into the
+  // input box, then remove them from history — sending again regenerates
+  // the reply from that point, same pattern as Claude/ChatGPT's edit.
+  window.editAiMessage = function(idx) {
+      if (!currentChatId || !chatSessions[currentChatId]) return;
+      const msg = chatSessions[currentChatId].messages[idx];
+      if (!msg || msg.role !== 'user') return;
+      const input = document.getElementById('aiInputPrompt');
+      if (input) { input.value = msg.content; input.focus(); }
+      chatSessions[currentChatId].messages = chatSessions[currentChatId].messages.slice(0, idx);
+      saveSessions();
+      renderCurrentMessages({ force: true });
+  };
+
+  // --- Text-to-Speech: reads an assistant reply aloud with a natural
+  // Hindi/Indian-accented voice, skipping code blocks. ---
+  let __ttsVoices = [];
+  function refreshTtsVoices() {
+      try { __ttsVoices = window.speechSynthesis.getVoices() || []; } catch (e) { __ttsVoices = []; }
+  }
+  if (window.speechSynthesis) {
+      refreshTtsVoices();
+      window.speechSynthesis.onvoiceschanged = refreshTtsVoices;
+  }
+  function pickTtsVoice() {
+      const candidates = __ttsVoices.filter(v => v.lang === 'hi-IN' || v.lang === 'en-IN');
+      if (!candidates.length) return null;
+      // Prioritize a "Google" voice for a less robotic, more natural accent.
+      return candidates.find(v => /google/i.test(v.name)) || candidates[0];
+  }
+  window.speakAiMessage = function(idx) {
+      if (!window.speechSynthesis) { alert('Text-to-speech is not supported in this browser.'); return; }
+      const wasSpeakingThis = window.__ttsSpeakingIdx === idx;
+      // Stop any ongoing speech before starting a new one (or just stopping, on toggle-off).
+      window.speechSynthesis.cancel();
+      document.querySelectorAll('.ai-msg-action-btn.speaking').forEach(b => { b.classList.remove('speaking'); b.textContent = '🔊'; });
+      window.__ttsSpeakingIdx = null;
+      if (wasSpeakingThis) return; // tap-to-stop
+
+      if (!currentChatId || !chatSessions[currentChatId]) return;
+      const msg = chatSessions[currentChatId].messages[idx];
+      if (!msg) return;
+      // Strip fenced code blocks so the TTS doesn't read out raw syntax.
+      const clean = msg.content.replace(/```[\s\S]*?```/g, '').trim();
+      if (!clean) return;
+
+      const utterance = new SpeechSynthesisUtterance(clean);
+      utterance.lang = 'hi-IN';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.1;
+      const voice = pickTtsVoice();
+      if (voice) utterance.voice = voice;
+
+      const btn = document.getElementById('aiSpeakBtn' + idx);
+      window.__ttsSpeakingIdx = idx;
+      if (btn) { btn.classList.add('speaking'); btn.textContent = '⏹️'; }
+      utterance.onend = utterance.onerror = function() {
+          if (window.__ttsSpeakingIdx === idx) window.__ttsSpeakingIdx = null;
+          if (btn) { btn.classList.remove('speaking'); btn.textContent = '🔊'; }
+      };
+      window.speechSynthesis.speak(utterance);
+  };
 
   // Show a "↓ New replies" pill if the admin has scrolled up to read older
   // messages, instead of forcing them back down while they're reading.
@@ -8693,6 +8896,24 @@ function explainFetchError(e) {
           }, { passive: true });
       }
   });
+
+  // Pull a <think>...</think> block (or a model's separate reasoning_content
+  // field, handled at the call site) out of the main reply text so it can be
+  // rendered as its own collapsible block instead of mixed into the answer.
+  function extractReasoning(content) {
+      const match = content.match(/<think>([\s\S]*?)<\/think>/i);
+      if (!match) return { content: content, reasoning: null };
+      const reasoning = match[1].trim();
+      const cleaned = (content.slice(0, match.index) + content.slice(match.index + match[0].length)).trim();
+      return { content: cleaned, reasoning: reasoning || null };
+  }
+
+  // Conservative client-side guard: a payload this large is very likely what's
+  // behind the "large file → Worker Error: 500" reports — most edge-worker /
+  // model-context limits sit well under this, so it's better to say so clearly
+  // up front than to burn a slow round-trip on a request that's going to fail
+  // with an opaque 500 anyway.
+  const AI_PAYLOAD_WARN_CHARS = 300000;
 
   window.sendAiMessage = async function() {
       const input = document.getElementById('aiInputPrompt');
@@ -8721,7 +8942,23 @@ function explainFetchError(e) {
       renderCurrentMessages({ force: true });
       saveSessions();
 
-      // Show animated loading state
+      const outgoing = chatSessions[currentChatId].messages.map(m => ({ role: m.role, content: m.content }));
+      const payloadStr = JSON.stringify({ model: "xiaomi/mimo-v2.5-pro", messages: outgoing, stream: true });
+
+      if (payloadStr.length > AI_PAYLOAD_WARN_CHARS) {
+          chatSessions[currentChatId].messages.push({
+              role: 'assistant',
+              content: '❌ This message is too large to send (' + payloadStr.length.toLocaleString() +
+                  ' characters). Try attaching a smaller section of the file, or splitting it into a few messages.'
+          });
+          saveSessions();
+          renderCurrentMessages({ force: true });
+          input.focus();
+          return;
+      }
+
+      // Live streaming bubble — replaces the loading spinner once the first
+      // chunk arrives, and grows in place as more text streams in.
       const box = document.getElementById('chatMessages');
       const loadingId = 'load_' + Date.now();
       const loadingDiv = document.createElement('div');
@@ -8732,45 +8969,111 @@ function explainFetchError(e) {
       box.appendChild(loadingDiv);
       scrollChatToBottom(true);
 
+      let liveBubble = null;
+      let fullContent = '';
+      let fullReasoning = '';
+      let dirty = false;
+      function ensureLiveBubble() {
+          if (liveBubble) return;
+          const el = document.getElementById(loadingId);
+          if (el) el.remove();
+          liveBubble = document.createElement('div');
+          liveBubble.style.cssText = 'align-self: flex-start; max-width: 85%; padding: 12px 16px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); border-radius: 16px 16px 16px 4px; box-shadow: 0 4px 14px rgba(0,0,0,0.15); word-break: break-word; line-height: 1.5; font-size: 13.5px;';
+          box.appendChild(liveBubble);
+      }
+      function flushLiveBubble() {
+          if (!dirty || !liveBubble) return;
+          dirty = false;
+          liveBubble.innerHTML = formatAiMarkdown(fullContent + '▌');
+          scrollChatToBottom(true);
+      }
+      let flushTimer = setInterval(flushLiveBubble, 120);
+
       try {
-          // 🔥 Using your Cloudflare Worker endpoint 🔥
           const response = await fetch(WORKER_URL, {
               method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                  model: "xiaomi/mimo-v2.5-pro",
-                  messages: chatSessions[currentChatId].messages.map(m => ({ role: m.role, content: m.content }))
-              })
+              headers: { 'Content-Type': 'application/json' },
+              body: payloadStr
           });
 
-          if (!response.ok) throw new Error(`Worker Error: ${response.status}`);
-
-          const data = await response.json();
-          const reply = data.choices?.[0]?.message?.content 
-                        ? data.choices[0].message.content 
-                        : 'Error: Invalid response structure.';
-
-          // Remove loading indicator with animation
-          const loadEl = document.getElementById(loadingId);
-          if(loadEl) {
-              loadEl.style.animation = 'fadeInUp 0.4s ease-out';
-              loadEl.remove();
+          if (!response.ok) {
+              // Try to surface the upstream/worker's real error text instead of just the status code.
+              let detail = '';
+              try {
+                  const errBody = await response.clone().json();
+                  detail = (errBody && (errBody.error?.message || errBody.error || errBody.message)) || '';
+              } catch (e) {
+                  try { detail = (await response.text()).slice(0, 200); } catch (e2) {}
+              }
+              throw new Error('Worker Error: ' + response.status + (detail ? ' — ' + detail : ''));
           }
 
-          // Push assistant reply — always auto-scroll down to show it
-          chatSessions[currentChatId].messages.push({ role: 'assistant', content: reply });
+          const contentType = response.headers.get('content-type') || '';
+          if (response.body && contentType.includes('text/event-stream')) {
+              // --- SSE streaming path ---
+              const reader = response.body.getReader();
+              const decoder = new TextDecoder();
+              let buffer = '';
+              while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  buffer += decoder.decode(value, { stream: true });
+                  const events = buffer.split('\n\n');
+                  buffer = events.pop(); // last chunk may be incomplete — keep it for next read
+                  for (const evt of events) {
+                      const line = evt.trim();
+                      if (!line.startsWith('data:')) continue;
+                      const dataStr = line.slice(5).trim();
+                      if (dataStr === '[DONE]') continue;
+                      try {
+                          const json = JSON.parse(dataStr);
+                          const delta = json.choices && json.choices[0] && json.choices[0].delta;
+                          if (delta) {
+                              if (delta.content) { fullContent += delta.content; ensureLiveBubble(); dirty = true; }
+                              if (delta.reasoning_content) { fullReasoning += delta.reasoning_content; }
+                          }
+                      } catch (e) { /* ignore malformed/partial SSE line */ }
+                  }
+              }
+          } else {
+              // --- Fallback: worker ignored stream:true and replied with plain JSON ---
+              const data = await response.json();
+              fullContent = data.choices?.[0]?.message?.content
+                  ? data.choices[0].message.content
+                  : 'Error: Invalid response structure.';
+              if (data.choices?.[0]?.message?.reasoning_content) {
+                  fullReasoning = data.choices[0].message.reasoning_content;
+              }
+          }
+
+          clearInterval(flushTimer);
+          const loadEl = document.getElementById(loadingId);
+          if (loadEl) loadEl.remove();
+          if (liveBubble) liveBubble.remove();
+
+          // Fold in a <think> block from the content itself if the model used
+          // that convention instead of (or alongside) a separate reasoning field.
+          const extracted = extractReasoning(fullContent);
+          const finalReasoning = fullReasoning.trim() || extracted.reasoning;
+
+          chatSessions[currentChatId].messages.push({
+              role: 'assistant',
+              content: extracted.content,
+              reasoning: finalReasoning || undefined
+          });
           saveSessions();
           renderCurrentMessages({ force: true });
 
       } catch (err) {
+          clearInterval(flushTimer);
           console.error(err);
           const loadEl = document.getElementById(loadingId);
-          if(loadEl) loadEl.remove();
-          
+          if (loadEl) loadEl.remove();
+          if (liveBubble) liveBubble.remove();
+
           const errorMsg = `❌ Connection Failed: ${err.message}`;
           chatSessions[currentChatId].messages.push({ role: 'assistant', content: errorMsg });
+          saveSessions();
           renderCurrentMessages({ force: true });
       }
 
@@ -8801,23 +9104,72 @@ function explainFetchError(e) {
   // --- Paperclip file-attach: reads a selected code/text file and drops it
   // into the same attachment chip used for large pastes, so both paths lead
   // to one consistent "one attachment queued" UI + send-time behavior. ---
+  const AI_ALLOWED_EXT = ['.txt','.html','.htm','.css','.js','.jsx','.ts','.tsx','.json','.py','.md','.markdown',
+      '.csv','.tsv','.log','.xml','.smali','.java','.kt','.c','.cpp','.h','.hpp','.cs','.php','.rb','.go','.rs',
+      '.swift','.sql','.yaml','.yml','.ini','.conf','.toml','.sh','.bat','.ps1','.env','.gradle','.properties'];
+
   function attachAiFile(file) {
+      const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
+      if (!AI_ALLOWED_EXT.includes(ext)) {
+          alert('MiMo can\'t read that file type (' + ext + ') — video and images aren\'t supported. Try a text/code file instead.');
+          return;
+      }
+      const chip = document.getElementById('aiAttachmentChip');
+      const label = document.getElementById('aiAttachmentChipLabel');
+      const barTrack = document.getElementById('aiAttachmentChipBarTrack');
+      const barFill = document.getElementById('aiAttachmentChipBarFill');
+      if (label) label.textContent = 'Reading ' + file.name + '…';
+      if (chip) chip.style.display = 'flex';
+      if (barTrack) barTrack.style.display = 'block';
+      if (barFill) barFill.style.width = '0%';
+
       const reader = new FileReader();
+      reader.onprogress = function(evt) {
+          if (evt.lengthComputable && barFill) {
+              barFill.style.width = Math.round((evt.loaded / evt.total) * 100) + '%';
+          }
+      };
       reader.onload = function(evt) {
           const content = String(evt.target.result || '');
           pendingAiAttachment = { name: file.name, content: content };
-          const chip = document.getElementById('aiAttachmentChip');
-          const label = document.getElementById('aiAttachmentChipLabel');
+          if (barFill) barFill.style.width = '100%';
+          setTimeout(() => { if (barTrack) barTrack.style.display = 'none'; }, 250);
           if (label) label.textContent = file.name + ' (' + content.length.toLocaleString() + ' chars)';
-          if (chip) { chip.style.display = 'flex'; }
           const input = document.getElementById('aiInputPrompt');
           if (input) input.focus();
       };
       reader.onerror = function() {
+          if (barTrack) barTrack.style.display = 'none';
+          if (chip) chip.style.display = 'none';
           alert('Could not read that file — please try again.');
       };
       reader.readAsText(file);
   }
+
+  // --- Drag & drop: drop a file anywhere on the conversation area to attach it,
+  // same chip/flow as the paperclip button. ---
+  document.addEventListener('DOMContentLoaded', () => {
+      const dropZone = document.getElementById('chatMessages');
+      if (!dropZone) return;
+      let dragDepth = 0;
+      dropZone.addEventListener('dragenter', (e) => {
+          e.preventDefault();
+          dragDepth++;
+          dropZone.classList.add('ai-drag-over');
+      });
+      dropZone.addEventListener('dragover', (e) => { e.preventDefault(); });
+      dropZone.addEventListener('dragleave', () => {
+          dragDepth = Math.max(0, dragDepth - 1);
+          if (dragDepth === 0) dropZone.classList.remove('ai-drag-over');
+      });
+      dropZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          dragDepth = 0;
+          dropZone.classList.remove('ai-drag-over');
+          const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+          if (file) attachAiFile(file);
+      });
+  });
 
   // DOMContentLoaded initialization
   document.addEventListener('DOMContentLoaded', () => {
@@ -8843,13 +9195,22 @@ function explainFetchError(e) {
           // scrollIntoView() also nudges the page horizontally on first
           // focus, causing a visible left-shift glitch on mobile.
           input.addEventListener('focus', () => {
-              setTimeout(() => {
-                  const savedScrollLeft = (document.scrollingElement || document.documentElement).scrollLeft;
-                  scrollChatToBottom(true);
-                  // Restore horizontal scroll position in case the keyboard/focus
-                  // event caused the browser to shift the page sideways.
+              const savedScrollLeft = (document.scrollingElement || document.documentElement).scrollLeft;
+              const savedWinX = window.scrollX;
+              const savedWinY = window.scrollY;
+              const restore = () => {
                   (document.scrollingElement || document.documentElement).scrollLeft = savedScrollLeft;
-              }, 300);
+                  // window.scrollTo also corrects the pinch-zoom pan offset on a
+                  // zoomed page, which a plain scrollLeft fix alone doesn't reach —
+                  // this is what the very first (slower) keyboard-open needs.
+                  window.scrollTo(savedWinX, savedWinY);
+                  scrollChatToBottom(true);
+              };
+              // Repeated corrections instead of a single 300ms check: the first
+              // keyboard-open on a device is often slower than later ones (cold
+              // IME start-up), so one fixed delay isn't reliable — keep nudging
+              // it back for a bit so whichever timing the shift lands on gets caught.
+              [0, 60, 160, 350, 650].forEach(delay => setTimeout(restore, delay));
           });
           if (window.visualViewport) {
               window.visualViewport.addEventListener('resize', () => {
