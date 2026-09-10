@@ -1661,6 +1661,149 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.15);
         }
 
+
+        /* Listen button active state */
+        .ai-msg-actions button.ai-listen-active {
+            color: var(--accent) !important;
+            border-color: var(--accent-glow) !important;
+            background: rgba(0,255,136,0.18) !important;
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+        /* Aesthetic Stop button */
+        #aiStopBtn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: linear-gradient(135deg, rgba(255,59,48,0.25), rgba(255,59,48,0.12)) !important;
+            color: #ff6b63 !important;
+            border: 1px solid rgba(255,59,48,0.55) !important;
+            padding: 0 16px !important;
+            border-radius: 12px !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.4px;
+            box-shadow: 0 4px 18px rgba(255,59,48,0.25);
+            transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+        #aiStopBtn:hover {
+            background: linear-gradient(135deg, #ff3b30, #ff6b63) !important;
+            color: #fff !important;
+            box-shadow: 0 8px 24px rgba(255,59,48,0.45);
+            transform: translateY(-1px);
+        }
+        #aiStopBtn:active { transform: scale(0.96); }
+        /* Red alert dot on security lock (primary admin only) */
+        .sec-fab { position: relative; }
+        .sec-fab .sec-alert-dot {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff3b30;
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.35), 0 0 10px rgba(255,59,48,0.85);
+            display: none;
+            z-index: 2;
+            pointer-events: none;
+            animation: secDotPulse 1.4s ease-in-out infinite;
+        }
+        .sec-fab .sec-alert-dot.show { display: block; }
+        @keyframes secDotPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.25); opacity: 0.75; }
+        }
+        /* Smooth scroll + less lag on heavy chat */
+        #chatMessages {
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            contain: content;
+            will-change: scroll-position;
+        }
+        .ai-msg-bubble {
+            contain: layout style;
+            content-visibility: auto;
+            contain-intrinsic-size: auto 120px;
+        }
+        .ai-msg-bubble pre, .ai-code-wrap pre {
+            max-height: 420px;
+            overflow: auto;
+            contain: content;
+        }
+        /* Disable enter animation when many messages (set via JS class) */
+        #chatMessages.heavy .ai-msg-bubble {
+            animation: none !important;
+        }
+        /* Markdown extras */
+        .ai-md-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+            font-size: 12.5px;
+            overflow-x: auto;
+            display: block;
+        }
+        .ai-md-table th, .ai-md-table td {
+            border: 1px solid rgba(255,255,255,0.12);
+            padding: 6px 10px;
+            text-align: left;
+        }
+        .ai-md-table th {
+            background: rgba(0,255,136,0.08);
+            color: var(--accent);
+            font-weight: 800;
+        }
+        .ai-md-quote {
+            border-left: 3px solid var(--accent);
+            padding: 6px 12px;
+            margin: 8px 0;
+            background: rgba(255,255,255,0.04);
+            color: var(--text-dim);
+            border-radius: 0 8px 8px 0;
+        }
+        .ai-md-hr {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.12);
+            margin: 12px 0;
+        }
+        .ai-md-task { list-style: none; margin: 3px 0; padding-left: 0; }
+        .ai-md-strike { text-decoration: line-through; opacity: 0.75; }
+        /* Grain morph particles for AI FAB ↔ panel */
+        .ai-grain-layer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 140;
+            overflow: hidden;
+        }
+        .ai-grain {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #00f2fe, #8a2be2);
+            box-shadow: 0 0 8px rgba(0,242,254,0.8);
+            opacity: 0.9;
+            will-change: transform, opacity;
+        }
+        #aiPanel.open {
+            animation: morphPanelOpen 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        #aiPanel.closing {
+            animation: morphPanelClose 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        @keyframes morphPanelOpen {
+            0% { transform: scale(0.08); opacity: 0; border-radius: 50%; filter: blur(8px); }
+            35% { opacity: 1; border-radius: 36px; filter: blur(2px); }
+            70% { transform: scale(1.02); filter: blur(0); }
+            100% { transform: scale(1); opacity: 1; border-radius: 24px; filter: none; }
+        }
+        @keyframes morphPanelClose {
+            0% { transform: scale(1); opacity: 1; border-radius: 24px; filter: none; }
+            40% { opacity: 0.85; border-radius: 36px; filter: blur(2px); }
+            100% { transform: scale(0.08); opacity: 0; border-radius: 50%; filter: blur(10px); }
+        }
+
         /* ========================================= */
         /* AI CHAT CUSTOMIZATIONS - THEME AWARE */
         /* ========================================= */
@@ -3166,6 +3309,7 @@ body.cat-world-active .cat-mode-bar{display:block}
     <!-- FLOATING INFO BUTTON -->
 
     <button type="button" class="sec-fab" id="secFab" title="Security" onclick="toggleSecurityPanel()">
+        <span class="sec-alert-dot" id="secAlertDot" aria-hidden="true"></span>
         <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
     </button>
     <div id="securityPanelBackdrop" onclick="toggleSecurityPanel(false)"></div>
@@ -3335,7 +3479,7 @@ body.cat-world-active .cat-mode-bar{display:block}
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                     </button>
                     <input type="text" id="aiInputPrompt" placeholder="Ask code or logic... (drop files here)" style="flex: 1; padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); font-size: 16px;" autocomplete="off">
-                    <button type="button" id="aiStopBtn" class="btn" onclick="stopAiGeneration()" title="Stop AI" style="display:none; background: rgba(255,59,48,0.15); color: var(--error); border: 1px solid rgba(255,59,48,0.4); padding: 0 14px; border-radius: 12px; font-weight: 800; cursor: pointer;">Stop</button>
+                    <button type="button" id="aiStopBtn" class="btn" onclick="stopAiGeneration()" title="Stop AI generation">■ Stop</button>
                     <button type="button" id="aiSendBtn" class="btn" onclick="sendAiMessage()" style="background: #00f2fe; color: #000; padding: 0 20px; border-radius: 12px; font-weight: 700; cursor: pointer; border: none;">Send</button>
                     <div id="aiDropOverlay" style="display:none; position:absolute; inset:0; border-radius:0 0 16px 16px; background:rgba(0,242,254,0.12); border:2px dashed #00f2fe; align-items:center; justify-content:center; font-weight:800; font-size:13px; color:#00f2fe; pointer-events:none; z-index:2;">Drop file to attach</div>
                 </div>
@@ -3714,6 +3858,12 @@ body.cat-world-active .cat-mode-bar{display:block}
         const DEFAULT_ADMIN_CODE = 'adminxdeygayan'; // never shown in UI
         const FP_STORE_KEY = 'dgxen_admin_fp_ids_v1';
         let adminUnlocked = sessionStorage.getItem('dgxen_admin_unlocked') === '1';
+        // Rehydrate primary flag from session
+        window.__adminIsPrimary = sessionStorage.getItem('dgxen_admin_is_primary') === '1';
+        window.__adminSessionFpId = sessionStorage.getItem('dgxen_admin_fp_id') || '';
+        if (adminUnlocked) {
+            setTimeout(function() { try { checkPrimaryAlert(); } catch (e) {} }, 800);
+        }
         let faceModelsReady = false;
 
         function getLocalFpIds() {
@@ -3773,25 +3923,104 @@ body.cat-world-active .cat-mode-bar{display:block}
             el.textContent = msg || '';
         }
 
-        function unlockAdmin(method) {
+        // Primary fingerprint (#1) = oldest enrolled by createdAt
+        window.__adminSessionFpId = sessionStorage.getItem('dgxen_admin_fp_id') || '';
+        window.__adminIsPrimary = sessionStorage.getItem('dgxen_admin_is_primary') === '1';
+
+        async function getPrimaryFpId() {
+            try {
+                const snap = await get(ref(db, 'settings/adminGate/fingerprints'));
+                if (!snap.exists()) return '';
+                const val = snap.val() || {};
+                let best = null;
+                for (const k in val) {
+                    const rec = val[k];
+                    if (!rec || !rec.id) continue;
+                    const created = Number(rec.createdAt) || 0;
+                    if (!best || created < best.created) best = { id: String(rec.id), created: created };
+                }
+                return best ? best.id : '';
+            } catch (e) { return ''; }
+        }
+
+        function setSecAlertDot(show) {
+            const dot = document.getElementById('secAlertDot');
+            if (!dot) return;
+            // Only primary admin (#1 FP) ever sees the red dot
+            if (!window.__adminIsPrimary) {
+                dot.classList.remove('show');
+                return;
+            }
+            if (show) dot.classList.add('show');
+            else dot.classList.remove('show');
+        }
+
+        async function checkPrimaryAlert() {
+            if (!window.__adminIsPrimary) {
+                setSecAlertDot(false);
+                return;
+            }
+            try {
+                const snap = await get(ref(db, 'settings/adminGate/primaryAlert'));
+                if (!snap.exists()) { setSecAlertDot(false); return; }
+                const v = snap.val() || {};
+                setSecAlertDot(v.seen !== true);
+            } catch (e) { setSecAlertDot(false); }
+        }
+
+        async function clearPrimaryAlert() {
+            if (!window.__adminIsPrimary) return;
+            try {
+                await set(ref(db, 'settings/adminGate/primaryAlert/seen'), true);
+                setSecAlertDot(false);
+            } catch (e) {}
+        }
+
+        function unlockAdmin(method, fpId) {
             adminUnlocked = true;
             sessionStorage.setItem('dgxen_admin_unlocked', '1');
+            const usedFp = fpId ? String(fpId) : '';
+            window.__adminSessionFpId = usedFp;
+            sessionStorage.setItem('dgxen_admin_fp_id', usedFp);
             const g = document.getElementById('adminGate');
             if (g) {
                 g.classList.add('hidden');
             }
             stopGateCamera();
-            try { logAdminLogin(method || 'unknown'); } catch (e) {}
+            try { logAdminLogin(method || 'unknown', usedFp); } catch (e) {}
             renderFpList();
             renderFaceList();
             try { renderAdminLoginLog(); } catch (e) {}
+            // Resolve primary and alert after unlock
+            (async function() {
+                const primary = await getPrimaryFpId();
+                const isPrimary = !!(usedFp && primary && usedFp === primary);
+                // Code login is never treated as primary FP viewer for the alert
+                window.__adminIsPrimary = isPrimary;
+                sessionStorage.setItem('dgxen_admin_is_primary', isPrimary ? '1' : '0');
+                if (!isPrimary) {
+                    // Other admin / code login → notify primary
+                    try {
+                        await set(ref(db, 'settings/adminGate/primaryAlert'), {
+                            at: Date.now(),
+                            method: method || 'unknown',
+                            byFp: usedFp || '',
+                            seen: false
+                        });
+                    } catch (e) {}
+                    setSecAlertDot(false); // never show on non-primary
+                } else {
+                    await checkPrimaryAlert();
+                }
+            })();
         }
 
-        async function logAdminLogin(method) {
+        async function logAdminLogin(method, fpId) {
             try {
                 await push(ref(db, 'settings/adminGate/loginHistory'), {
                     at: Date.now(),
                     method: method || 'unknown',
+                    fpId: fpId || '',
                     ua: (navigator.userAgent || '').slice(0, 100)
                 });
             } catch (e) {}
@@ -3889,7 +4118,7 @@ body.cat-world-active .cat-mode-bar{display:block}
                     setGateStatus('Fingerprint not registered in Firebase.');
                     return;
                 }
-                unlockAdmin('fingerprint');
+                unlockAdmin('fingerprint', usedId);
             } catch (e) {
                 setGateStatus('Fingerprint cancelled or failed.');
             }
@@ -3911,7 +4140,7 @@ body.cat-world-active .cat-mode-bar{display:block}
                     const toStore = (code === DEFAULT_ADMIN_CODE) ? DEFAULT_ADMIN_CODE : real;
                     await set(ref(db, 'settings/adminGate/code'), toStore);
                 } catch (e) {}
-                unlockAdmin('code');
+                unlockAdmin('code', '');
             } else setGateStatus('Wrong code.');
         }
 
@@ -4124,6 +4353,8 @@ body.cat-world-active .cat-mode-bar{display:block}
                 renderFaceList();
                 try { renderAdminLoginLog(); } catch (e) {}
                 setupSecHoldButtons();
+                // Primary admin viewing security → clear red-dot alert
+                try { if (typeof clearPrimaryAlert === 'function') clearPrimaryAlert(); } catch (e) {}
                 // face unlock removed
             } else if (isOpen) {
                 p.classList.add('closing');
@@ -8781,10 +9012,9 @@ function explainFetchError(e) {
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;');
 
-      // Pull out fenced code blocks first so nothing inside them gets
-      // touched by the other markdown rules, then restore them at the end.
       const codeBlocks = [];
       if (!window.__aiCodeStore) window.__aiCodeStore = [];
+      // Fenced code (``` or ~~~)
       text = text.replace(/```([a-zA-Z0-9]*)\n?([\s\S]*?)```/g, (m, lang, code) => {
           const clean = code.replace(/\n$/, '');
           const storeIdx = window.__aiCodeStore.length;
@@ -8796,25 +9026,81 @@ function explainFetchError(e) {
           );
           return '\u0000CODEBLOCK' + (codeBlocks.length - 1) + '\u0000';
       });
+      text = text.replace(/~~~([a-zA-Z0-9]*)\n?([\s\S]*?)~~~/g, (m, lang, code) => {
+          const clean = code.replace(/\n$/, '');
+          const storeIdx = window.__aiCodeStore.length;
+          window.__aiCodeStore.push(clean);
+          codeBlocks.push(
+              '<div class="ai-code-wrap"><button type="button" class="ai-code-copy" onclick="event.stopPropagation(); copyMessage(window.__aiCodeStore[' + storeIdx + '])">Copy</button><pre style="background: rgba(0,0,0,0.4); padding: 10px; padding-top: 28px; border-radius: 8px; overflow-x: auto; font-size: 12px; margin: 0;"><code>' +
+              clean +
+              '</code></pre></div>'
+          );
+          return '\u0000CODEBLOCK' + (codeBlocks.length - 1) + '\u0000';
+      });
 
-      // Inline code `like this`
+      // Tables (GFM): header | sep | rows
+      text = text.replace(/(?:^|\n)((?:\|.+\|\n)+)/g, (m, block) => {
+          const lines = block.trim().split('\n').filter(Boolean);
+          if (lines.length < 2) return m;
+          if (!/^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?$/.test(lines[1].trim())) return m;
+          const parseRow = (line) => line.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+          const headers = parseRow(lines[0]);
+          const rows = lines.slice(2).map(parseRow);
+          let html = '<table class="ai-md-table"><thead><tr>' + headers.map(h => '<th>' + h + '</th>').join('') + '</tr></thead><tbody>';
+          rows.forEach(r => {
+              html += '<tr>' + headers.map((_, i) => '<td>' + (r[i] || '') + '</td>').join('') + '</tr>';
+          });
+          html += '</tbody></table>';
+          return '\n' + html + '\n';
+      });
+
+      // Horizontal rules
+      text = text.replace(/^(?:-{3,}|\*{3,}|_{3,})\s*$/gm, '<hr class="ai-md-hr">');
+
+      // Blockquotes
+      text = text.replace(/(?:^|\n)((?:> .*(?:\n|$))+)/g, (m, block) => {
+          const inner = block.trim().split('\n').map(l => l.replace(/^>\s?/, '')).join('<br>');
+          return '\n<div class="ai-md-quote">' + inner + '</div>\n';
+      });
+
+      // Inline code
       text = text.replace(/`([^`\n]+)`/g, '<code style="background: rgba(255,255,255,0.12); padding: 2px 6px; border-radius: 4px; font-size: 0.9em;">$1</code>');
 
-      // Headers (#, ##, ###) — must be at start of a line
-      text = text.replace(/^### (.*)$/gm, '<div style="font-size: 1.05em; font-weight: 800; margin: 10px 0 4px;">$1</div>');
-      text = text.replace(/^## (.*)$/gm, '<div style="font-size: 1.15em; font-weight: 800; margin: 12px 0 6px;">$1</div>');
-      text = text.replace(/^# (.*)$/gm, '<div style="font-size: 1.25em; font-weight: 900; margin: 14px 0 6px;">$1</div>');
+      // Headers h1-h6
+      text = text.replace(/^###### (.*)$/gm, '<div style="font-size: 0.95em; font-weight: 800; margin: 8px 0 4px;">$1</div>');
+      text = text.replace(/^##### (.*)$/gm, '<div style="font-size: 1em; font-weight: 800; margin: 8px 0 4px;">$1</div>');
+      text = text.replace(/^#### (.*)$/gm, '<div style="font-size: 1.05em; font-weight: 800; margin: 10px 0 4px;">$1</div>');
+      text = text.replace(/^### (.*)$/gm, '<div style="font-size: 1.1em; font-weight: 800; margin: 10px 0 4px;">$1</div>');
+      text = text.replace(/^## (.*)$/gm, '<div style="font-size: 1.2em; font-weight: 800; margin: 12px 0 6px;">$1</div>');
+      text = text.replace(/^# (.*)$/gm, '<div style="font-size: 1.3em; font-weight: 900; margin: 14px 0 6px;">$1</div>');
 
-      // Bold + italic combined (***text*** or ___text___)
+      // Strikethrough
+      text = text.replace(/~~([^~]+)~~/g, '<span class="ai-md-strike">$1</span>');
+      // Highlight ==text==
+      text = text.replace(/==([^=]+)==/g, '<mark style="background:rgba(0,255,136,0.25);color:inherit;padding:0 3px;border-radius:3px;">$1</mark>');
+
+      // Bold + italic
       text = text.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong style="font-weight:800;"><em>$1</em></strong>');
-      // Bold (**text** or __text__)
+      text = text.replace(/___([^_]+)___/g, '<strong style="font-weight:800;"><em>$1</em></strong>');
       text = text.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight:800; color: var(--accent);">$1</strong>');
       text = text.replace(/__([^_]+)__/g, '<strong style="font-weight:800; color: var(--accent);">$1</strong>');
-      // Italic (*text* or _text_) — avoid matching leftover bold markers or bullet "* "
       text = text.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
       text = text.replace(/(?<!_)_([^_\n]+)_(?!_)/g, '<em>$1</em>');
 
-      // Bullet lists: group consecutive "- " / "* " lines into a <ul>
+      // Links [text](url)
+      text = text.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline;">$1<\/a>');
+
+      // Task lists
+      text = text.replace(/(?:^|\n)((?:- \[[ xX]\] .*(?:\n|$))+)/g, (m, block) => {
+          const items = block.trim().split('\n').map(l => {
+              const checked = /^- \[[xX]\]/.test(l);
+              const label = l.replace(/^- \[[ xX]\]\s*/, '');
+              return '<li class="ai-md-task">' + (checked ? '✅ ' : '☐ ') + label + '</li>';
+          });
+          return '\n<ul style="margin:6px 0;padding-left:8px;">' + items.join('') + '</ul>\n';
+      });
+
+      // Bullet lists
       text = text.replace(/(?:^|\n)((?:[-*] .*(?:\n|$))+)/g, (m, block) => {
           const items = block.trim().split('\n').map(l => l.replace(/^[-*]\s+/, '').trim());
           return '\n<ul style="margin: 6px 0; padding-left: 20px;">' +
@@ -8822,7 +9108,7 @@ function explainFetchError(e) {
                  '</ul>\n';
       });
 
-      // Numbered lists: group consecutive "1. " style lines into an <ol>
+      // Numbered lists
       text = text.replace(/(?:^|\n)((?:\d+\. .*(?:\n|$))+)/g, (m, block) => {
           const items = block.trim().split('\n').map(l => l.replace(/^\d+\.\s+/, '').trim());
           return '\n<ol style="margin: 6px 0; padding-left: 20px;">' +
@@ -8830,12 +9116,8 @@ function explainFetchError(e) {
                  '</ol>\n';
       });
 
-      // Remaining newlines → line breaks (list/header blocks already have their own spacing)
       text = text.replace(/\n/g, '<br>');
-
-      // Restore fenced code blocks
       text = text.replace(/\u0000CODEBLOCK(\d+)\u0000/g, (m, i) => codeBlocks[Number(i)]);
-
       return text;
   }
 
@@ -8870,14 +9152,18 @@ function explainFetchError(e) {
           if (isUser) {
               actions += '<button type="button" onclick="editUserMessage(' + idx + ')" title="Edit & resend">✏️ Edit</button>';
           } else {
-              actions += '<button type="button" onclick="speakAiMessage(' + idx + ')" title="Listen">🔊 Listen</button>';
+              actions += '<button type="button" data-listen-idx="' + idx + '" onclick="speakAiMessage(' + idx + ')" title="Listen">🔊 Listen</button>';
           }
           actions += '</div>';
 
-          html += '<div class="ai-msg-bubble" data-msg-idx="' + idx + '" style="max-width: 85%; padding: 12px 16px; ' + bubbleStyle + ' word-break: break-word; line-height: 1.5; font-size: 13.5px; animation: aiMsgIn 0.25s ease-out;">' + thoughtHtml + formattedContent + actions + '</div>';
+          html += '<div class="ai-msg-bubble" data-msg-idx="' + idx + '" style="max-width: 85%; padding: 12px 16px; ' + bubbleStyle + ' word-break: break-word; line-height: 1.5; font-size: 13.5px;' + (chatSessions[currentChatId].messages.length > 12 ? '' : ' animation: aiMsgIn 0.25s ease-out;') + '">' + thoughtHtml + formattedContent + actions + '</div>';
       });
       box.innerHTML = html;
+      if (chatSessions[currentChatId].messages.length > 12) box.classList.add('heavy');
+      else box.classList.remove('heavy');
       scrollChatToBottom(force);
+      // restore listen active state after re-render
+      if (window.__aiSpeakingIdx != null) syncListenButtons(window.__aiSpeakingIdx);
   }
 
   // Show a "↓ New replies" pill if the admin has scrolled up to read older
@@ -8897,6 +9183,14 @@ function explainFetchError(e) {
   // Track which message is currently being spoken (tap again to stop)
   window.__aiSpeakingIdx = null;
 
+  function syncListenButtons(activeIdx) {
+      document.querySelectorAll('.ai-msg-actions button[data-listen-idx]').forEach(function(btn) {
+          const i = Number(btn.getAttribute('data-listen-idx'));
+          if (activeIdx != null && i === activeIdx) btn.classList.add('ai-listen-active');
+          else btn.classList.remove('ai-listen-active');
+      });
+  }
+
   window.speakAiMessage = function(idx) {
       try {
           if (!window.speechSynthesis) {
@@ -8907,9 +9201,11 @@ function explainFetchError(e) {
           if (window.speechSynthesis.speaking || window.__aiSpeakingIdx === idx) {
               window.speechSynthesis.cancel();
               window.__aiSpeakingIdx = null;
+              syncListenButtons(null);
               return;
           }
           window.speechSynthesis.cancel();
+          syncListenButtons(null);
           if (!currentChatId || !chatSessions[currentChatId]) return;
           const msg = chatSessions[currentChatId].messages[idx];
           if (!msg || msg.role !== 'assistant') return;
@@ -8936,8 +9232,9 @@ function explainFetchError(e) {
           utter.pitch = 1.0;
           utter.volume = 1.0;
           window.__aiSpeakingIdx = idx;
-          utter.onend = function() { window.__aiSpeakingIdx = null; };
-          utter.onerror = function() { window.__aiSpeakingIdx = null; };
+          syncListenButtons(idx);
+          utter.onend = function() { window.__aiSpeakingIdx = null; syncListenButtons(null); };
+          utter.onerror = function() { window.__aiSpeakingIdx = null; syncListenButtons(null); };
 
           const pickVoice = () => {
               const voices = window.speechSynthesis.getVoices() || [];
@@ -9743,6 +10040,45 @@ function explainFetchError(e) {
   // =========================================================
   // TOGGLE AI PANEL (MORPHING LOGIC)
   // =========================================================
+  function spawnAiGrain(fromEl, toEl, reverse) {
+      try {
+          if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+          const layer = document.createElement('div');
+          layer.className = 'ai-grain-layer';
+          document.body.appendChild(layer);
+          const a = fromEl.getBoundingClientRect();
+          const b = toEl ? toEl.getBoundingClientRect() : a;
+          const sx = a.left + a.width / 2;
+          const sy = a.top + a.height / 2;
+          const ex = b.left + b.width / 2;
+          const ey = b.top + b.height / 2;
+          const n = 18;
+          for (let i = 0; i < n; i++) {
+              const g = document.createElement('div');
+              g.className = 'ai-grain';
+              const ang = (Math.PI * 2 * i) / n + Math.random() * 0.4;
+              const dist = 40 + Math.random() * 90;
+              const x0 = reverse ? ex : sx;
+              const y0 = reverse ? ey : sy;
+              const x1 = reverse ? sx : (sx + Math.cos(ang) * dist * 0.35);
+              const y1 = reverse ? sy : (sy + Math.sin(ang) * dist * 0.35);
+              const x2 = reverse ? (sx + Math.cos(ang) * 12) : ex;
+              const y2 = reverse ? (sy + Math.sin(ang) * 12) : ey;
+              g.style.left = x0 + 'px';
+              g.style.top = y0 + 'px';
+              g.style.transform = 'translate(-50%,-50%) scale(' + (0.6 + Math.random() * 0.8) + ')';
+              layer.appendChild(g);
+              const dur = 420 + Math.random() * 180;
+              g.animate([
+                  { transform: 'translate(-50%,-50%) scale(0.4)', opacity: 0.2, offset: 0 },
+                  { transform: 'translate(calc(-50% + ' + (x1 - x0) + 'px), calc(-50% + ' + (y1 - y0) + 'px)) scale(1.1)', opacity: 1, offset: 0.45 },
+                  { transform: 'translate(calc(-50% + ' + (x2 - x0) + 'px), calc(-50% + ' + (y2 - y0) + 'px)) scale(0.2)', opacity: 0, offset: 1 }
+              ], { duration: dur, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' });
+          }
+          setTimeout(function() { layer.remove(); }, 700);
+      } catch (e) {}
+  }
+
   window.toggleAIPanel = function(force) {
       const p = document.getElementById('aiPanel');
       const bd = document.getElementById('aiPanelBackdrop');
@@ -9756,6 +10092,8 @@ function explainFetchError(e) {
           if(window.toggleCloudPanel) window.toggleCloudPanel(false);
           if(window.toggleSecurityPanel) window.toggleSecurityPanel(false);
 
+          if (btn) spawnAiGrain(btn, p, false);
+
           p.classList.remove('closing');
           p.classList.add('open');
           if (bd) bd.classList.add('open');
@@ -9764,6 +10102,7 @@ function explainFetchError(e) {
           if(btn) {
               btn.style.opacity = '0';
               btn.style.transform = 'scale(0)';
+              btn.style.pointerEvents = 'none';
           }
       } else {
           // Blur inputs so browser password managers don't fire "save password" on leave
@@ -9771,7 +10110,10 @@ function explainFetchError(e) {
             const ae = document.activeElement;
             if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) ae.blur();
             window.speechSynthesis && window.speechSynthesis.cancel();
+            if (typeof syncListenButtons === 'function') syncListenButtons(null);
+            window.__aiSpeakingIdx = null;
           } catch (e) {}
+          if (btn) spawnAiGrain(p, btn, true);
           p.classList.add('closing');
           if (bd) bd.classList.remove('open');
           
@@ -9782,8 +10124,9 @@ function explainFetchError(e) {
               if(btn) {
                   btn.style.opacity = '1';
                   btn.style.transform = 'scale(1)';
+                  btn.style.pointerEvents = '';
               }
-          }, 400);
+          }, 450);
       }
   };
 
