@@ -3977,6 +3977,10 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             const g = document.getElementById('adminGate');
             if (g) g.classList.remove('hidden');
             try { setGateStatus('🔒 Session locked after 10+ minutes in the background — please sign in again.', false); } catch (e) {}
+            // If a fingerprint is registered, open the scanner right away
+            // instead of making them tap FINGERPRINT themselves — same
+            // auto-trigger used on first page load.
+            try { autoTriggerFingerprintIfRegistered(); } catch (e) {}
         }
 
         function checkAdminBackgroundTimeout() {
@@ -4593,6 +4597,16 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             }
 
             // ---- Auto fingerprint on open if registered in Firebase ----
+            autoTriggerFingerprintIfRegistered();
+        }
+        // ---- end fixed init ----
+
+        // Checks Firebase for a registered fingerprint and, if one exists,
+        // opens the scanner automatically — used both on initial page load
+        // and whenever the gate is force-shown again (e.g. after the
+        // 10-minute background relock), so returning admins don't have to
+        // remember to tap FINGERPRINT themselves.
+        function autoTriggerFingerprintIfRegistered() {
             getFirebaseFpIds().then(ids => {
                 if (adminUnlocked) return;
                 if (ids && ids.length) {
@@ -4613,7 +4627,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 setGateStatus('⚠️ Could not check fingerprints. Hold 10s for code.', false);
             });
         }
-        // ---- end fixed init ----
 
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initAdminGate);
         else initAdminGate();
@@ -9297,6 +9310,78 @@ function explainFetchError(e) {
       }
   };
 
+  // Builds one message's bubble HTML — shared by the full rebuild
+  // (renderCurrentMessages, used for loading/editing/deleting chats) and
+  // the incremental append (used for a normal send/receive) so both
+  // produce identical markup.
+  function buildMessageBubbleHtml(msg, idx, totalCount) {
+      const isUser = msg.role === 'user';
+      const bubbleStyle = isUser 
+          ? 'align-self: flex-end; background: linear-gradient(135deg, rgba(0,242,254,0.22), rgba(0,242,254,0.1)); border: 1px solid rgba(0,242,254,0.35); color: #fff; border-radius: 16px 16px 4px 16px; box-shadow: 0 4px 14px rgba(0,242,254,0.08);' 
+          : 'align-self: flex-start; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); border-radius: 16px 16px 16px 4px; box-shadow: 0 4px 14px rgba(0,0,0,0.15);';
+
+      let thoughtHtml = '';
+      if (!isUser && msg.reasoning) {
+          const safeThought = String(msg.reasoning)
+              .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          thoughtHtml = '<details class="ai-thought-box" open><summary>💭 Thought process</summary><div class="ai-thought-body">' + safeThought + '</div></details>';
+      }
+
+      const formattedContent = formatAiMarkdown(msg.content || '');
+      let actions = '<div class="ai-msg-actions">';
+      actions += '<button type="button" onclick="copyChatMessage(' + idx + ')" title="Copy">📋 Copy</button>';
+      if (isUser) {
+          actions += '<button type="button" onclick="editUserMessage(' + idx + ')" title="Edit & resend">✏️ Edit</button>';
+      } else {
+          actions += '<button type="button" data-listen-idx="' + idx + '" onclick="speakAiMessage(' + idx + ')" title="Listen">🔊 Listen</button>';
+      }
+      actions += '</div>';
+
+      // Long messages (a big pasted file, a huge attachment dump) get
+      // collapsed behind a "Show more" toggle instead of always
+      // sprawling across the whole chat.
+      const LONG_MSG_THRESHOLD = 600;
+      let bodyHtml = thoughtHtml + formattedContent;
+      if ((msg.content || '').length > LONG_MSG_THRESHOLD) {
+          const collapseId = 'longmsg-' + idx;
+          bodyHtml = '<div id="' + collapseId + '" class="ai-long-msg" style="max-height:160px; overflow:hidden; position:relative;">' +
+              bodyHtml +
+              '<div class="ai-long-msg-fade"></div>' +
+              '</div>' +
+              '<button type="button" class="ai-showmore-btn" onclick="toggleLongMessage(\'' + collapseId + '\', this)">Show more ▾</button>';
+      }
+
+      return '<div class="ai-msg-bubble" data-msg-idx="' + idx + '" style="max-width: 85%; padding: 12px 16px; ' + bubbleStyle + ' word-break: break-word; line-height: 1.5; font-size: 13.5px;' + (totalCount > 12 ? '' : ' animation: aiMsgIn 0.25s ease-out;') + '">' + bodyHtml + actions + '</div>';
+  }
+
+  // Appends just the newest message instead of rebuilding the whole list.
+  // renderCurrentMessages() does box.innerHTML = ... on every call, which —
+  // since it happens on every single send AND every reply — briefly
+  // destroys and recreates every existing message bubble. Replacing a
+  // scroll container's content like that makes the browser reset its
+  // scroll position for a moment before the JS scroll-to-bottom call (which
+  // is itself deferred a couple of animation frames) puts it back — that
+  // brief reset-then-restore is exactly the "goes up then down" / "goes up
+  // and gets stuck" jump on every send and every reply. Appending only the
+  // new bubble never disturbs the existing content, so there's nothing to
+  // reset in the first place.
+  function appendMessageBubble(idx) {
+      const box = document.getElementById('chatMessages');
+      if (!box || !currentChatId || !chatSessions[currentChatId]) return;
+      const messages = chatSessions[currentChatId].messages;
+      const msg = messages[idx];
+      if (!msg) return;
+      // First message in an otherwise-empty chat: the empty-state
+      // placeholder is still showing and needs to be cleared first.
+      if (messages.length === 1) box.innerHTML = '';
+      const html = buildMessageBubbleHtml(msg, idx, messages.length);
+      box.insertAdjacentHTML('beforeend', html);
+      if (messages.length > 12) box.classList.add('heavy');
+      else box.classList.remove('heavy');
+      scrollChatToBottom(true);
+      if (window.__aiSpeakingIdx != null) syncListenButtons(window.__aiSpeakingIdx);
+  }
+
   function renderCurrentMessages(opts) {
       const box = document.getElementById('chatMessages');
       if (!box) return;
@@ -9310,43 +9395,7 @@ function explainFetchError(e) {
 
       let html = '';
       chatSessions[currentChatId].messages.forEach((msg, idx) => {
-          const isUser = msg.role === 'user';
-          const bubbleStyle = isUser 
-              ? 'align-self: flex-end; background: linear-gradient(135deg, rgba(0,242,254,0.22), rgba(0,242,254,0.1)); border: 1px solid rgba(0,242,254,0.35); color: #fff; border-radius: 16px 16px 4px 16px; box-shadow: 0 4px 14px rgba(0,242,254,0.08);' 
-              : 'align-self: flex-start; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); border-radius: 16px 16px 16px 4px; box-shadow: 0 4px 14px rgba(0,0,0,0.15);';
-
-          let thoughtHtml = '';
-          if (!isUser && msg.reasoning) {
-              const safeThought = String(msg.reasoning)
-                  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-              thoughtHtml = '<details class="ai-thought-box" open><summary>💭 Thought process</summary><div class="ai-thought-body">' + safeThought + '</div></details>';
-          }
-
-          const formattedContent = formatAiMarkdown(msg.content || '');
-          let actions = '<div class="ai-msg-actions">';
-          actions += '<button type="button" onclick="copyChatMessage(' + idx + ')" title="Copy">📋 Copy</button>';
-          if (isUser) {
-              actions += '<button type="button" onclick="editUserMessage(' + idx + ')" title="Edit & resend">✏️ Edit</button>';
-          } else {
-              actions += '<button type="button" data-listen-idx="' + idx + '" onclick="speakAiMessage(' + idx + ')" title="Listen">🔊 Listen</button>';
-          }
-          actions += '</div>';
-
-          // Long messages (a big pasted file, a huge attachment dump) get
-          // collapsed behind a "Show more" toggle instead of always
-          // sprawling across the whole chat.
-          const LONG_MSG_THRESHOLD = 600;
-          let bodyHtml = thoughtHtml + formattedContent;
-          if ((msg.content || '').length > LONG_MSG_THRESHOLD) {
-              const collapseId = 'longmsg-' + idx;
-              bodyHtml = '<div id="' + collapseId + '" class="ai-long-msg" style="max-height:160px; overflow:hidden; position:relative;">' +
-                  bodyHtml +
-                  '<div class="ai-long-msg-fade"></div>' +
-                  '</div>' +
-                  '<button type="button" class="ai-showmore-btn" onclick="toggleLongMessage(\'' + collapseId + '\', this)">Show more ▾</button>';
-          }
-
-          html += '<div class="ai-msg-bubble" data-msg-idx="' + idx + '" style="max-width: 85%; padding: 12px 16px; ' + bubbleStyle + ' word-break: break-word; line-height: 1.5; font-size: 13.5px;' + (chatSessions[currentChatId].messages.length > 12 ? '' : ' animation: aiMsgIn 0.25s ease-out;') + '">' + bodyHtml + actions + '</div>';
+          html += buildMessageBubbleHtml(msg, idx, chatSessions[currentChatId].messages.length);
       });
       box.innerHTML = html;
       if (chatSessions[currentChatId].messages.length > 12) box.classList.add('heavy');
@@ -9571,7 +9620,9 @@ function explainFetchError(e) {
       }
 
       // Edit flow: only NOW remove the old message + everything after it
+      let wasEditResend = false;
       if (window.__pendingEditIdx != null && window.__pendingEditIdx >= 0) {
+          wasEditResend = true;
           const ei = window.__pendingEditIdx;
           window.__pendingEditIdx = null;
           if (chatSessions[currentChatId].messages.length > ei) {
@@ -9585,7 +9636,19 @@ function explainFetchError(e) {
 
       chatSessions[currentChatId].messages.push({ role: 'user', content: text });
       input.value = '';
-      renderCurrentMessages({ force: true });
+      if (wasEditResend) {
+          // The array was just truncated (edit removed messages after it) —
+          // the DOM genuinely needs a full resync here, not just one more
+          // bubble appended on top of now-stale content.
+          renderCurrentMessages({ force: true });
+      } else {
+          // A normal send only ever adds one message — appending just that
+          // bubble (instead of rebuilding/replacing the whole list) avoids
+          // the brief scroll-position reset that a full innerHTML rebuild
+          // causes, which is what was making the chat jump up and back down
+          // on every single send.
+          appendMessageBubble(chatSessions[currentChatId].messages.length - 1);
+      }
       saveSessions();
       window.setAiBusy(true);
       window.__aiAbort = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -9732,7 +9795,11 @@ function explainFetchError(e) {
                   reasoning: parsed.reasoning || undefined
               });
               saveSessions();
-              renderCurrentMessages({ force: true });
+              // Append just this one reply instead of rebuilding the whole
+              // list — same reasoning as the send-side fix: a full innerHTML
+              // rebuild here was what made the chat jump up and back down
+              // the instant a reply landed.
+              appendMessageBubble(chatSessions[currentChatId].messages.length - 1);
               window.setAiBusy(false);
               window.__aiAbort = null;
           }
@@ -9896,7 +9963,7 @@ function explainFetchError(e) {
           const aborted = (err && (err.name === 'AbortError' || /abort/i.test(err.message || '')));
           const errorMsg = aborted ? '⏹ Generation stopped.' : ('❌ Connection Failed: ' + err.message);
           chatSessions[currentChatId].messages.push({ role: 'assistant', content: errorMsg });
-          renderCurrentMessages({ force: true });
+          appendMessageBubble(chatSessions[currentChatId].messages.length - 1);
           window.setAiBusy(false);
           window.__aiAbort = null;
       }
