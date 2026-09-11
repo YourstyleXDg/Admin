@@ -2030,6 +2030,28 @@
             border-color: var(--accent-glow);
             background: rgba(0,255,136,0.08);
         }
+        .ai-long-msg-fade {
+            position: absolute;
+            left: 0; right: 0; bottom: 0;
+            height: 48px;
+            background: linear-gradient(to bottom, transparent, var(--bg-color));
+            opacity: 0.85;
+            pointer-events: none;
+        }
+        .ai-showmore-btn {
+            display: block;
+            margin: 4px 0 2px;
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+            padding: 2px 0;
+        }
+        .ai-showmore-btn:hover {
+            text-decoration: underline;
+        }
         .ai-code-wrap {
             position: relative;
             margin: 8px 0;
@@ -8818,6 +8840,12 @@ function explainFetchError(e) {
   // AI ENGINE CONFIG & CHAT HISTORY SYSTEM
   // =========================================================
   let currentChatId = null;
+  // If we ever discover the worker doesn't actually stream (returns plain
+  // JSON even when asked to), remember that for the rest of this tab's
+  // session so we stop wasting a full extra round-trip attempting it again
+  // on every single message. Not persisted — a fresh page load tries again,
+  // in case it was transient.
+  let __aiStreamLikelyUnsupported = false;
   let chatSessions = JSON.parse(localStorage.getItem('dgxen_ai_sessions') || '{}');
   let chatHoldTimer = null;
   let isChatHolding = false;
@@ -8991,11 +9019,19 @@ function explainFetchError(e) {
       if (!box) return;
       const nearBottom = (box.scrollHeight - box.scrollTop - box.clientHeight) < 120;
       if (!force && !nearBottom) return;
+      // Collapse rapid repeated calls (streaming sends one per chunk; the
+      // keyboard opening fires several viewport resize events in a row)
+      // into a single scheduled update instead of stacking instant jumps
+      // against a still-changing layout — that stacking was the "goes up
+      // then down" jitter when typing or when a reply came in.
+      if (window.__scrollChatPending) return;
+      window.__scrollChatPending = true;
       requestAnimationFrame(() => {
           requestAnimationFrame(() => {
               box.scrollTop = box.scrollHeight;
               const jumpBtn = document.getElementById('chatJumpBtn');
               if (jumpBtn) jumpBtn.style.display = 'none';
+              window.__scrollChatPending = false;
           });
       });
   };
@@ -9121,6 +9157,23 @@ function explainFetchError(e) {
       return text;
   }
 
+  window.toggleLongMessage = function(collapseId, btn) {
+      const el = document.getElementById(collapseId);
+      if (!el) return;
+      const isCollapsed = el.style.maxHeight !== 'none';
+      if (isCollapsed) {
+          el.style.maxHeight = 'none';
+          const fade = el.querySelector('.ai-long-msg-fade');
+          if (fade) fade.style.display = 'none';
+          if (btn) btn.textContent = 'Show less ▴';
+      } else {
+          el.style.maxHeight = '160px';
+          const fade = el.querySelector('.ai-long-msg-fade');
+          if (fade) fade.style.display = 'block';
+          if (btn) btn.textContent = 'Show more ▾';
+      }
+  };
+
   function renderCurrentMessages(opts) {
       const box = document.getElementById('chatMessages');
       if (!box) return;
@@ -9156,7 +9209,21 @@ function explainFetchError(e) {
           }
           actions += '</div>';
 
-          html += '<div class="ai-msg-bubble" data-msg-idx="' + idx + '" style="max-width: 85%; padding: 12px 16px; ' + bubbleStyle + ' word-break: break-word; line-height: 1.5; font-size: 13.5px;' + (chatSessions[currentChatId].messages.length > 12 ? '' : ' animation: aiMsgIn 0.25s ease-out;') + '">' + thoughtHtml + formattedContent + actions + '</div>';
+          // Long messages (a big pasted file, a huge attachment dump) get
+          // collapsed behind a "Show more" toggle instead of always
+          // sprawling across the whole chat.
+          const LONG_MSG_THRESHOLD = 600;
+          let bodyHtml = thoughtHtml + formattedContent;
+          if ((msg.content || '').length > LONG_MSG_THRESHOLD) {
+              const collapseId = 'longmsg-' + idx;
+              bodyHtml = '<div id="' + collapseId + '" class="ai-long-msg" style="max-height:160px; overflow:hidden; position:relative;">' +
+                  bodyHtml +
+                  '<div class="ai-long-msg-fade"></div>' +
+                  '</div>' +
+                  '<button type="button" class="ai-showmore-btn" onclick="toggleLongMessage(\'' + collapseId + '\', this)">Show more ▾</button>';
+          }
+
+          html += '<div class="ai-msg-bubble" data-msg-idx="' + idx + '" style="max-width: 85%; padding: 12px 16px; ' + bubbleStyle + ' word-break: break-word; line-height: 1.5; font-size: 13.5px;' + (chatSessions[currentChatId].messages.length > 12 ? '' : ' animation: aiMsgIn 0.25s ease-out;') + '">' + bodyHtml + actions + '</div>';
       });
       box.innerHTML = html;
       if (chatSessions[currentChatId].messages.length > 12) box.classList.add('heavy');
@@ -9432,6 +9499,35 @@ function explainFetchError(e) {
           }
       };
 
+      // Some models (this one included) don't send reasoning as a separate
+      // `reasoning_content` delta field at all — they stream it inline as
+      // <think>...</think> right inside the normal content text. The old
+      // code only stripped that out for display once the WHOLE response was
+      // done, so the "thought" box stayed empty the entire time it was
+      // actually thinking. This re-splits the accumulated buffer on every
+      // chunk so partial (still-open) <think> content shows up live too.
+      function splitThinkStream(full) {
+          let answer = '';
+          let thinking = '';
+          let rest = full;
+          const closedRe = /<think>([\s\S]*?)<\/think>/ig;
+          let lastIndex = 0, m;
+          while ((m = closedRe.exec(rest)) !== null) {
+              answer += rest.slice(lastIndex, m.index);
+              thinking += (thinking ? '\n' : '') + m[1];
+              lastIndex = closedRe.lastIndex;
+          }
+          const tail = rest.slice(lastIndex);
+          const openIdx = tail.indexOf('<think>');
+          if (openIdx !== -1) {
+              answer += tail.slice(0, openIdx);
+              thinking += (thinking ? '\n' : '') + tail.slice(openIdx + 7);
+          } else {
+              answer += tail;
+          }
+          return { answer: answer, thinking: thinking.trim() };
+      }
+
       const ensureStreamBubble = () => {
           if (streamBubble) return;
           const loadEl = document.getElementById(loadingId);
@@ -9471,23 +9567,6 @@ function explainFetchError(e) {
               window.__aiAbort = null;
           }
 
-          function extractReplyFromJson(data) {
-              if (!data) return { reply: '', apiMsg: null };
-              const choice = data.choices && data.choices[0];
-              if (choice) {
-                  const apiMsg = choice.message || choice.delta || {};
-                  const reply = apiMsg.content || choice.text || data.content || '';
-                  return { reply, apiMsg };
-              }
-              if (data.message && data.message.content) return { reply: data.message.content, apiMsg: data.message };
-              if (typeof data.content === 'string') return { reply: data.content, apiMsg: data };
-              if (typeof data.reply === 'string') return { reply: data.reply, apiMsg: data };
-              if (typeof data.response === 'string') return { reply: data.response, apiMsg: data };
-              if (typeof data.output === 'string') return { reply: data.output, apiMsg: data };
-              if (data.error) return { reply: '', apiMsg: null, error: typeof data.error === 'string' ? data.error : JSON.stringify(data.error) };
-              return { reply: '', apiMsg: null, error: 'Invalid response structure: ' + JSON.stringify(data).slice(0, 200) };
-          }
-
           async function callWorker(useStream) {
               const payload = {
                   model: "xiaomi/mimo-v2.5-pro",
@@ -9503,28 +9582,76 @@ function explainFetchError(e) {
               return fetch(WORKER_URL, opts);
           }
 
-          // Prefer streaming; fall back to non-stream JSON
-          let response = await callWorker(true);
+          // Converts any "HH:MM UTC" timestamp in a worker error message to
+          // 12-hour IST, e.g. "Resets at 10:00 UTC" -> "Resets at 3:30 PM IST".
+          function convertUtcTimeToIst(text) {
+              return String(text).replace(/(\d{1,2}):(\d{2})\s*UTC/gi, (m, hh, mm) => {
+                  const totalMin = (parseInt(hh, 10) * 60 + parseInt(mm, 10) + 5 * 60 + 30) % (24 * 60);
+                  const istH = Math.floor(totalMin / 60);
+                  const istM = totalMin % 60;
+                  const ampm = istH >= 12 ? 'PM' : 'AM';
+                  let istH12 = istH % 12;
+                  if (istH12 === 0) istH12 = 12;
+                  return istH12 + ':' + String(istM).padStart(2, '0') + ' ' + ampm + ' IST';
+              });
+          }
+          function formatWorkerError(errText, status) {
+              let message = '';
+              try {
+                  const parsed = JSON.parse(errText);
+                  message = parsed.message || parsed.error || '';
+              } catch (e) {
+                  message = errText || '';
+              }
+              if (!message) message = 'Worker Error: ' + status;
+              return convertUtcTimeToIst(message);
+          }
+
+          // Prefer streaming; if worker returns 4xx/5xx or non-SSE, fall back to non-stream JSON.
+          // Skip the streaming attempt entirely if we already know it's unsupported this session.
+          let response = await callWorker(!__aiStreamLikelyUnsupported);
           let ctype = (response.headers.get('content-type') || '').toLowerCase();
           const looksSSE = ctype.includes('text/event-stream') || ctype.includes('event-stream');
 
           if (!response.ok || !response.body || !looksSSE) {
               if (!response.ok) {
-                  try { await response.text(); } catch (e) {}
-                  response = await callWorker(false);
+                  // A failed request almost never becomes a success just by
+                  // dropping the stream flag — quota/rate-limit errors in
+                  // particular will fail identically. Retrying anyway used
+                  // to double the wait on every single error. Only bother
+                  // retrying when the error doesn't look like a hard
+                  // quota/rate block, as a defensive fallback for the rare
+                  // case where "stream" itself was the actual problem.
+                  let errText = '';
+                  try { errText = await response.text(); } catch (e) {}
+                  const looksLikeQuotaOrRate = /quota|rate.?limit|too many requests/i.test(errText);
+                  if (!looksLikeQuotaOrRate) {
+                      response = await callWorker(false);
+                      ctype = (response.headers.get('content-type') || '').toLowerCase();
+                      if (!response.ok) {
+                          try { errText = await response.text(); } catch (e) {}
+                          throw new Error(formatWorkerError(errText, response.status));
+                      }
+                  } else {
+                      throw new Error(formatWorkerError(errText, response.status));
+                  }
+              } else if (!looksSSE && ctype.includes('json')) {
+                  // Worker responded fine but plainly isn't streaming — remember that.
+                  __aiStreamLikelyUnsupported = true;
+              } else {
+                  throw new Error('Worker Error: ' + response.status);
               }
-              if (!response.ok) {
-                  const errBody = await response.text().catch(() => '');
-                  throw new Error('Worker Error: ' + response.status + (errBody ? ' — ' + errBody.slice(0, 120) : ''));
+
+              if (response.ok) {
+                  const data = await response.json();
+                  const apiMsg = data.choices && data.choices[0] && data.choices[0].message;
+                  let reply = (apiMsg && apiMsg.content) ? apiMsg.content
+                      : (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
+                      || 'Error: Invalid response structure.';
+                  await finalizeAssistant(reply, apiMsg || data.choices?.[0]?.message || {});
               }
-              const rawText = await response.text();
-              let data;
-              try { data = JSON.parse(rawText); }
-              catch (e) { throw new Error('Invalid response structure: ' + rawText.slice(0, 160)); }
-              const extracted = extractReplyFromJson(data);
-              if (extracted.error && !extracted.reply) throw new Error(extracted.error);
-              await finalizeAssistant(extracted.reply, extracted.apiMsg || {});
           } else {
+              // SSE streaming path
               const reader = response.body.getReader();
               const decoder = new TextDecoder();
               let buffer = '';
@@ -9555,9 +9682,12 @@ function explainFetchError(e) {
                               if (delta.content) {
                                   fullReply += delta.content;
                                   ensureStreamBubble();
-                                  let preview = fullReply.replace(/<think>[\s\S]*?(<\/think>|$)/ig, '');
-                                  streamTextEl.innerHTML = formatAiMarkdown(preview);
-                                  updateLiveThought(fullReasoning);
+                                  const split = splitThinkStream(fullReply);
+                                  if (split.thinking) {
+                                      fullReasoning = split.thinking;
+                                      updateLiveThought(fullReasoning);
+                                  }
+                                  streamTextEl.innerHTML = formatAiMarkdown(split.answer);
                                   scrollChatToBottom(true);
                               }
                           } else if (msg && msg.content) {
@@ -9571,12 +9701,13 @@ function explainFetchError(e) {
               }
 
               if (!fullReply && !fullReasoning) {
+                  // Empty stream — retry non-stream
                   const response2 = await callWorker(false);
                   if (!response2.ok) throw new Error('Worker Error: ' + response2.status);
                   const data = await response2.json();
-                  const extracted = extractReplyFromJson(data);
-                  if (extracted.error && !extracted.reply) throw new Error(extracted.error);
-                  await finalizeAssistant(extracted.reply, extracted.apiMsg || {});
+                  const apiMsg = data.choices && data.choices[0] && data.choices[0].message;
+                  let reply = (apiMsg && apiMsg.content) ? apiMsg.content : 'Error: Empty stream response.';
+                  await finalizeAssistant(reply, apiMsg || {});
               } else {
                   await finalizeAssistant(fullReply, { reasoning_content: fullReasoning });
               }
@@ -9817,22 +9948,36 @@ function explainFetchError(e) {
           // scroll because on this fixed-width (desktop) viewport layout,
           // scrollIntoView() also nudges the page horizontally on first
           // focus, causing a visible left-shift glitch on mobile.
-          input.addEventListener('focus', () => {
-              setTimeout(() => {
-                  const savedScrollLeft = (document.scrollingElement || document.documentElement).scrollLeft;
-                  scrollChatToBottom(true);
-                  // Restore horizontal scroll position in case the keyboard/focus
-                  // event caused the browser to shift the page sideways.
-                  (document.scrollingElement || document.documentElement).scrollLeft = savedScrollLeft;
-              }, 300);
-          });
-          if (window.visualViewport) {
-              window.visualViewport.addEventListener('resize', () => {
-                  if (document.activeElement === input) {
+          //
+          // Only ONE of the two paths below actually runs: modern browsers
+          // report visualViewport, so the debounced resize handler further
+          // down handles this instead — firing both used to stack two
+          // separate hard scroll-to-bottom jumps (one at a fixed 300ms delay,
+          // one per keyboard-animation resize tick), which is what caused
+          // the chat to visibly jump up then back down when typing.
+          if (!window.visualViewport) {
+              input.addEventListener('focus', () => {
+                  setTimeout(() => {
+                      const savedScrollLeft = (document.scrollingElement || document.documentElement).scrollLeft;
                       scrollChatToBottom(true);
-                  }
+                      // Restore horizontal scroll position in case the keyboard/focus
+                      // event caused the browser to shift the page sideways.
+                      (document.scrollingElement || document.documentElement).scrollLeft = savedScrollLeft;
+                  }, 300);
+              });
+          } else {
+              let vvResizeDebounce = null;
+              window.visualViewport.addEventListener('resize', () => {
+                  if (document.activeElement !== input) return;
+                  clearTimeout(vvResizeDebounce);
+                  vvResizeDebounce = setTimeout(() => {
+                      const savedScrollLeft = (document.scrollingElement || document.documentElement).scrollLeft;
+                      scrollChatToBottom(true);
+                      (document.scrollingElement || document.documentElement).scrollLeft = savedScrollLeft;
+                  }, 120);
               });
           }
+
       }
 
       // Paperclip: read the selected file and queue it as an attachment
@@ -10126,6 +10271,11 @@ function explainFetchError(e) {
             if (typeof syncListenButtons === 'function') syncListenButtons(null);
             window.__aiSpeakingIdx = null;
           } catch (e) {}
+          // Closing the panel shouldn't leave a generation quietly burning
+          // through the (very limited) free quota with nobody watching it.
+          if (window.__aiAbort && typeof window.stopAiGeneration === 'function') {
+              window.stopAiGeneration();
+          }
           if (btn) spawnAiGrain(p, btn, true);
           p.classList.add('closing');
           if (bd) bd.classList.remove('open');
