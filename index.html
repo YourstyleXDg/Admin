@@ -4012,10 +4012,21 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             try { localStorage.setItem(FP_STORE_KEY, JSON.stringify(arr || [])); } catch (e) {}
         }
 
-        async function getFirebaseFpIds() {
+        let __cachedFpIds = null;
+        async function getFirebaseFpIds(forceRefresh) {
+            // The login flow used to hit Firebase twice in a row before the
+            // fingerprint scanner could even open: once here to decide
+            // whether to auto-trigger, then again inside tryFingerprintLogin
+            // itself just to build the same allowCredentials list. That
+            // extra network round-trip was the actual delay — fingerprint
+            // registrations essentially never change mid-session, so reusing
+            // the first result is safe and cuts the wait roughly in half.
+            // Only the registration flow (which just wrote new data) passes
+            // forceRefresh to make sure it sees its own fresh write.
+            if (!forceRefresh && __cachedFpIds !== null) return __cachedFpIds;
             try {
                 const snap = await get(ref(db, 'settings/adminGate/fingerprints'));
-                if (!snap.exists()) return [];
+                if (!snap.exists()) { __cachedFpIds = []; return __cachedFpIds; }
                 const val = snap.val() || {};
                 const ids = [];
                 for (const k in val) {
@@ -4023,8 +4034,9 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     const id = (rec && rec.id) ? String(rec.id) : '';
                     if (id) ids.push(id);
                 }
+                __cachedFpIds = ids;
                 return ids;
-            } catch (e) { return []; }
+            } catch (e) { return __cachedFpIds || []; }
         }
 
         function bufferToBase64(buf) {
@@ -4404,7 +4416,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     note: 'admin-webauthn'
                 };
                 await set(ref(db, 'settings/adminGate/fingerprints/' + safe), fpRecord);
-                setLocalFpIds(await getFirebaseFpIds());
+                setLocalFpIds(await getFirebaseFpIds(true));
                 renderFpList();
                 if (st) { st.style.color = 'var(--accent)';
                     st.textContent = 'Fingerprint saved to Firebase.'; }
