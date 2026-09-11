@@ -1112,7 +1112,16 @@
            overflow:auto inline-style substring) it creates a dead zone: the
            container has nothing to scroll internally, and "contain" also
            blocks the touch from falling through to scroll the page — one
-           finger does nothing at all in that area. */
+           finger does nothing at all in that area.
+           The AI panel intentionally sets NO custom touch-action or
+           overscroll-behavior anywhere inside it (not on #chatMessages, not
+           on #chatHistoryList, not on individual rows) after several rounds
+           of narrow fixes (pan-y-only, manipulation, a blanket "#aiPanel *"
+           rule) kept fighting each other and produced inconsistent one-finger
+           / pinch-zoom behavior depending on which exact element a touch
+           started on. Leaving touch-action at its default (auto) lets the
+           browser handle panning and pinch-zoom natively and consistently,
+           everywhere in the panel, regardless of which part you touch. */
         .guide-modal {
             -webkit-overflow-scrolling: touch;
             overscroll-behavior: contain;
@@ -1123,16 +1132,6 @@
         #chatHistoryList,
         .mk-list {
             -webkit-overflow-scrolling: touch;
-        }
-        #chatMessages,
-        #chatHistoryList {
-            touch-action: pan-x pan-y pinch-zoom;
-        }
-        #aiPanel, #aiPanel * {
-            touch-action: manipulation;
-        }
-        #chatMessages, #chatHistoryList {
-            touch-action: pan-x pan-y pinch-zoom;
         }
         /* Empty history area should not block 2-finger gestures on the panel */
         #chatHistoryList {
@@ -1716,7 +1715,6 @@
         /* Smooth scroll + less lag on heavy chat */
         #chatMessages {
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
             contain: content;
             will-change: scroll-position;
         }
@@ -1871,7 +1869,6 @@
         .chat-hist-item {
             position: relative;
             overflow: hidden;
-            touch-action: pan-x pan-y;
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
             box-shadow: 0 2px 6px rgba(0,0,0,0.12);
@@ -3669,6 +3666,68 @@ body.cat-world-active .cat-mode-bar{display:block}
                         </ul>
                     </div>
                 </div>
+
+                <div class="acc-item" id="acc-man-7">
+                    <div class="acc-header" onclick="toggleAccordion('acc-man-7')">
+                        Anti-Bypass & Access Control
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="acc-body">
+                        <ul class="check-list">
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Core Pipeline Interception:</b> fragile UI-level blocking (overlays/dialogs) has been replaced with direct code-level execution gates inside MainActivity.smali.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Method Gatekeeping:</b> a strict state check (Auth.unlocked) is injected at the exact entry points of critical execution methods (checkOverlay and checkVpn).</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Macro & Automation Defeat:</b> neutralizes high-speed macro tools (like MacroDroid) and UI race conditions — even if an automated trigger simulates a button tap instantly on screen wake, execution is hard-stopped (return-void) at the code level unless the static authentication flag evaluates to true.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Reliability:</b> guarantees zero-bypass functionality without causing UI rendering delays, black screens, or activity verification crashes.</li>
+                        </ul>
+                        <button type="button" class="btn" style="margin-top:12px; font-size:11px; padding:8px 14px; background:rgba(255,255,255,0.06); color:var(--accent); border:1px solid var(--glass-border);" onclick="toggleImplementationNotes(this)">View implementation notes ▾</button>
+                        <div id="acc-man-7-notes" style="display:none; margin-top:10px; font-size:12px; line-height:1.6; color:var(--text-dim); background:rgba(0,0,0,0.25); border:1px solid var(--glass-border); border-radius:10px; padding:14px; white-space:pre-wrap;">Maine dekha ki tumhari app Landroid/view/View$OnClickListener; implement karti hai. Iska matlab main onClick function tumhari is file ke neeche wale hisse mein hai jo yahan copy nahi hua. Lekin sach batau? Humein button ke click function ya Lambda files ko dhoondhne ki zaroorat hi nahi hai!
+
+Code ke andar dhyaan se dekho, tumhari app mein VPN connect karne ka ek poora sequence hai:
+1. Sabse pehle wo checkOverlay() call karta hai.
+2. Uske baad wo checkVpn() ko call karta hai.
+3. Aur phir aakhiri mein wo startEngine() chalata hai jisse VPN on ho jata hai.
+
+Hum seedha is connection ke "Main Gate" par hi apna Fevicol Lock laga denge! Isse fayda ye hoga ki chahe MacroDroid 1 millisecond mein 1000 baar click kar de, OS us click ko accept toh kar lega par jaise hi wo VPN start karne aayega, hamara lock usko wahin block kar dega.
+
+Apni MainActivity.smali file mein ye do chote se changes kar do:
+
+1. checkOverlay ko Block Karo
+Apni file mein search karo: .method private checkOverlay()V
+Aur uske theek neeche ye code daal do:
+
+.method private checkOverlay()V
+    .registers 3
+    # 🔥 DGXEN MASTER LOCK START 🔥
+    sget-boolean v0, Lcom/dgxen/Auth;->unlocked:Z
+    if-nez v0, :cond_auth_pass_1
+    return-void
+    :cond_auth_pass_1
+    # 🔥 LOCK END 🔥
+    const/4 v0, 0x1
+    .line 7623
+    iput-boolean v0, p0, Lcom/ponie/dayov12/MainActivity;->waiting:Z
+
+2. checkVpn ko Block Karo (Double Security)
+Usi file mein search karo: .method private checkVpn()V
+Aur uske theek neeche bhi ye lock chipka do:
+
+.method private checkVpn()V
+    .registers 4
+    # 🔥 DGXEN MASTER LOCK START 🔥
+    sget-boolean v0, Lcom/dgxen/Auth;->unlocked:Z
+    if-nez v0, :cond_auth_pass_2
+    return-void
+    :cond_auth_pass_2
+    # 🔥 LOCK END 🔥
+    .line 7631
+    :try_start_0
+    invoke-static {p0}, Landroid/net/VpnService;->prepare(Landroid/content/Context;)Landroid/content/Intent;
+
+Yeh code 100% safe hai. Maine dono jagah register v0 use kiya hai kyunki original code mein check ke turant baad v0 ko overwrite kiya ja raha hai (ek jagah 1 se aur doosri jagah Intent ke result se). Isliye app crash hone ka zero chance hai.
+
+Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baap bhi bina login ke startEngine() tak nahi pahunch payega! Ek baar test karke bata mujhe, isne macro ki chhutti ki ya nahi? 😎</div>
+                    </div>
+                </div>
             </div>
 
             <!-- TAB CONTENT: DOWNLOADS (ACCORDION STYLE) -->
@@ -4562,6 +4621,17 @@ body.cat-world-active .cat-mode-bar{display:block}
         window.toggleAccordion = function(id) {
             const item = document.getElementById(id);
             item.classList.toggle('active');
+        };
+
+        // Keeps the long implementation-notes writeup collapsed by default
+        // so it doesn't add to how far an admin has to scroll to see the
+        // rest of the guide — it only expands on request.
+        window.toggleImplementationNotes = function(btn) {
+            const notes = document.getElementById('acc-man-7-notes');
+            if (!notes) return;
+            const showing = notes.style.display !== 'none';
+            notes.style.display = showing ? 'none' : 'block';
+            btn.textContent = showing ? 'View implementation notes ▾' : 'Hide implementation notes ▴';
         };
 
         // --- PURE SAFE DOWNLOAD SYSTEM (NO DOM INJECTIONS) ---
@@ -8883,7 +8953,7 @@ function explainFetchError(e) {
                           class="chat-hist-item"
                           data-chat-id="${id}"
                           onpointerdown="startChatHold(event, '${id}')"
-                          style="padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid; transition: 0.2s; user-select: none; touch-action: pan-y; ${activeClass}"
+                          style="padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid; transition: 0.2s; user-select: none; ${activeClass}"
                        >${shortTitle}</div>`;
           });
       }
@@ -9531,17 +9601,28 @@ function explainFetchError(e) {
       const ensureStreamBubble = () => {
           if (streamBubble) return;
           const loadEl = document.getElementById(loadingId);
-          // Keep thought HTML if we already streamed reasoning during loading
-          let thoughtHtml = '';
-          if (fullReasoning) {
-              const safe = String(fullReasoning).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-              thoughtHtml = '<details class="ai-thought-box" open><summary>💭 Thought process</summary><div class="ai-thought-body">' + safe + '</div></details>';
-          }
           if (loadEl) loadEl.remove();
           streamBubble = document.createElement('div');
           streamBubble.style.cssText = 'align-self: flex-start; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); border-radius: 16px 16px 16px 4px; box-shadow: 0 4px 14px rgba(0,0,0,0.15); max-width: 85%; padding: 12px 16px; word-break: break-word; line-height: 1.5; font-size: 13.5px;';
-          streamBubble.innerHTML = thoughtHtml;
-          streamThoughtEl = streamBubble.querySelector('.ai-thought-box');
+          // Always build the thought box up front (hidden until there's
+          // something to show), rather than only when fullReasoning already
+          // has content — this function only ever runs once per response
+          // (guarded above), and it used to be called before fullReasoning
+          // was set from the very first chunk, so the box never got created
+          // at all and the live "thinking" text had nowhere to go.
+          const thoughtBox = document.createElement('details');
+          thoughtBox.className = 'ai-thought-box';
+          thoughtBox.style.display = fullReasoning ? 'block' : 'none';
+          if (fullReasoning) thoughtBox.setAttribute('open', '');
+          const summary = document.createElement('summary');
+          summary.textContent = '💭 Thought process';
+          const thoughtBody = document.createElement('div');
+          thoughtBody.className = 'ai-thought-body';
+          thoughtBody.textContent = fullReasoning || '';
+          thoughtBox.appendChild(summary);
+          thoughtBox.appendChild(thoughtBody);
+          streamBubble.appendChild(thoughtBox);
+          streamThoughtEl = thoughtBox;
           streamTextEl = document.createElement('div');
           streamTextEl.className = 'ai-stream-cursor';
           streamBubble.appendChild(streamTextEl);
