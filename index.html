@@ -3678,6 +3678,7 @@ body.cat-world-active .cat-mode-bar{display:block}
                             <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Method Gatekeeping:</b> a strict state check (Auth.unlocked) is injected at the exact entry points of critical execution methods (checkOverlay and checkVpn).</li>
                             <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Macro & Automation Defeat:</b> neutralizes high-speed macro tools (like MacroDroid) and UI race conditions — even if an automated trigger simulates a button tap instantly on screen wake, execution is hard-stopped (return-void) at the code level unless the static authentication flag evaluates to true.</li>
                             <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Reliability:</b> guarantees zero-bypass functionality without causing UI rendering delays, black screens, or activity verification crashes.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Background session lock:</b> if the admin panel sits in the background (tab switched away / app minimized) for <b>10+ minutes</b>, it's automatically signed back out to the login gate on return, requiring a relogin. Time spent actively in the foreground is never counted, no matter how long — this only ever triggers from background time.</li>
                         </ul>
                         <button type="button" class="btn" style="margin-top:12px; font-size:11px; padding:8px 14px; background:rgba(255,255,255,0.06); color:var(--accent); border:1px solid var(--glass-border);" onclick="toggleImplementationNotes(this)">View implementation notes ▾</button>
                         <div id="acc-man-7-notes" style="display:none; margin-top:10px; font-size:12px; line-height:1.6; color:var(--text-dim); background:rgba(0,0,0,0.25); border:1px solid var(--glass-border); border-radius:10px; padding:14px; white-space:pre-wrap;">Maine dekha ki tumhari app Landroid/view/View$OnClickListener; implement karti hai. Iska matlab main onClick function tumhari is file ke neeche wale hisse mein hai jo yahan copy nahi hua. Lekin sach batau? Humein button ke click function ya Lambda files ko dhoondhne ki zaroorat hi nahi hai!
@@ -3946,6 +3947,58 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             setTimeout(function() { try { checkPrimaryAlert(); } catch (e) {} }, 800);
         }
         let faceModelsReady = false;
+
+        // ---- Background-only session lock ----
+        // If the admin panel sits in the background (tab switched away /
+        // app minimized) for 10+ minutes, force back to the login gate on
+        // return — a relogin is then required. Time spent actively in the
+        // foreground never counts toward this, no matter how long, and
+        // nothing happens while foregrounded even past 10 minutes; only
+        // backgrounded time is measured. Uses a wall-clock timestamp
+        // (rather than a plain timer) because background tabs are commonly
+        // throttled or fully suspended by the browser/OS, so a timer alone
+        // can't be trusted to actually fire while hidden — comparing
+        // Date.now() against a stored timestamp the moment we return works
+        // regardless of whether anything kept running while backgrounded.
+        const ADMIN_BG_TIMEOUT_MS = 10 * 60 * 1000;
+        const ADMIN_BG_AT_KEY = 'dgxen_admin_bg_at';
+
+        function forceAdminRelock(reason) {
+            adminUnlocked = false;
+            sessionStorage.setItem('dgxen_admin_unlocked', '0');
+            sessionStorage.removeItem(ADMIN_BG_AT_KEY);
+            try {
+                if (window.__aiAbort && typeof window.stopAiGeneration === 'function') window.stopAiGeneration();
+                const aiPanel = document.getElementById('aiPanel');
+                if (aiPanel && aiPanel.classList.contains('open') && typeof toggleAIPanel === 'function') {
+                    toggleAIPanel(false);
+                }
+            } catch (e) {}
+            const g = document.getElementById('adminGate');
+            if (g) g.classList.remove('hidden');
+            try { setGateStatus('🔒 Session locked after 10+ minutes in the background — please sign in again.', false); } catch (e) {}
+        }
+
+        function checkAdminBackgroundTimeout() {
+            if (!adminUnlocked) return;
+            const bgAt = sessionStorage.getItem(ADMIN_BG_AT_KEY);
+            if (!bgAt) return;
+            const elapsed = Date.now() - parseInt(bgAt, 10);
+            sessionStorage.removeItem(ADMIN_BG_AT_KEY); // back in foreground — countdown resets either way
+            if (elapsed >= ADMIN_BG_TIMEOUT_MS) forceAdminRelock('background-timeout');
+        }
+
+        document.addEventListener('visibilitychange', function() {
+            if (!adminUnlocked) return;
+            if (document.hidden) {
+                sessionStorage.setItem(ADMIN_BG_AT_KEY, String(Date.now()));
+            } else {
+                checkAdminBackgroundTimeout();
+            }
+        });
+        // Also catches the case where the page was reloaded/reopened after
+        // already having been backgrounded past the timeout.
+        checkAdminBackgroundTimeout();
 
         function getLocalFpIds() {
             try { return JSON.parse(localStorage.getItem(FP_STORE_KEY) || '[]'); } catch (e) { return []; }
@@ -9629,6 +9682,42 @@ function explainFetchError(e) {
           box.appendChild(streamBubble);
       };
 
+      function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+      // Some responses come back as one plain JSON blob only once the whole
+      // reply is already generated server-side (no real SSE chunks at any
+      // point — worth confirming with a network trace, but a wait with zero
+      // incremental updates followed by the full answer appearing all at
+      // once is exactly that pattern). When that happens, the thought box
+      // never gets anything to show progressively because there IS no
+      // "progressively" — the text simply doesn't exist client-side until
+      // the whole thing lands at once. This fakes that reveal so thinking
+      // (and then the answer) still visibly appears over time instead of a
+      // static "Thinking…" the entire wait, then an instant full dump.
+      async function revealProgressively(reasoningText, answerText) {
+          ensureStreamBubble();
+          if (reasoningText) {
+              for (let i = 0; i <= reasoningText.length; i += 6) {
+                  if (!window.__aiAbort) break; // Stop was tapped — skip ahead
+                  fullReasoning = reasoningText.slice(0, i);
+                  updateLiveThought(fullReasoning);
+                  scrollChatToBottom(true);
+                  await sleep(10);
+              }
+              fullReasoning = reasoningText;
+              updateLiveThought(fullReasoning);
+          }
+          if (answerText) {
+              for (let i = 0; i <= answerText.length; i += 5) {
+                  if (!window.__aiAbort) break;
+                  streamTextEl.innerHTML = formatAiMarkdown(answerText.slice(0, i));
+                  scrollChatToBottom(true);
+                  await sleep(10);
+              }
+          }
+          if (streamTextEl) streamTextEl.innerHTML = formatAiMarkdown(answerText || '');
+      }
+
       try {
           const messagesPayload = chatSessions[currentChatId].messages.map(m => ({ role: m.role, content: m.content }));
 
@@ -9729,7 +9818,10 @@ function explainFetchError(e) {
                   let reply = (apiMsg && apiMsg.content) ? apiMsg.content
                       : (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
                       || 'Error: Invalid response structure.';
-                  await finalizeAssistant(reply, apiMsg || data.choices?.[0]?.message || {});
+                  const finalApiMsg = apiMsg || data.choices?.[0]?.message || {};
+                  const parsedForReveal = extractReasoning(reply, finalApiMsg);
+                  await revealProgressively(parsedForReveal.reasoning, parsedForReveal.content);
+                  await finalizeAssistant(reply, finalApiMsg);
               }
           } else {
               // SSE streaming path
@@ -9788,6 +9880,8 @@ function explainFetchError(e) {
                   const data = await response2.json();
                   const apiMsg = data.choices && data.choices[0] && data.choices[0].message;
                   let reply = (apiMsg && apiMsg.content) ? apiMsg.content : 'Error: Empty stream response.';
+                  const parsedForReveal = extractReasoning(reply, apiMsg || {});
+                  await revealProgressively(parsedForReveal.reasoning, parsedForReveal.content);
                   await finalizeAssistant(reply, apiMsg || {});
               } else {
                   await finalizeAssistant(fullReply, { reasoning_content: fullReasoning });
