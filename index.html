@@ -3141,6 +3141,61 @@ body.cat-world-active .cat-mode-bar{display:block}
                 </div>
             </div>
 
+            <!-- ⏱ APP EXPIRY & UPDATE -->
+            <div class="section-box glass-panel" style="margin-bottom:22px;">
+                <div id="appUpdateChip" onclick="toggleAppUpdatePanel()" style="display:inline-flex;align-items:center;gap:10px;cursor:pointer;padding:12px 18px;border-radius:14px;background:rgba(255,159,10,.12);color:var(--warn);font-weight:800;user-select:none;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    APP EXPIRY &amp; UPDATE
+                    <span id="appUpdateBadge" style="margin-left:6px;font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.25);color:var(--text-dim);display:none;"></span>
+                </div>
+                <div id="appUpdatePanel" style="display:none;margin-top:15px;">
+                    <div style="display:flex;flex-direction:column;gap:16px;">
+                        <p style="font-size:13px;color:var(--text-dim);font-weight:600;line-height:1.5;margin:0;">
+                            Controls remote update + global killswitch. Android reads
+                            <code style="color:var(--accent);font-size:12px;">settings/appUpdate.json</code>
+                        </p>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div>
+                                <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;">Version Code</div>
+                                <input type="number" id="auVersionCode" placeholder="e.g. 2" min="1" step="1" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
+                            </div>
+                            <div>
+                                <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;">Version Name</div>
+                                <input type="text" id="auVersionName" placeholder="e.g. 2.0" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;">APK Download URL</div>
+                            <input type="url" id="auUrl" placeholder="https://github.com/.../app.apk" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
+                        </div>
+                        <div>
+                            <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;">Changelog / Log</div>
+                            <textarea id="auLog" rows="3" placeholder="Bug fixes and improvements..." style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;resize:vertical;font-family:inherit;"></textarea>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+                            <label style="display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;cursor:pointer;color:var(--text-main);">
+                                <input type="checkbox" id="auForceUpdate" style="width:18px;height:18px;accent-color:var(--accent);">
+                                Force Update
+                            </label>
+                            <label style="display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;cursor:pointer;color:var(--error);">
+                                <input type="checkbox" id="auIsExpired" style="width:18px;height:18px;accent-color:var(--error);">
+                                App Expired (Killswitch)
+                            </label>
+                        </div>
+                        <div>
+                            <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;">Revoke / Expired Message</div>
+                            <input type="text" id="auRevokeMessage" placeholder="App access has expired. Please update." style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
+                        </div>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                            <button class="btn" type="button" style="background:var(--accent);color:#000;" onclick="publishAppUpdate()">SAVE &amp; PUBLISH</button>
+                            <button class="btn" type="button" style="background:rgba(150,150,150,.15);color:var(--text-main);" onclick="loadAppUpdateSettings()">RELOAD</button>
+                            <span id="auStatus" style="font-size:13px;font-weight:700;color:var(--text-dim);"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
             <div class="stats-grid">
                 <div class="stat-card glass-panel float-anim"><h3>Total Devices</h3><div class="val" id="stat-total">0</div></div>
                 <div class="stat-card glass-panel float-anim" style="cursor: pointer;" onclick="document.getElementById('nav-live-active').click()"><h3>Active Users</h3><div class="val green" id="stat-live-active">0</div></div>
@@ -6589,6 +6644,119 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
 })();
 
 // ===== NOTICE PANEL =====
+
+        // ===== APP EXPIRY & UPDATE (settings/appUpdate) =====
+        window.toggleAppUpdatePanel = function() {
+            const p = document.getElementById('appUpdatePanel');
+            if (!p) return;
+            p.style.display = (p.style.display === 'none' || !p.style.display) ? 'block' : 'none';
+        };
+
+        function auSetStatus(msg, ok) {
+            const el = document.getElementById('auStatus');
+            if (!el) return;
+            el.textContent = msg || '';
+            el.style.color = ok === false ? 'var(--error)' : (ok ? 'var(--accent)' : 'var(--text-dim)');
+        }
+
+        function auUpdateBadge(v) {
+            const b = document.getElementById('appUpdateBadge');
+            if (!b) return;
+            if (v && v.isExpired) {
+                b.style.display = 'inline-block';
+                b.textContent = 'EXPIRED';
+                b.style.color = 'var(--error)';
+                b.style.background = 'rgba(255,59,48,.15)';
+            } else if (v && v.forceUpdate) {
+                b.style.display = 'inline-block';
+                b.textContent = 'FORCE UPDATE';
+                b.style.color = 'var(--warn)';
+                b.style.background = 'rgba(255,159,10,.15)';
+            } else if (v && (v.versionName || v.versionCode)) {
+                b.style.display = 'inline-block';
+                b.textContent = 'v' + (v.versionName || v.versionCode);
+                b.style.color = 'var(--accent)';
+                b.style.background = 'rgba(0,255,136,.12)';
+            } else {
+                b.style.display = 'none';
+            }
+        }
+
+        window.loadAppUpdateSettings = async function() {
+            try {
+                const snap = await get(ref(db, 'settings/appUpdate'));
+                const v = snap.exists() ? (snap.val() || {}) : {};
+                const vc = document.getElementById('auVersionCode');
+                const vn = document.getElementById('auVersionName');
+                const url = document.getElementById('auUrl');
+                const log = document.getElementById('auLog');
+                const fu = document.getElementById('auForceUpdate');
+                const ie = document.getElementById('auIsExpired');
+                const rm = document.getElementById('auRevokeMessage');
+                if (vc) vc.value = v.versionCode != null ? v.versionCode : '';
+                if (vn) vn.value = v.versionName || '';
+                if (url) url.value = v.url || '';
+                if (log) log.value = v.log || '';
+                if (fu) fu.checked = !!v.forceUpdate;
+                if (ie) ie.checked = !!v.isExpired;
+                if (rm) rm.value = v.revokeMessage || '';
+                auUpdateBadge(v);
+                auSetStatus('Loaded', true);
+            } catch (e) {
+                console.warn('appUpdate load', e);
+                auSetStatus(e.message || String(e), false);
+            }
+        };
+
+        window.publishAppUpdate = async function() {
+            const versionCode = Number(document.getElementById('auVersionCode') && document.getElementById('auVersionCode').value);
+            const versionName = (document.getElementById('auVersionName') && document.getElementById('auVersionName').value || '').trim();
+            const url = (document.getElementById('auUrl') && document.getElementById('auUrl').value || '').trim();
+            const log = (document.getElementById('auLog') && document.getElementById('auLog').value || '').trim();
+            const forceUpdate = !!(document.getElementById('auForceUpdate') && document.getElementById('auForceUpdate').checked);
+            const isExpired = !!(document.getElementById('auIsExpired') && document.getElementById('auIsExpired').checked);
+            const revokeMessage = (document.getElementById('auRevokeMessage') && document.getElementById('auRevokeMessage').value || '').trim()
+                || 'App access has expired. Please update.';
+
+            if (!versionCode || versionCode < 1) {
+                auSetStatus('Version code required (integer ≥ 1)', false);
+                if (typeof showConfirm === 'function') showConfirm('Missing field', 'Enter a valid versionCode (e.g. 2).', null);
+                return;
+            }
+
+            const payload = {
+                versionCode: versionCode,
+                versionName: versionName || String(versionCode),
+                url: url,
+                log: log,
+                forceUpdate: forceUpdate,
+                isExpired: isExpired,
+                revokeMessage: revokeMessage,
+                updatedAt: Date.now()
+            };
+
+            try {
+                await set(ref(db, 'settings/appUpdate'), payload);
+                auUpdateBadge(payload);
+                auSetStatus('Published · live on Firebase', true);
+                if (typeof showConfirm === 'function') {
+                    showConfirm('App Update Published',
+                        (isExpired ? 'KILL SWITCH ON — apps will see isExpired.\n' : '') +
+                        (forceUpdate ? 'Force update enabled.\n' : '') +
+                        'versionCode ' + payload.versionCode + ' · ' + payload.versionName,
+                        null);
+                }
+            } catch (e) {
+                auSetStatus(e.message || String(e), false);
+                if (typeof showConfirm === 'function') showConfirm('Error', e.message || String(e), null);
+            }
+        };
+
+        try { onValue(ref(db, 'settings/appUpdate'), function() { loadAppUpdateSettings(); }); } catch (e) {}
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadAppUpdateSettings);
+        else try { loadAppUpdateSettings(); } catch (e) {}
+
+
         window.toggleNoticePanel = function() {
             const p = document.getElementById('noticePanel');
             const c = document.getElementById('noticeChip');
