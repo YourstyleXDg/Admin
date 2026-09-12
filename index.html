@@ -27,6 +27,7 @@
         :root {
             --bg-color: #050507;
             --accent: #00ff88;
+            --accent-rgb: 0, 255, 136;
             --accent-glow: rgba(0, 255, 136, 0.4);
             --error: #ff3b30;
             --warn: #ff9f0a;
@@ -46,6 +47,7 @@
         body.light-mode {
             --bg-color: #e8eef6;
             --accent: #00b86b;
+            --accent-rgb: 0, 184, 107;
             --accent-glow: rgba(0, 184, 107, 0.35);
             --text-main: #0f172a;
             --text-dim: #64748b;
@@ -68,6 +70,7 @@
         body.max-mode {
             --bg-color: #01060e;
             --accent: #00ffd5;
+            --accent-rgb: 0, 255, 213;
             --accent-glow: rgba(0, 255, 213, 0.7);
             --text-main: #ffffff;
             --text-dim: #88a4c3;
@@ -164,7 +167,8 @@
            blurred/backdrop-filter layers mid-gesture (fixes the zoom-out stutter). */
         body.is-zooming::before,
         body.is-zooming::after,
-        body.is-zooming .water-wave {
+        body.is-zooming .water-wave,
+        body.is-zooming .glass-panel::after {
             animation-play-state: paused !important;
         }
         body.is-zooming .glass-panel,
@@ -182,9 +186,8 @@
         }
 
         @media (prefers-reduced-motion: reduce) {
-            body::before, body::after, .water-wave {
-                animation: none !important;
-            }
+            body::before, body::after, .water-wave { animation: none !important; }
+            body.light-mode .glass-panel::after { animation: none !important; opacity: 0 !important; }
         }
 
         /* --- MAX MODE WATER EFFECT --- */
@@ -292,6 +295,8 @@
         }
 
         body.light-mode .glass-panel {
+            position: relative;
+            overflow: hidden;
             background: linear-gradient(145deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.28) 100%);
             backdrop-filter: blur(48px) saturate(200%) brightness(1.05);
             -webkit-backdrop-filter: blur(48px) saturate(200%) brightness(1.05);
@@ -303,6 +308,28 @@
             border: 1px solid rgba(255, 255, 255, 0.65);
             border-top: 1px solid rgba(255, 255, 255, 0.95);
             border-left: 1px solid rgba(255, 255, 255, 0.75);
+        }
+        /* Dynamic refraction sheen — a soft light sweep that drifts across
+           the glass every few seconds, like light catching real glass at a
+           shifting angle, instead of the panel being a flat static blur. */
+        body.light-mode .glass-panel::after {
+            content: '';
+            position: absolute;
+            top: -60%;
+            left: -60%;
+            width: 55%;
+            height: 220%;
+            background: linear-gradient(75deg, transparent, rgba(255,255,255,0.5), transparent);
+            transform: rotate(8deg);
+            animation: glassSheenSweep 9s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
+        @keyframes glassSheenSweep {
+            0%, 12% { left: -60%; opacity: 0; }
+            28% { opacity: 0.55; }
+            50% { left: 120%; opacity: 0; }
+            100% { left: 120%; opacity: 0; }
         }
         body.light-mode .sidebar {
             background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.35));
@@ -2505,6 +2532,7 @@
         /* --- CAT WORLD EASTER EGG --- */
         body.theme-cute {
             --accent: #ff6b9d;
+            --accent-rgb: 255, 107, 157;
             --accent-glow: rgba(255, 107, 157, 0.5);
             --orb-1: rgba(255, 107, 157, 0.2);
             --orb-2: rgba(255, 215, 0, 0.15);
@@ -3946,7 +3974,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         if (adminUnlocked) {
             setTimeout(function() { try { checkPrimaryAlert(); } catch (e) {} }, 800);
         }
-        let faceModelsReady = false;
 
         // ---- Background-only session lock ----
         // If the admin panel sits in the background (tab switched away /
@@ -4037,6 +4064,73 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 __cachedFpIds = ids;
                 return ids;
             } catch (e) { return __cachedFpIds || []; }
+        }
+
+        // ---- Real-time fingerprint-removal detection ----
+        // While the admin is inside the panel, watch Firebase live (not just
+        // the one-time cached fetch above) for the registered-fingerprints
+        // list changing. If the fingerprint this session actually logged in
+        // with gets removed, or every fingerprint gets wiped out entirely,
+        // that's a live access-revocation — show a popup and force back to
+        // the login gate within 3 seconds, rather than only noticing on the
+        // next manual action.
+        let __lastKnownFpIds = null;
+        onValue(ref(db, 'settings/adminGate/fingerprints'), (snap) => {
+            const val = snap.exists() ? (snap.val() || {}) : {};
+            const ids = [];
+            for (const k in val) {
+                const rec = val[k];
+                const id = (rec && rec.id) ? String(rec.id) : '';
+                if (id) ids.push(id);
+            }
+            // This listener sees every update live anyway, so keep the
+            // getFirebaseFpIds() cache fresh from it too.
+            __cachedFpIds = ids;
+
+            if (__lastKnownFpIds === null) {
+                // First snapshot since page load — this is the starting
+                // baseline, not a "something was removed" event.
+                __lastKnownFpIds = ids;
+                return;
+            }
+            const hadAnyBefore = __lastKnownFpIds.length > 0;
+            __lastKnownFpIds = ids;
+
+            if (!adminUnlocked) return; // not relevant while still at the gate
+
+            const mySessionFpRevoked = !!window.__adminSessionFpId && ids.indexOf(window.__adminSessionFpId) === -1;
+            const allFingerprintsWiped = hadAnyBefore && ids.length === 0;
+
+            if (mySessionFpRevoked || allFingerprintsWiped) {
+                showFpRevokedPopupAndRelock();
+            }
+        });
+
+        function showFpRevokedPopupAndRelock() {
+            if (document.getElementById('fpRevokedPopup')) return; // already counting down
+            const popup = document.createElement('div');
+            popup.id = 'fpRevokedPopup';
+            popup.style.cssText = 'position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.75); display:flex; align-items:center; justify-content:center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);';
+            popup.innerHTML =
+                '<div style="background:var(--bg-color); border:1px solid var(--glass-border); border-radius:16px; padding:28px 24px; max-width:320px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.5);">' +
+                    '<div style="font-size:32px; margin-bottom:10px;">🔒</div>' +
+                    '<div style="font-weight:800; font-size:15px; margin-bottom:8px; color:var(--text-main);">Fingerprint access removed</div>' +
+                    '<div style="font-size:13px; color:var(--text-dim);">Your fingerprint was removed from Firebase. Signing you back out for security.</div>' +
+                    '<div id="fpRevokedCountdown" style="font-size:13px; font-weight:800; color:var(--accent); margin-top:12px;">Redirecting in 3s…</div>' +
+                '</div>';
+            document.body.appendChild(popup);
+
+            let secs = 3;
+            const countdownEl = popup.querySelector('#fpRevokedCountdown');
+            const timer = setInterval(() => {
+                secs -= 1;
+                if (countdownEl) countdownEl.textContent = 'Redirecting in ' + Math.max(secs, 0) + 's…';
+                if (secs <= 0) {
+                    clearInterval(timer);
+                    popup.remove();
+                    forceAdminRelock('fp-removed-realtime');
+                }
+            }, 1000);
         }
 
         function bufferToBase64(buf) {
@@ -4136,10 +4230,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             if (g) {
                 g.classList.add('hidden');
             }
-            stopGateCamera();
             try { logAdminLogin(method || 'unknown', usedFp); } catch (e) {}
             renderFpList();
-            renderFaceList();
             try { renderAdminLoginLog(); } catch (e) {}
             // Resolve primary and alert after unlock
             (async function() {
@@ -4225,15 +4317,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 st.textContent = 'History cleared.'; }
         };
 
-        function stopGateCamera() {
-            const v = document.getElementById('gateFaceVideo');
-            if (v && v.srcObject) {
-                v.srcObject.getTracks().forEach(t => t.stop());
-                v.srcObject = null;
-                v.style.display = 'none';
-            }
-        }
-
         async function tryFingerprintLogin() {
             if (!window.PublicKeyCredential) {
                 setGateStatus('Fingerprint not supported here.');
@@ -4294,21 +4377,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             } else setGateStatus('Wrong code.');
         }
 
-        /* face removed */
-        function faceDistance(){ return 99; }
-
-        async function startCamera(videoId) {
-            const v = document.getElementById(videoId);
-            if (!v) throw new Error('Camera element missing');
-            return v;
-        }
-
-        async function tryFaceLogin() {
-            setGateStatus('Face unlock removed.');
-        }
-
-        async function hasEnrolledFaces() { return false; }
-
         async function verifyExistingFingerprint() {
             if (!window.PublicKeyCredential) return false;
             try {
@@ -4334,8 +4402,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 return !!(usedId && ids.indexOf(usedId) !== -1);
             } catch (e) { return false; }
         }
-
-        async function verifyExistingFace() { return false; }
 
         async function ensureAdminIdentity(stEl) {
             const fbIds = await getFirebaseFpIds();
@@ -4426,11 +4492,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             }
         };
 
-        window.enrollAdminFace = async function() {
-            const st = document.getElementById('secStatus');
-            if (st) { st.style.color = 'var(--text-dim)'; st.textContent = 'Face system removed.'; }
-        };
-
         window.changeAdminCode = async function() {
             const st = document.getElementById('secStatus');
             if (!(await ensureAdminIdentity(st))) return;
@@ -4484,11 +4545,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             });
         }
 
-        function renderFaceList() {
-            const box = document.getElementById('faceList');
-            if (box) box.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:8px 0;">Face unlock disabled.</div>';
-        }
-
         window.toggleSecurityPanel = function(force) {
             const p = document.getElementById('securityPanel');
             const bd = document.getElementById('securityPanelBackdrop');
@@ -4500,12 +4556,10 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 if (bd) bd.classList.add('open');
                 p.classList.add('open');
                 renderFpList();
-                renderFaceList();
                 try { renderAdminLoginLog(); } catch (e) {}
                 setupSecHoldButtons();
                 // Primary admin viewing security → clear red-dot alert
                 try { if (typeof clearPrimaryAlert === 'function') clearPrimaryAlert(); } catch (e) {}
-                // face unlock removed
             } else if (isOpen) {
                 p.classList.add('closing');
                 p.classList.remove('open');
@@ -6348,7 +6402,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
 
         async function wipeEntireDatabase() {
             try {
-                // Preserve admin security identities (code / faces / fingerprint metadata)
+                // Preserve admin security identities (code / fingerprint metadata)
                 let adminGateData = null;
                 try {
                     const ag = await get(ref(db, 'settings/adminGate'));
@@ -10796,6 +10850,25 @@ function explainFetchError(e) {
     const lab = g('atmPreviewLabel');
     if (lab) lab.textContent = t;
     if (stage) stage.style.background = STAGE_BG[t] || STAGE_BG.native;
+
+    // "Card skin tint" preview — this toggle used to have zero effect
+    // anywhere in the admin's own preview (only the background gradient
+    // ever updated), so there was no way to see it was actually doing
+    // anything. When on, the mini-card picks up a theme-accent tint;
+    // when off, it's the plain neutral glass card.
+    const card = stage ? stage.querySelector('.mini-card') : null;
+    const skinOn = !!(g('atmCardSkin') && g('atmCardSkin').checked);
+    if (card) {
+        if (skinOn) {
+            card.style.background = 'linear-gradient(135deg, rgba(var(--accent-rgb), 0.28), rgba(255,255,255,0.06))';
+            card.style.borderColor = 'var(--accent-glow)';
+            card.style.boxShadow = '0 8px 24px rgba(var(--accent-rgb), 0.25)';
+        } else {
+            card.style.background = 'rgba(255,255,255,.08)';
+            card.style.borderColor = 'rgba(255,255,255,.15)';
+            card.style.boxShadow = 'none';
+        }
+    }
   };
 
   function readForm() {
