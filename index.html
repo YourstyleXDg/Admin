@@ -6800,7 +6800,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             }
         }
 
-        window.saveAppUpdateSettings = async function() {
+                window.saveAppUpdateSettings = async function() {
             const st = document.getElementById('auStatus');
             const vcRaw = document.getElementById('auVersionCode');
             const vc = vcRaw ? parseInt(vcRaw.value, 10) : NaN;
@@ -6808,22 +6808,35 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 if (st) { st.style.color = 'var(--error)'; st.textContent = 'Version Code must be a number.'; }
                 return;
             }
+            
+            const linkVal = getVal('auApkUrl');
+            const msgVal = getVal('auExpiredMessage');
+            const logVal = getVal('auChangelog');
+
             const payload = {
                 versionCode: vc,
                 versionName: getVal('auVersionName'),
-                apkUrl: getVal('auApkUrl'),
-                changelog: getVal('auChangelog'),
+                
+                // Dono key formats save kar rahe hain taaki app mein kabhi mismatch na ho
+                url: linkVal,
+                apkUrl: linkVal,
+                
+                log: logVal,
+                changelog: logVal,
+                
                 forceUpdate: !!getChecked('auForceUpdate'),
                 killOldVersions: !!getChecked('auKillOldVersions'),
-                expiredMessage: getVal('auExpiredMessage'),
+                
+                revokeMessage: msgVal,
+                expiredMessage: msgVal,
+                
                 updatedAt: Date.now()
             };
             try {
                 await set(ref(db, 'settings/appUpdate'), payload);
                 refreshAppUpdateBadge(payload);
                 if (st) { st.style.color = 'var(--accent)'; st.textContent = 'Saved & published — live for all devices.'; }
-                // Panel content height may have changed (status line length) —
-                // re-measure so the smooth-collapse animation stays accurate.
+                
                 const wrap = document.getElementById('appUpdatePanelWrap');
                 const inner = document.getElementById('appUpdatePanel');
                 if (wrap && inner && wrap.classList.contains('open')) {
