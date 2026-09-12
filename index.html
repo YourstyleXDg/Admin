@@ -40,6 +40,7 @@
             --orb-1: rgba(0, 255, 136, 0.15);
             --orb-2: rgba(0, 150, 255, 0.1);
             --input-bg: rgba(0, 0, 0, 0.3);
+            --panel-bg: rgba(0, 0, 0, 0.18);
             --float-amount: -5px;
         }
 
@@ -58,6 +59,7 @@
             --orb-1: rgba(0, 200, 120, 0.28);
             --orb-2: rgba(80, 140, 255, 0.22);
             --input-bg: rgba(255, 255, 255, 0.72);
+            --panel-bg: rgba(15, 23, 42, 0.05);
             --float-amount: -5px;
         }
         body.light-mode::before,
@@ -2298,6 +2300,16 @@
             background: rgba(0,255,136,.14);
             color: var(--accent);
         }
+        /* Hold-to-copy-link feedback: a slow fill while holding, then a
+           quick bright flash the moment the hold triggers the copy. */
+        .cloud-file-row .name.name-holding {
+            background: rgba(92,200,255,.16);
+            transition: background .65s ease;
+        }
+        .cloud-file-row .name.name-hold-flash {
+            background: rgba(92,200,255,.4) !important;
+            transition: background .1s ease;
+        }
         .cloud-file-row .meta {
             color: var(--text-dim);
             font-size: 11px;
@@ -2638,7 +2650,7 @@
 }
 .cat-mode-bar{
   display:none;margin:10px 8px 18px;padding:12px;border-radius:14px;
-  border:1px solid var(--glass-border);background:rgba(0,0,0,.2);font-size:12px;font-weight:700;color:var(--text-dim);
+  border:1px solid var(--glass-border);background:var(--panel-bg);font-size:12px;font-weight:700;color:var(--text-dim);
 }
 body.cat-world-active .cat-mode-bar{display:block}
 .cat-mode-bar label{display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer;color:var(--text-main)}
@@ -2738,8 +2750,6 @@ body.cat-world-active .cat-mode-bar{display:block}
         .atm-card .atm-swatch{position:absolute;inset:0;opacity:.85;pointer-events:none}
         .atm-card .atm-title{position:relative;z-index:1;font-size:13px;font-weight:900;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5)}
         .atm-card .atm-desc{position:relative;z-index:1;font-size:10px;font-weight:650;color:rgba(255,255,255,.82);margin-top:4px;line-height:1.35}
-        body.light-mode .atm-card .atm-title{color:#0f172a;text-shadow:none}
-        body.light-mode .atm-card .atm-desc{color:#475569}
 
 
         .ios-toggle{position:relative;width:46px;height:28px;flex:none}
@@ -3141,61 +3151,6 @@ body.cat-world-active .cat-mode-bar{display:block}
                 </div>
             </div>
 
-            <!-- ⏱ APP EXPIRY & UPDATE -->
-            <div class="section-box glass-panel" style="margin-bottom:22px;">
-                <div id="appUpdateChip" onclick="toggleAppUpdatePanel()" style="display:inline-flex;align-items:center;gap:10px;cursor:pointer;padding:12px 18px;border-radius:14px;background:rgba(255,159,10,.12);color:var(--warn);font-weight:800;user-select:none;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                    APP EXPIRY &amp; UPDATE
-                    <span id="appUpdateBadge" style="margin-left:6px;font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.25);color:var(--text-dim);display:none;"></span>
-                </div>
-                <div id="appUpdatePanel" style="display:none;margin-top:15px;">
-                    <div style="display:flex;flex-direction:column;gap:16px;">
-                        <p style="font-size:13px;color:var(--text-dim);font-weight:600;line-height:1.5;margin:0;">
-                            Controls remote update + global killswitch. Android reads
-                            <code style="color:var(--accent);font-size:12px;">settings/appUpdate.json</code>
-                        </p>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                            <div>
-                                <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;">Version Code</div>
-                                <input type="number" id="auVersionCode" placeholder="e.g. 2" min="1" step="1" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
-                            </div>
-                            <div>
-                                <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;">Version Name</div>
-                                <input type="text" id="auVersionName" placeholder="e.g. 2.0" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
-                            </div>
-                        </div>
-                        <div>
-                            <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;">APK Download URL</div>
-                            <input type="url" id="auUrl" placeholder="https://github.com/.../app.apk" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
-                        </div>
-                        <div>
-                            <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;">Changelog / Log</div>
-                            <textarea id="auLog" rows="3" placeholder="Bug fixes and improvements..." style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;resize:vertical;font-family:inherit;"></textarea>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
-                            <label style="display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;cursor:pointer;color:var(--text-main);">
-                                <input type="checkbox" id="auForceUpdate" style="width:18px;height:18px;accent-color:var(--accent);">
-                                Force Update
-                            </label>
-                            <label style="display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;cursor:pointer;color:var(--error);">
-                                <input type="checkbox" id="auIsExpired" style="width:18px;height:18px;accent-color:var(--error);">
-                                App Expired (Killswitch)
-                            </label>
-                        </div>
-                        <div>
-                            <div style="font-size:12px;font-weight:800;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;">Revoke / Expired Message</div>
-                            <input type="text" id="auRevokeMessage" placeholder="App access has expired. Please update." style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
-                        </div>
-                        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-                            <button class="btn" type="button" style="background:var(--accent);color:#000;" onclick="publishAppUpdate()">SAVE &amp; PUBLISH</button>
-                            <button class="btn" type="button" style="background:rgba(150,150,150,.15);color:var(--text-main);" onclick="loadAppUpdateSettings()">RELOAD</button>
-                            <span id="auStatus" style="font-size:13px;font-weight:700;color:var(--text-dim);"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-
             <div class="stats-grid">
                 <div class="stat-card glass-panel float-anim"><h3>Total Devices</h3><div class="val" id="stat-total">0</div></div>
                 <div class="stat-card glass-panel float-anim" style="cursor: pointer;" onclick="document.getElementById('nav-live-active').click()"><h3>Active Users</h3><div class="val green" id="stat-live-active">0</div></div>
@@ -3365,7 +3320,7 @@ body.cat-world-active .cat-mode-bar{display:block}
                 </div>
                 <p id="atmStatus" style="font-size:12px;font-weight:700;color:var(--text-dim);min-height:18px;margin-bottom:12px;"></p>
 
-                <div style="padding:12px 14px;border-radius:14px;border:1px solid var(--glass-border);background:rgba(0,0,0,.12);margin-bottom:14px;">
+                <div style="padding:12px 14px;border-radius:14px;border:1px solid var(--glass-border);background:var(--panel-bg);margin-bottom:14px;">
                     <div class="atm-collapsible-hd" id="atmPrevHd" onclick="toggleAtmPreviewSection()">
                         <div style="font-size:13px;font-weight:900;">Live preview (in panel)</div>
                         <svg class="chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
@@ -3390,7 +3345,7 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <p style="font-size:11px;color:var(--text-dim);margin:12px 0 0;line-height:1.45;">MP3 optional: put loops in <code>./sounds/atm/</code> as rain.mp3, night.mp3, diwali.mp3, patriot.mp3, soft.mp3, cyber.mp3, ocean.mp3, ember.mp3, holi.mp3</p>
 
                 <!-- ADMIN PANEL GRAPHIC & FLUIDITY CONTROL -->
-                <div style="margin-top:18px;padding:14px 16px;border-radius:16px;border:1px solid var(--glass-border);background:rgba(0,0,0,.15);">
+                <div style="margin-top:18px;padding:14px 16px;border-radius:16px;border:1px solid var(--glass-border);background:var(--panel-bg);">
                     <div style="font-size:13px;font-weight:900;margin-bottom:2px;">Admin Panel Graphic and Fluidity Control</div>
                     <p style="font-size:11px;color:var(--text-dim);margin:4px 0 12px;line-height:1.45;">Local to this device only. Lower it to cut blur/animations for low load; max it for full visuals. Doesn't affect the login page or other admins.</p>
                     <input type="range" id="gfxFluidity" min="0" max="2" step="1" value="2" style="width:100%;" oninput="setGfxFluidity(this.value)">
@@ -3493,7 +3448,7 @@ body.cat-world-active .cat-mode-bar{display:block}
         <h2 style="color:#5cc8ff;font-size:24px;margin:0 0 8px;font-weight:900;">Cloud Storage</h2>
         <p style="color:var(--text-dim);font-size:13px;margin:0 0 16px;line-height:1.5;">Backblaze B2 — upload / download files. Keys save in Firebase (not in this chat).</p>
 
-        <div style="padding:14px 16px;border-radius:16px;border:1px solid var(--glass-border);background:rgba(0,0,0,.15);margin-bottom:16px;">
+        <div style="padding:14px 16px;border-radius:16px;border:1px solid var(--glass-border);background:var(--panel-bg);margin-bottom:16px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
                 <span style="font-size:12px;font-weight:800;color:var(--text-dim);letter-spacing:.5px;">STORAGE</span>
                 <span id="cloudUsedLabel" style="font-size:12px;font-weight:800;color:var(--text-main);">—</span>
@@ -4194,6 +4149,14 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             if (mySessionFpRevoked || allFingerprintsWiped) {
                 showFpRevokedPopupAndRelock();
             }
+            // Keep the Security panel's fingerprint list live too — if it's
+            // currently open, re-render it immediately off this same
+            // real-time snapshot instead of waiting for the panel to be
+            // closed and reopened.
+            try {
+                const secPanel = document.getElementById('securityPanel');
+                if (secPanel && secPanel.classList.contains('open')) renderFpList();
+            } catch (e) {}
         });
 
         function showFpRevokedPopupAndRelock() {
@@ -4310,6 +4273,16 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             } catch (e) {}
         }
 
+        // Live alert watcher — so #1 sees the red dot appear immediately
+        // when another login happens, without needing to reload or reopen
+        // the Security panel first.
+        onValue(ref(db, 'settings/adminGate/primaryAlert'), (snap) => {
+            if (!window.__adminIsPrimary || !adminUnlocked) return;
+            if (!snap.exists()) { setSecAlertDot(false); return; }
+            const v = snap.val() || {};
+            setSecAlertDot(v.seen !== true);
+        });
+
         function unlockAdmin(method, fpId) {
             adminUnlocked = true;
             sessionStorage.setItem('dgxen_admin_unlocked', '1');
@@ -4323,15 +4296,36 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             try { logAdminLogin(method || 'unknown', usedFp); } catch (e) {}
             renderFpList();
             try { renderAdminLoginLog(); } catch (e) {}
-            // Resolve primary and alert after unlock
+            // Resolve primary and alert after unlock.
+            //
+            // Rule: EVERY login that is not provably fingerprint #1 (the
+            // oldest registered fingerprint) shows the red dot to #1 —
+            // that includes code logins AND logins with any other
+            // registered fingerprint. Only a login that authenticates as
+            // fp #1 itself stays silent.
+            //
+            // getPrimaryFpId() reads Firebase fresh on every call, which
+            // previously meant a slow/transient read right after page load
+            // could momentarily resolve to '' or a stale value even for
+            // #1's own fingerprint login — falsely flagging #1 as "not
+            // primary" and writing a self-alert that then showed up as a
+            // phantom red dot the *next* time #1 logged in for real. Force
+            // a fresh, retried read here (rather than trusting a single
+            // possibly-early snapshot) before deciding.
             (async function() {
-                const primary = await getPrimaryFpId();
+                let primary = await getPrimaryFpId();
+                if (!primary && usedFp) {
+                    // Retry once — guards against a Firebase read that
+                    // raced ahead of the fingerprints node being ready.
+                    await new Promise(r => setTimeout(r, 400));
+                    primary = await getPrimaryFpId();
+                }
                 const isPrimary = !!(usedFp && primary && usedFp === primary);
-                // Code login is never treated as primary FP viewer for the alert
                 window.__adminIsPrimary = isPrimary;
                 sessionStorage.setItem('dgxen_admin_is_primary', isPrimary ? '1' : '0');
                 if (!isPrimary) {
-                    // Other admin / code login → notify primary
+                    // Any other login method — code, or a different
+                    // registered fingerprint — notifies #1.
                     try {
                         await set(ref(db, 'settings/adminGate/primaryAlert'), {
                             at: Date.now(),
@@ -4340,7 +4334,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                             seen: false
                         });
                     } catch (e) {}
-                    setSecAlertDot(false); // never show on non-primary
+                    setSecAlertDot(false); // never show on the non-primary session itself
                 } else {
                     await checkPrimaryAlert();
                 }
@@ -4605,33 +4599,33 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         function renderFpList() {
             const box = document.getElementById('fpList');
             if (!box) return;
-            const ids = getLocalFpIds();
-            // also try firebase list
-            get(ref(db, 'settings/adminGate/fingerprints')).then(snap => {
-                const rows = [];
-                const seen = new Set();
-                ids.forEach((id, i) => {
-                    seen.add(id);
-                    rows.push(`<div class="mk-item"><div style="font-size:13px;font-weight:700;">Fingerprint #${i+1}<div style="font-size:11px;color:var(--text-dim);font-family:monospace;word-break:break-all;margin-top:4px;">${id}</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Delete only via Firebase</div></div></div>`);
-                });
-                if (snap.exists()) {
-                    const data = snap.val();
-                    Object.keys(data).forEach(k => {
-                        const id = (data[k] && data[k].id) || k;
-                        if (seen.has(id)) return;
-                        rows.push(
-                            `<div class="mk-item"><div style="font-size:13px;font-weight:700;">Fingerprint (cloud)<div style="font-size:11px;color:var(--text-dim);font-family:monospace;word-break:break-all;margin-top:4px;">${id}</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Delete only via Firebase</div></div></div>`
-                            );
-                    });
+            box.innerHTML = '<div style="color:var(--text-dim);padding:12px;">Loading…</div>';
+            // Firebase is the single source of truth for what's actually
+            // registered — the local device cache (getLocalFpIds) is only
+            // this device's own convenience copy for its own login flow and
+            // must never be used to decide what the Security panel displays,
+            // or a fingerprint deleted directly in Firebase keeps showing up
+            // here as a stale "#1" that can never be cleared from the UI.
+            getFirebaseFpIds(true).then(ids => {
+                if (!ids.length) {
+                    box.innerHTML = '<div style="color:var(--text-dim);padding:12px;">No fingerprint registered yet.</div>';
+                    return;
                 }
-                box.innerHTML = rows.length ? rows.join('') :
-                    '<div style="color:var(--text-dim);padding:12px;">No fingerprints yet.</div>';
+                const rows = ids.map((id, i) =>
+                    `<div class="mk-item"><div style="font-size:13px;font-weight:700;">Fingerprint #${i+1}<div style="font-size:11px;color:var(--text-dim);font-family:monospace;word-break:break-all;margin-top:4px;">${id}</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Delete only via Firebase</div></div></div>`
+                );
+                box.innerHTML = rows.join('');
             }).catch(() => {
+                // Firebase unreachable — fall back to the local cache only as
+                // a last resort, and label it clearly as possibly stale
+                // rather than presenting it as confirmed current state.
+                const ids = getLocalFpIds();
                 box.innerHTML = ids.length ?
+                    '<div style="font-size:11px;color:var(--text-dim);padding:4px 4px 10px;">Offline — showing last known list, may be outdated.</div>' +
                     ids.map((id, i) =>
                         `<div class="mk-item"><div style="font-size:13px;font-weight:700;">Fingerprint #${i+1}<div style="font-size:11px;color:var(--text-dim);font-family:monospace;word-break:break-all;">${id}</div></div></div>`
                         ).join('') :
-                    '<div style="color:var(--text-dim);padding:12px;">No fingerprints yet.</div>';
+                    '<div style="color:var(--text-dim);padding:12px;">No fingerprint registered yet.</div>';
             });
         }
 
@@ -6644,119 +6638,6 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
 })();
 
 // ===== NOTICE PANEL =====
-
-        // ===== APP EXPIRY & UPDATE (settings/appUpdate) =====
-        window.toggleAppUpdatePanel = function() {
-            const p = document.getElementById('appUpdatePanel');
-            if (!p) return;
-            p.style.display = (p.style.display === 'none' || !p.style.display) ? 'block' : 'none';
-        };
-
-        function auSetStatus(msg, ok) {
-            const el = document.getElementById('auStatus');
-            if (!el) return;
-            el.textContent = msg || '';
-            el.style.color = ok === false ? 'var(--error)' : (ok ? 'var(--accent)' : 'var(--text-dim)');
-        }
-
-        function auUpdateBadge(v) {
-            const b = document.getElementById('appUpdateBadge');
-            if (!b) return;
-            if (v && v.isExpired) {
-                b.style.display = 'inline-block';
-                b.textContent = 'EXPIRED';
-                b.style.color = 'var(--error)';
-                b.style.background = 'rgba(255,59,48,.15)';
-            } else if (v && v.forceUpdate) {
-                b.style.display = 'inline-block';
-                b.textContent = 'FORCE UPDATE';
-                b.style.color = 'var(--warn)';
-                b.style.background = 'rgba(255,159,10,.15)';
-            } else if (v && (v.versionName || v.versionCode)) {
-                b.style.display = 'inline-block';
-                b.textContent = 'v' + (v.versionName || v.versionCode);
-                b.style.color = 'var(--accent)';
-                b.style.background = 'rgba(0,255,136,.12)';
-            } else {
-                b.style.display = 'none';
-            }
-        }
-
-        window.loadAppUpdateSettings = async function() {
-            try {
-                const snap = await get(ref(db, 'settings/appUpdate'));
-                const v = snap.exists() ? (snap.val() || {}) : {};
-                const vc = document.getElementById('auVersionCode');
-                const vn = document.getElementById('auVersionName');
-                const url = document.getElementById('auUrl');
-                const log = document.getElementById('auLog');
-                const fu = document.getElementById('auForceUpdate');
-                const ie = document.getElementById('auIsExpired');
-                const rm = document.getElementById('auRevokeMessage');
-                if (vc) vc.value = v.versionCode != null ? v.versionCode : '';
-                if (vn) vn.value = v.versionName || '';
-                if (url) url.value = v.url || '';
-                if (log) log.value = v.log || '';
-                if (fu) fu.checked = !!v.forceUpdate;
-                if (ie) ie.checked = !!v.isExpired;
-                if (rm) rm.value = v.revokeMessage || '';
-                auUpdateBadge(v);
-                auSetStatus('Loaded', true);
-            } catch (e) {
-                console.warn('appUpdate load', e);
-                auSetStatus(e.message || String(e), false);
-            }
-        };
-
-        window.publishAppUpdate = async function() {
-            const versionCode = Number(document.getElementById('auVersionCode') && document.getElementById('auVersionCode').value);
-            const versionName = (document.getElementById('auVersionName') && document.getElementById('auVersionName').value || '').trim();
-            const url = (document.getElementById('auUrl') && document.getElementById('auUrl').value || '').trim();
-            const log = (document.getElementById('auLog') && document.getElementById('auLog').value || '').trim();
-            const forceUpdate = !!(document.getElementById('auForceUpdate') && document.getElementById('auForceUpdate').checked);
-            const isExpired = !!(document.getElementById('auIsExpired') && document.getElementById('auIsExpired').checked);
-            const revokeMessage = (document.getElementById('auRevokeMessage') && document.getElementById('auRevokeMessage').value || '').trim()
-                || 'App access has expired. Please update.';
-
-            if (!versionCode || versionCode < 1) {
-                auSetStatus('Version code required (integer ≥ 1)', false);
-                if (typeof showConfirm === 'function') showConfirm('Missing field', 'Enter a valid versionCode (e.g. 2).', null);
-                return;
-            }
-
-            const payload = {
-                versionCode: versionCode,
-                versionName: versionName || String(versionCode),
-                url: url,
-                log: log,
-                forceUpdate: forceUpdate,
-                isExpired: isExpired,
-                revokeMessage: revokeMessage,
-                updatedAt: Date.now()
-            };
-
-            try {
-                await set(ref(db, 'settings/appUpdate'), payload);
-                auUpdateBadge(payload);
-                auSetStatus('Published · live on Firebase', true);
-                if (typeof showConfirm === 'function') {
-                    showConfirm('App Update Published',
-                        (isExpired ? 'KILL SWITCH ON — apps will see isExpired.\n' : '') +
-                        (forceUpdate ? 'Force update enabled.\n' : '') +
-                        'versionCode ' + payload.versionCode + ' · ' + payload.versionName,
-                        null);
-                }
-            } catch (e) {
-                auSetStatus(e.message || String(e), false);
-                if (typeof showConfirm === 'function') showConfirm('Error', e.message || String(e), null);
-            }
-        };
-
-        try { onValue(ref(db, 'settings/appUpdate'), function() { loadAppUpdateSettings(); }); } catch (e) {}
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadAppUpdateSettings);
-        else try { loadAppUpdateSettings(); } catch (e) {}
-
-
         window.toggleNoticePanel = function() {
             const p = document.getElementById('noticePanel');
             const c = document.getElementById('noticeChip');
@@ -8068,7 +7949,7 @@ function explainFetchError(e) {
                 return (
                   '<div class="cloud-file-row">' +
 
-                  '<div class="name"' + (hasPreview ? ' data-exp-id="' + fid + '" data-exp-name="' + name + '" role="button" tabindex="0" aria-expanded="false" title="Tap to preview"' : '') + '>' +
+                  '<div class="name" data-name="' + name + '"' + (hasPreview ? ' data-exp-id="' + fid + '" data-exp-name="' + name + '" role="button" tabindex="0" aria-expanded="false" title="Tap to preview"' : '') + '>' +
                   name +
 
                   '<div class="meta">' +
@@ -8147,6 +8028,9 @@ function explainFetchError(e) {
               );
             }
           );
+
+        // ===== HOLD FILE NAME TO COPY SHARE LINK =====
+        setupCloudNameHoldToCopy(box);
 
         // ===== PREVIEW (click any file row to open — toggle same file = close) =====
         box.querySelectorAll('[data-exp-id]').forEach(nameEl => {
@@ -8371,6 +8255,101 @@ function explainFetchError(e) {
     } catch (e) {
       setStatus('Download: ' + explainFetchError(e), false);
     }
+  }
+
+  // =========================================================
+  // COPY SHARE LINK (hold file name in the list)
+  // =========================================================
+  // Builds the same kind of authorized, time-limited B2 URL used for
+  // downloads, but copies it to the clipboard instead of fetching the file —
+  // so it can be pasted/shared elsewhere. Valid for 1 hour, same as the
+  // download authorization above.
+  async function copyCloudFileLink(fileName) {
+    try {
+      await authorizeB2();
+      const authRes = await b2Fetch(
+          b2.apiUrl + '/b2api/v2/b2_get_download_authorization',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: b2.authToken,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                bucketId: b2.bucketId,
+                fileNamePrefix: fileName,
+                validDurationInSeconds: 3600
+            })
+          }
+      );
+      const authData = await authRes.json().catch(() => ({}));
+      if (!authRes.ok) throw new Error(authData.message || 'Link auth failed');
+
+      const path = fileName.split('/').map(encodeURIComponent).join('/');
+      const url = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path + '?Authorization=' + encodeURIComponent(authData.authorizationToken);
+
+      try {
+        await navigator.clipboard.writeText(url);
+        setStatus('Link copied (valid 1 hour).', true);
+      } catch (clipErr) {
+        // Clipboard API can be blocked in some WebViews — fall back to a
+        // manual-select prompt so the link is still obtainable.
+        window.prompt('Copy link (valid 1 hour):', url);
+      }
+    } catch (e) {
+      setStatus('Link: ' + explainFetchError(e), false);
+    }
+  }
+
+  // Long-press (hold) a file name in the Cloud list to copy its share link.
+  // Mirrors the hold-to-reveal pattern already used elsewhere in this panel
+  // (e.g. FINGERPRINT / ADD FINGERPRINT holds) — mouse+touch, with a small
+  // visual pulse for feedback, and a real long-press (won't fire on a quick
+  // tap, which still opens the normal preview).
+  function setupCloudNameHoldToCopy(box) {
+    if (!box || box.dataset.holdCopyBound === '1') return;
+    box.dataset.holdCopyBound = '1';
+    const HOLD_MS = 650;
+    let timer = null, target = null, longPressed = false;
+
+    function clear() {
+      if (timer) { clearTimeout(timer); timer = null; }
+      if (target) target.classList.remove('name-holding');
+      target = null;
+    }
+    function start(nameEl) {
+      clear();
+      target = nameEl;
+      longPressed = false;
+      target.classList.add('name-holding');
+      timer = setTimeout(function() {
+        longPressed = true;
+        target.classList.remove('name-holding');
+        target.classList.add('name-hold-flash');
+        setTimeout(function() { if (target) target.classList.remove('name-hold-flash'); }, 260);
+        const fileName = target.getAttribute('data-name') || target.getAttribute('data-exp-name') || target.textContent.trim();
+        copyCloudFileLink(fileName);
+      }, HOLD_MS);
+    }
+
+    box.addEventListener('pointerdown', function(e) {
+      const nameEl = e.target.closest('.cloud-file-row .name');
+      if (!nameEl) return;
+      start(nameEl);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function(evt) {
+      box.addEventListener(evt, function() { clear(); });
+    });
+    // Suppress the normal tap-to-preview toggle when this press turned into
+    // a long-press copy — otherwise releasing after the hold would also
+    // trigger the click-to-preview handler already bound elsewhere.
+    box.addEventListener('click', function(e) {
+      if (longPressed) {
+        e.stopPropagation();
+        e.preventDefault();
+        longPressed = false;
+      }
+    }, true);
   }
 
   // =========================================================
