@@ -168,7 +168,8 @@
         body.is-zooming::before,
         body.is-zooming::after,
         body.is-zooming .water-wave,
-        body.is-zooming .glass-panel::after {
+        body.is-zooming .glass-panel::after,
+        body.is-zooming .glass-panel::before {
             animation-play-state: paused !important;
         }
         body.is-zooming .glass-panel,
@@ -188,6 +189,7 @@
         @media (prefers-reduced-motion: reduce) {
             body::before, body::after, .water-wave { animation: none !important; }
             body.light-mode .glass-panel::after { animation: none !important; opacity: 0 !important; }
+            body.light-mode .glass-panel::before { animation: none !important; opacity: 0 !important; }
         }
 
         /* --- MAX MODE WATER EFFECT --- */
@@ -331,6 +333,28 @@
             50% { left: 120%; opacity: 0; }
             100% { left: 120%; opacity: 0; }
         }
+        /* Second, slower drifting highlight moving on the opposite diagonal
+           at a different speed than ::after, so the two sheens cross paths
+           at irregular intervals instead of both sweeping in lockstep —
+           reads as fluid, shifting refraction rather than one repeating
+           mechanical sweep. */
+        body.light-mode .glass-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 60% 40% at var(--refract-x, 30%) var(--refract-y, 20%), rgba(255,255,255,0.35), transparent 60%);
+            animation: glassRefractDrift 13s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 1;
+            mix-blend-mode: overlay;
+        }
+        @keyframes glassRefractDrift {
+            0%   { --refract-x: 20%; --refract-y: 15%; }
+            25%  { --refract-x: 75%; --refract-y: 30%; }
+            50%  { --refract-x: 60%; --refract-y: 75%; }
+            75%  { --refract-x: 15%; --refract-y: 60%; }
+            100% { --refract-x: 20%; --refract-y: 15%; }
+        }
         body.light-mode .sidebar {
             background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.35));
             backdrop-filter: blur(50px) saturate(200%);
@@ -347,6 +371,17 @@
         }
         body.light-mode .stat-card:hover {
             border-color: rgba(0,184,107,0.45);
+        }
+        /* .mk-item sets its own flat neutral-gray background instead of
+           inheriting .glass-panel, so it had no light-mode counterpart and
+           rendered as a near-invisible gray-on-light-gray block. */
+        body.light-mode .mk-item {
+            background: rgba(255,255,255,0.55);
+            border-color: rgba(15,23,42,0.08);
+        }
+        body.light-mode .mk-item:hover {
+            background: rgba(255,255,255,0.78);
+            border-color: rgba(15,23,42,0.16);
         }
         body.light-mode input[type="text"],
         body.light-mode input[type="number"],
