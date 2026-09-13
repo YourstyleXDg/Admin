@@ -6824,7 +6824,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             return null;
         }
 
-                window.saveAppUpdateSettings = async function() {
+                                window.saveAppUpdateSettings = async function() {
             const st = document.getElementById('auStatus');
             const vcRaw = document.getElementById('auVersionCode');
             const vc = vcRaw ? parseInt(vcRaw.value, 10) : NaN;
@@ -6842,13 +6842,15 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 versionName: getVal('auVersionName'),
                 
                 // DEX EXACTLY YEH KEYS DHOONDH RAHA HAI
-                apkUrl: apkUrlLink,       // Ye Dex download ke liye trigger karega
-                description: logVal,      // Ye Dex update dialog me text/emoji dikhayega
+                url: apkUrlLink,          // classes3.dex isko dhoondhta hai
+                apkUrl: apkUrlLink,       // Backup link
                 
-                // Backup keys (Safety ke liye)
-                url: apkUrlLink,
-                log: logVal,
-                changelog: logVal,
+                // DESCRIPTION KE LIYE DEX YEH DHOONDHTA HAI
+                releaseNotes: logVal,     // Update dialog me text yahi dikhayega
+                updateMessage: logVal,    // Backup message
+                description: logVal,      // Tumhare original format ke liye
+                log: logVal,              // Backup
+                changelog: logVal,        // Backup
                 
                 forceUpdate: !!getChecked('auForceUpdate'),
                 killOldVersions: !!getChecked('auKillOldVersions'),
@@ -6873,7 +6875,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 if (st) { st.style.color = 'var(--error)'; st.textContent = 'Save failed: ' + (e.message || e); }
             }
         };
-
+        
 
         function refreshAppUpdateBadge(v) {
             const badge = document.getElementById('appUpdateChipBadge');
