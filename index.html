@@ -6833,34 +6833,37 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 return;
             }
             
-            const apkUrl = getVal('auApkUrl');
+            const apkUrlLink = getVal('auApkUrl');
             const msgVal = getVal('auExpiredMessage');
             const logVal = getVal('auChangelog');
-            
+
             const payload = {
                 versionCode: vc,
                 versionName: getVal('auVersionName'),
-                // FIXED: Dex expects exactly 'url', 'log', and 'revokeMessage'
-                url: apkUrl,
+                
+                // DEX EXACTLY YEH KEYS DHOONDH RAHA HAI
+                apkUrl: apkUrlLink,       // Ye Dex download ke liye trigger karega
+                description: logVal,      // Ye Dex update dialog me text/emoji dikhayega
+                
+                // Backup keys (Safety ke liye)
+                url: apkUrlLink,
                 log: logVal,
-                revokeMessage: msgVal,
+                changelog: logVal,
+                
                 forceUpdate: !!getChecked('auForceUpdate'),
-                isExpired: !!getChecked('auKillOldVersions'), // Changed from killOldVersions to match Dex expectation
+                killOldVersions: !!getChecked('auKillOldVersions'),
+                
+                revokeMessage: msgVal,
+                expiredMessage: msgVal,
+                
                 updatedAt: Date.now()
             };
+            
             try {
                 await set(ref(db, 'settings/appUpdate'), payload);
                 refreshAppUpdateBadge(payload);
-                const urlWarning = checkApkUrlForCommonMistakes(apkUrl);
-                if (st) {
-                    if (urlWarning) {
-                        st.style.color = 'var(--error)';
-                        st.textContent = 'Saved — but check the APK URL: ' + urlWarning;
-                    } else {
-                        st.style.color = 'var(--accent)';
-                        st.textContent = 'Saved & published — live for all devices.';
-                    }
-                }
+                if (st) { st.style.color = 'var(--accent)'; st.textContent = 'Saved & published — live for all devices.'; }
+                
                 const wrap = document.getElementById('appUpdatePanelWrap');
                 const inner = document.getElementById('appUpdatePanel');
                 if (wrap && inner && wrap.classList.contains('open')) {
@@ -6870,6 +6873,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 if (st) { st.style.color = 'var(--error)'; st.textContent = 'Save failed: ' + (e.message || e); }
             }
         };
+
 
         function refreshAppUpdateBadge(v) {
             const badge = document.getElementById('appUpdateChipBadge');
