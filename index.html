@@ -6789,7 +6789,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 setVal('auVersionCode', v.versionCode != null ? v.versionCode : '');
                 setVal('auVersionName', v.versionName || '');
                 setVal('auApkUrl', v.apkUrl || '');
-                setVal('auChangelog', v.changelog || '');
+                setVal('auChangelog', v.description || v.changelog || '');
                 setChecked('auForceUpdate', !!v.forceUpdate);
                 setChecked('auKillOldVersions', !!v.killOldVersions);
                 setVal('auExpiredMessage', v.expiredMessage || '');
@@ -6800,7 +6800,31 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             }
         }
 
-                window.saveAppUpdateSettings = async function() {
+        // The installed downloader uses a raw HttpURLConnection to stream
+        // bytes straight from this URL — it has no browser, no redirect/auth
+        // handling, and no way to "click through" a share page. A link that
+        // opens fine in a browser but isn't a true direct file link is one
+        // of the most common reasons the download silently fails while the
+        // dialog itself still shows up fine. This only warns — it never
+        // blocks saving, since some direct links won't match these patterns.
+        function checkApkUrlForCommonMistakes(url) {
+            if (!url) return null;
+            if (/dropbox\.com\/.*[?&]dl=0(&|$)/i.test(url)) {
+                return 'This Dropbox link opens the preview page (dl=0), not the file — change it to dl=1.';
+            }
+            if (/drive\.google\.com\/file\/d\//i.test(url)) {
+                return 'Google Drive share links usually need converting to a direct-download form, or large files get an interstitial page that breaks a raw download — B2 or Dropbox (dl=1) is more reliable.';
+            }
+            if (/github\.com\/.*\/blob\//i.test(url)) {
+                return 'This is a GitHub "blob" page, not the raw file — use the raw.githubusercontent.com link instead.';
+            }
+            if (!/\.apk(\?|$)/i.test(url) && !/[?&]dl=1(&|$)/i.test(url)) {
+                return "This link doesn't end in .apk and isn't a known direct-download form — double check it returns the raw file, not a webpage.";
+            }
+            return null;
+        }
+
+        window.saveAppUpdateSettings = async function() {
             const st = document.getElementById('auStatus');
             const vcRaw = document.getElementById('auVersionCode');
             const vc = vcRaw ? parseInt(vcRaw.value, 10) : NaN;
@@ -6808,35 +6832,39 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 if (st) { st.style.color = 'var(--error)'; st.textContent = 'Version Code must be a number.'; }
                 return;
             }
-            
-            const linkVal = getVal('auApkUrl');
-            const msgVal = getVal('auExpiredMessage');
-            const logVal = getVal('auChangelog');
-
+            const apkUrl = getVal('auApkUrl');
             const payload = {
                 versionCode: vc,
                 versionName: getVal('auVersionName'),
-                
-                // Dono key formats save kar rahe hain taaki app mein kabhi mismatch na ho
-                url: linkVal,
-                apkUrl: linkVal,
-                
-                log: logVal,
-                changelog: logVal,
-                
+                apkUrl: apkUrl,
+                // The installed update-checker module (classes3.dex) reads
+                // this field back as "description" (confirmed from its
+                // compiled string pool), not "changelog" — that mismatch is
+                // why the update dialog's text was always blank no matter
+                // what was typed here. "changelog" is kept alongside it
+                // purely so nothing already saved under the old key is lost.
+                description: getVal('auChangelog'),
+                changelog: getVal('auChangelog'),
                 forceUpdate: !!getChecked('auForceUpdate'),
                 killOldVersions: !!getChecked('auKillOldVersions'),
-                
-                revokeMessage: msgVal,
-                expiredMessage: msgVal,
-                
+                expiredMessage: getVal('auExpiredMessage'),
                 updatedAt: Date.now()
             };
             try {
                 await set(ref(db, 'settings/appUpdate'), payload);
                 refreshAppUpdateBadge(payload);
-                if (st) { st.style.color = 'var(--accent)'; st.textContent = 'Saved & published — live for all devices.'; }
-                
+                const urlWarning = checkApkUrlForCommonMistakes(apkUrl);
+                if (st) {
+                    if (urlWarning) {
+                        st.style.color = 'var(--error)';
+                        st.textContent = 'Saved — but check the APK URL: ' + urlWarning;
+                    } else {
+                        st.style.color = 'var(--accent)';
+                        st.textContent = 'Saved & published — live for all devices.';
+                    }
+                }
+                // Panel content height may have changed (status line length) —
+                // re-measure so the smooth-collapse animation stays accurate.
                 const wrap = document.getElementById('appUpdatePanelWrap');
                 const inner = document.getElementById('appUpdatePanel');
                 if (wrap && inner && wrap.classList.contains('open')) {
