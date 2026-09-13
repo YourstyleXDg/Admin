@@ -3371,7 +3371,8 @@ body.cat-world-active .cat-mode-bar{display:block}
                         <option value="ocean">Ocean</option>
                         <option value="ember">Ember</option>
                         <option value="metroid">3D · Meteor fall</option>
-                        <option value="apex">3D · Ember rise</option>
+                        <option value="apex">Apex · Anime fight (50s loop)</option>
+                        <option value="windy">Windy · Gusting wind streaks</option>
                         <option value="minimal">Minimal</option>
                     </select>
                 </div>
@@ -4342,6 +4343,18 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 const snap = await get(ref(db, 'settings/adminGate/primaryAlert'));
                 if (!snap.exists()) { setSecAlertDot(false); return; }
                 const v = snap.val() || {};
+                // Self-healing: if the stored alert's byFp is actually THIS
+                // session's own confirmed-primary fingerprint, it can only
+                // be a leftover false self-alert from the old race-condition
+                // bug (a real "other admin" alert can never carry the
+                // primary's own fp). Auto-clear rather than surface it —
+                // this also cleans out any already-poisoned alert sitting in
+                // Firebase from before this fix existed, without needing
+                // manual intervention.
+                if (v.byFp && window.__adminSessionFpId && v.byFp === window.__adminSessionFpId) {
+                    await clearPrimaryAlert();
+                    return;
+                }
                 setSecAlertDot(v.seen !== true);
             } catch (e) { setSecAlertDot(false); }
         }
@@ -4361,6 +4374,10 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             if (!window.__adminIsPrimary || !adminUnlocked) return;
             if (!snap.exists()) { setSecAlertDot(false); return; }
             const v = snap.val() || {};
+            if (v.byFp && window.__adminSessionFpId && v.byFp === window.__adminSessionFpId) {
+                clearPrimaryAlert();
+                return;
+            }
             setSecAlertDot(v.seen !== true);
         });
 
@@ -4385,25 +4402,47 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             // registered fingerprint. Only a login that authenticates as
             // fp #1 itself stays silent.
             //
-            // getPrimaryFpId() reads Firebase fresh on every call, which
-            // previously meant a slow/transient read right after page load
-            // could momentarily resolve to '' or a stale value even for
-            // #1's own fingerprint login — falsely flagging #1 as "not
-            // primary" and writing a self-alert that then showed up as a
-            // phantom red dot the *next* time #1 logged in for real. Force
-            // a fresh, retried read here (rather than trusting a single
-            // possibly-early snapshot) before deciding.
+            // getPrimaryFpId() reads Firebase fresh on every call. On a
+            // fresh page load — especially right after the device/network
+            // was asleep or reconnecting (e.g. "came back after 10 min") —
+            // a single read (or even one retry after 400ms) can still fail
+            // or return stale/empty data before the connection has really
+            // settled. A false "not primary" read here writes a self-alert
+            // that then shows up as a phantom red dot on the NEXT login,
+            // even though this login was genuinely fp #1. To close that
+            // gap for good: retry with backoff up to ~3s, and if the
+            // fingerprint used exactly matches what's already known locally
+            // as fp #1 from a previous successful resolution this session,
+            // trust that over a failed/empty network read rather than
+            // writing a false alert off a connectivity hiccup.
             (async function() {
                 let primary = await getPrimaryFpId();
                 if (!primary && usedFp) {
-                    // Retry once — guards against a Firebase read that
-                    // raced ahead of the fingerprints node being ready.
-                    await new Promise(r => setTimeout(r, 400));
-                    primary = await getPrimaryFpId();
+                    const delays = [300, 600, 1000, 1200]; // ~3.1s total worst case
+                    for (const d of delays) {
+                        await new Promise(r => setTimeout(r, d));
+                        primary = await getPrimaryFpId();
+                        if (primary) break;
+                    }
+                }
+                // Last-resort guard: if Firebase still couldn't confirm a
+                // primary (e.g. genuinely offline), but this exact fp was
+                // already confirmed primary earlier in this same browser
+                // (persisted locally, not just this session), don't punish
+                // a connectivity failure by falsely alerting on the user's
+                // own device.
+                if (!primary && usedFp) {
+                    try {
+                        const knownPrimary = localStorage.getItem('dgxen_known_primary_fp');
+                        if (knownPrimary && knownPrimary === usedFp) primary = knownPrimary;
+                    } catch (e) {}
                 }
                 const isPrimary = !!(usedFp && primary && usedFp === primary);
                 window.__adminIsPrimary = isPrimary;
                 sessionStorage.setItem('dgxen_admin_is_primary', isPrimary ? '1' : '0');
+                if (isPrimary) {
+                    try { localStorage.setItem('dgxen_known_primary_fp', usedFp); } catch (e) {}
+                }
                 if (!isPrimary) {
                     // Any other login method — code, or a different
                     // registered fingerprint — notifies #1.
@@ -6155,6 +6194,47 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             return 'unknown';
         }
 
+        // Same lookup chain as resolveAppVersion, but for the numeric
+        // Version Code field (settings/appUpdate uses versionCode as the
+        // source of truth for Force Update / Killswitch comparisons — see
+        // the App Expiry & Update panel). Falls back to the version NAME,
+        // clearly labeled, for any device that hasn't been updated yet to
+        // report appVersionCode — so registered-user blocks never show
+        // blank/unknown just because the app-side change hasn't shipped.
+        function resolveAppVersionCode(user) {
+            const kd = globalKnownDevices || {};
+            const norm = (s) => String(s || '').trim().toLowerCase();
+            const candidates = [
+                user && user.id,
+                user && user.deviceId,
+                user && user.lastDeviceId,
+                user && user.fingerprint,
+                user && user.androidId,
+                user && user.lastLoginDevice
+            ].filter(Boolean).map(norm);
+
+            if (user && user.appVersionCode != null && user.appVersionCode !== '') {
+                return { code: user.appVersionCode, isCode: true };
+            }
+            for (const c of candidates) {
+                const safe = c.replace(/[.#$\[\]\/]/g, '_');
+                if (kd[c] && kd[c].appVersionCode != null && kd[c].appVersionCode !== '') return { code: kd[c].appVersionCode, isCode: true };
+                if (kd[safe] && kd[safe].appVersionCode != null && kd[safe].appVersionCode !== '') return { code: kd[safe].appVersionCode, isCode: true };
+            }
+            for (const k in kd) {
+                const d = kd[k] || {};
+                const kn = norm(k);
+                const did = norm(d.id);
+                if (d.appVersionCode != null && d.appVersionCode !== '' && candidates.some(c => c === kn || c === did || kn.indexOf(c) !== -1 || c.indexOf(kn) !== -1)) {
+                    return { code: d.appVersionCode, isCode: true };
+                }
+            }
+            // No version code reported by this device yet — fall back to
+            // the version name so the chip still shows something useful.
+            const name = resolveAppVersion(user);
+            return { code: name, isCode: false };
+        }
+
         function renderUsersUI(snapshot) {
             const activeListDiv = document.getElementById('activeUserList');
             const bannedListDiv = document.getElementById('bannedUserList');
@@ -6191,6 +6271,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     isBanned;
                 const nativeId = (user.lastDeviceId || user.deviceId || user.fingerprint || user.androidId ||
                     user.lastLoginDevice || '').trim();
+                const vInfo = resolveAppVersionCode(user);
 
                 if (isBanned) {
                     bannedCount++;
@@ -6211,7 +6292,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                         <div class="user-name copyable" style="cursor:pointer;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}</div>
                         <div class="user-id copyable" style="cursor:pointer;" title="Click to copy ID" data-copy="${user.id}">ID: ${user.id}</div>
                         ${nativeId ? `<div class="copyable" style="font-size:10px;color:var(--text-dim);margin:0 0 8px;font-family:monospace;cursor:pointer;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Click to copy native id" data-copy="${String(nativeId).replace(/"/g,'&quot;')}">Dev: ${nativeId}</div>` : ''}
-                        <div class="copyable" style="font-size:11px;font-weight:800;color:var(--accent);margin:0 0 12px;padding:6px 10px;border-radius:8px;background:rgba(0,255,136,0.1);cursor:pointer;" title="Click to copy version" data-copy="${resolveAppVersion(user)}">v ${resolveAppVersion(user)}</div>
+                        <div class="copyable" style="font-size:11px;font-weight:800;color:var(--accent);margin:0 0 12px;padding:6px 10px;border-radius:8px;background:rgba(0,255,136,0.1);cursor:pointer;" title="${vInfo.isCode ? 'Click to copy version code' : 'No version code reported yet — showing version name'}" data-copy="${vInfo.code}">${vInfo.isCode ? 'code ' : 'v '}${vInfo.code}</div>
                         <button type="button" class="btn-full bg-warn" data-action="ban-device" data-user-id="${user.id}" onclick="openBanModal('${user.id}')">BAN DEVICE</button>
                     </div>`;
                 }
