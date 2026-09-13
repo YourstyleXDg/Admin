@@ -6824,7 +6824,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             return null;
         }
 
-        window.saveAppUpdateSettings = async function() {
+                window.saveAppUpdateSettings = async function() {
             const st = document.getElementById('auStatus');
             const vcRaw = document.getElementById('auVersionCode');
             const vc = vcRaw ? parseInt(vcRaw.value, 10) : NaN;
@@ -6832,22 +6832,20 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 if (st) { st.style.color = 'var(--error)'; st.textContent = 'Version Code must be a number.'; }
                 return;
             }
+            
             const apkUrl = getVal('auApkUrl');
+            const msgVal = getVal('auExpiredMessage');
+            const logVal = getVal('auChangelog');
+            
             const payload = {
                 versionCode: vc,
                 versionName: getVal('auVersionName'),
-                apkUrl: apkUrl,
-                // The installed update-checker module (classes3.dex) reads
-                // this field back as "description" (confirmed from its
-                // compiled string pool), not "changelog" — that mismatch is
-                // why the update dialog's text was always blank no matter
-                // what was typed here. "changelog" is kept alongside it
-                // purely so nothing already saved under the old key is lost.
-                description: getVal('auChangelog'),
-                changelog: getVal('auChangelog'),
+                // FIXED: Dex expects exactly 'url', 'log', and 'revokeMessage'
+                url: apkUrl,
+                log: logVal,
+                revokeMessage: msgVal,
                 forceUpdate: !!getChecked('auForceUpdate'),
-                killOldVersions: !!getChecked('auKillOldVersions'),
-                expiredMessage: getVal('auExpiredMessage'),
+                isExpired: !!getChecked('auKillOldVersions'), // Changed from killOldVersions to match Dex expectation
                 updatedAt: Date.now()
             };
             try {
@@ -6863,8 +6861,6 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                         st.textContent = 'Saved & published — live for all devices.';
                     }
                 }
-                // Panel content height may have changed (status line length) —
-                // re-measure so the smooth-collapse animation stays accurate.
                 const wrap = document.getElementById('appUpdatePanelWrap');
                 const inner = document.getElementById('appUpdatePanel');
                 if (wrap && inner && wrap.classList.contains('open')) {
