@@ -6824,7 +6824,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             return null;
         }
 
-                                window.saveAppUpdateSettings = async function() {
+        window.saveAppUpdateSettings = async function() {
             const st = document.getElementById('auStatus');
             const vcRaw = document.getElementById('auVersionCode');
             const vc = vcRaw ? parseInt(vcRaw.value, 10) : NaN;
@@ -6832,40 +6832,40 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 if (st) { st.style.color = 'var(--error)'; st.textContent = 'Version Code must be a number.'; }
                 return;
             }
-            
-            const apkUrlLink = getVal('auApkUrl');
-            const msgVal = getVal('auExpiredMessage');
-            const logVal = getVal('auChangelog');
-
+            const apkUrl = getVal('auApkUrl');
+            const changelogText = getVal('auChangelog');
+            // classes3.dex (dpmodsytupdate) reads ONLY these keys from
+            // settings/appUpdate.json: versionCode, versionName, title,
+            // description, apkUrl, forceUpdate. Extra keys are ignored by
+            // the app but kept so the admin panel can still load them.
             const payload = {
                 versionCode: vc,
                 versionName: getVal('auVersionName'),
-                
-                // DEX EXACTLY YEH KEYS DHOONDH RAHA HAI
-                url: apkUrlLink,          // classes3.dex isko dhoondhta hai
-                apkUrl: apkUrlLink,       // Backup link
-                
-                // DESCRIPTION KE LIYE DEX YEH DHOONDHTA HAI
-                releaseNotes: logVal,     // Update dialog me text yahi dikhayega
-                updateMessage: logVal,    // Backup message
-                description: logVal,      // Tumhare original format ke liye
-                log: logVal,              // Backup
-                changelog: logVal,        // Backup
-                
+                title: 'New version available',
+                description: changelogText,
+                apkUrl: apkUrl,
                 forceUpdate: !!getChecked('auForceUpdate'),
+                // Admin-only / future keys (dex ignores these)
+                changelog: changelogText,
                 killOldVersions: !!getChecked('auKillOldVersions'),
-                
-                revokeMessage: msgVal,
-                expiredMessage: msgVal,
-                
+                expiredMessage: getVal('auExpiredMessage'),
                 updatedAt: Date.now()
             };
-            
             try {
                 await set(ref(db, 'settings/appUpdate'), payload);
                 refreshAppUpdateBadge(payload);
-                if (st) { st.style.color = 'var(--accent)'; st.textContent = 'Saved & published — live for all devices.'; }
-                
+                const urlWarning = checkApkUrlForCommonMistakes(apkUrl);
+                if (st) {
+                    if (urlWarning) {
+                        st.style.color = 'var(--error)';
+                        st.textContent = 'Saved — but check the APK URL: ' + urlWarning;
+                    } else {
+                        st.style.color = 'var(--accent)';
+                        st.textContent = 'Saved & published — live for all devices.';
+                    }
+                }
+                // Panel content height may have changed (status line length) —
+                // re-measure so the smooth-collapse animation stays accurate.
                 const wrap = document.getElementById('appUpdatePanelWrap');
                 const inner = document.getElementById('appUpdatePanel');
                 if (wrap && inner && wrap.classList.contains('open')) {
@@ -6875,7 +6875,6 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 if (st) { st.style.color = 'var(--error)'; st.textContent = 'Save failed: ' + (e.message || e); }
             }
         };
-        
 
         function refreshAppUpdateBadge(v) {
             const badge = document.getElementById('appUpdateChipBadge');
