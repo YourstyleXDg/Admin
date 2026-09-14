@@ -2582,6 +2582,23 @@
             opacity: 1;
             transform: translateY(0) scale(1);
             pointer-events: auto;
+            /* Allow full content (PUBLISH/CLEAR row) — never clip bottom buttons */
+            overflow: visible;
+        }
+        #noticePanelInner {
+            padding-bottom: 6px;
+        }
+        /* Notice action row: never squeeze PUBLISH / CLEAR off-screen */
+        #noticePanelInner .notice-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #noticePanelInner .notice-actions .btn {
+            flex-shrink: 0;
         }
 
         /* --- CAT WORLD EASTER EGG --- */
@@ -3069,7 +3086,13 @@ body.cat-world-active .cat-mode-bar{display:block}
         const open = p.classList.toggle('open');
         if (c) c.classList.toggle('active', open);
         if (open) {
-          p.style.maxHeight = inner.scrollHeight + 'px';
+          // +64px buffer so PUBLISH/CLEAR never get clipped by max-height
+          p.style.maxHeight = (inner.scrollHeight + 64) + 'px';
+          requestAnimationFrame(function() {
+            if (p.classList.contains('open')) {
+              p.style.maxHeight = (inner.scrollHeight + 64) + 'px';
+            }
+          });
         } else {
           p.style.maxHeight = '0px';
         }
@@ -3083,7 +3106,7 @@ body.cat-world-active .cat-mode-bar{display:block}
         const p = document.getElementById('noticePanel');
         const inner = document.getElementById('noticePanelInner');
         if (p && inner && p.classList.contains('open')) {
-          p.style.maxHeight = inner.scrollHeight + 'px';
+          p.style.maxHeight = (inner.scrollHeight + 64) + 'px';
         }
       };
       window.addEventListener('resize', window.__remeasureNoticePanel);
@@ -3228,15 +3251,13 @@ body.cat-world-active .cat-mode-bar{display:block}
                                 <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Broadcast Message</label>
                                 <input type="text" id="noticeMessage" placeholder="Popup message (broadcast)" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
                             </div>
-                            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-                                <div style="display:flex;align-items:center;gap:8px;flex:1 1 140px;min-width:120px;">
-                                    <span style="font-size:13px;font-weight:700;color:var(--text-dim);white-space:nowrap;">Seconds:</span>
-                                    <input type="number" id="noticeSeconds" placeholder="10" value="10" style="width:100%;flex:1;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;min-width:0;">
+                            <div class="notice-actions" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;padding-bottom:4px;">
+                                <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:140px;">
+                                    <span style="font-size:13px;font-weight:700;color:var(--text-dim);">Seconds:</span>
+                                    <input type="number" id="noticeSeconds" placeholder="10" value="10" style="flex:1;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;min-width:70px;">
                                 </div>
-                                <div style="display:flex;gap:12px;flex-wrap:wrap;width:100%;">
-                                    <button class="btn" style="background:var(--accent);color:#000;flex:1;min-width:110px;white-space:nowrap;" onclick="publishNotice()">PUBLISH</button>
-                                    <button class="btn" style="background:var(--error);color:#fff;flex:1;min-width:110px;white-space:nowrap;" onclick="clearBroadcast()">CLEAR</button>
-                                </div>
+                                <button class="btn" style="background:var(--accent);color:#000;flex-shrink:0;" onclick="publishNotice()">PUBLISH</button>
+                                <button class="btn" style="background:var(--error);color:#fff;flex-shrink:0;" onclick="clearBroadcast()">CLEAR</button>
                             </div>
                         </div>
                     </div>
@@ -3791,6 +3812,23 @@ body.cat-world-active .cat-mode-bar{display:block}
                     </div>
                 </div>
 
+                <div class="acc-item" id="acc-man-vercode">
+                    <div class="acc-header" onclick="toggleAccordion('acc-man-vercode')">
+                        App Version Code — when it is read
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="acc-body">
+                        <p style="margin-bottom:12px;color:var(--text-dim);font-size:13px;line-height:1.5;">Source: native <code style="color:var(--accent);">Auth.getAppVersionCode()</code> → PackageManager real installed versionCode (not spoofable from JS).</p>
+                        <ul class="check-list">
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Every app open</b> — reportAppVersionCode() saves to Firebase knownDevices; killswitch watcher starts.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Realtime</b> — settings/appUpdate listener; admin Force Update / Killswitch changes apply live.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Before unlock</b> — after key OK, shouldBlockUnlockForForceUpdate(); stale + Force Update = unlock blocked.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>After key success</b> — reportAppVersionCode(uid) updates device/user version again.</li>
+                        </ul>
+                        <p style="margin-top:12px;color:var(--text-dim);font-size:13px;line-height:1.5;"><b>Short:</b> not only on key insert — open + live + unlock, all three.</p>
+                    </div>
+                </div>
+
                 <div class="acc-item" id="acc-man-auth">
                     <div class="acc-header" onclick="toggleAccordion('acc-man-auth')">
                         Admin Login Secret (Code Entry)
@@ -3879,23 +3917,6 @@ body.cat-world-active .cat-mode-bar{display:block}
                             <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Once that daily quota is used up, further file <b>downloads are temporarily blocked</b> — uploads and other admin functions are unaffected.</li>
                             <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> The block is not permanent: it <b>resets automatically the next day</b> (B2's UTC billing day rollover), no action needed.</li>
                             <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> If downloads suddenly fail for everyone at once, this daily cap is the most likely cause — check again after the reset before assuming it's a bug.</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="acc-item" id="acc-man-6b">
-                    <div class="acc-header" onclick="toggleAccordion('acc-man-6b')">
-                        App Version Code — Kab Check Hota Hai
-                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                    <div class="acc-body">
-                        <ul class="check-list">
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Source:</b> Native se aata hai — <code>Auth.getAppVersionCode()</code> → PackageManager se real installed versionCode.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>1. Har app open</b> pe — <code>reportAppVersionCode()</code> Firebase <code>settings/knownDevices</code> pe save karta hai, aur <code>startKillswitchWatcher()</code> start hota hai.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>2. Live (app open rehte hue continuously)</b> — Firebase <code>settings/appUpdate</code> listener har change pe version compare karta hai → Force Update / Killswitch turant apply hota hai.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>3. Key verify / Unlock se pehle</b> — key sahi hone ke baad, unlock se pehle ek baar aur <code>shouldBlockUnlockForForceUpdate()</code> gate check hota hai; stale version + Force Update ON ho toh unlock block ho jata hai.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>4. Key success ke baad</b> — <code>reportAppVersionCode(matchedUid)</code> se user/device record pe version dobara update hota hai.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Short:</b> sirf key insert pe nahi — <b>open + live + unlock</b>, teeno moments pe check hota hai.</li>
                         </ul>
                     </div>
                 </div>
