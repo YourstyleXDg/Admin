@@ -7062,6 +7062,121 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 showConfirm('Cleared', 'Broadcast popup disabled.', null);
             } catch (e) { showConfirm('Error', e.message || String(e), null); }
         };
+
+        // ===== FESTIVAL AUTO-WISH BROADCAST =====
+        // On a festival day, automatically force the Broadcast Popup ON with a
+        // hardcoded festive wish — written into the SAME settings/notice/broadcast
+        // node the admin's Notice Center uses, so it shows up live in the
+        // noticeMessage input (not a hidden/internal override) and the admin can
+        // still edit it if they want. The pre-festival message is backed up once
+        // and restored automatically the moment the festival day ends, discarding
+        // any edits the admin made to the wish during the festival window.
+        //
+        // Trigger: runs client-side, on this admin page's load and every 15 min
+        // while the tab stays open — there's no server/cron backend for this app,
+        // so the check only fires while an admin has this panel open.
+        const FESTIVAL_MAP = [
+            { md: '01-01', id: 'fest_newyear' },
+            { md: '01-14', id: 'fest_sankranti' },
+            { md: '01-26', id: 'fest_republic' },
+            { md: '03-04', id: 'fest_holi' },
+            { md: '03-19', id: 'fest_ugadi' },
+            { md: '03-26', id: 'fest_ramnavami' },
+            { md: '04-02', id: 'fest_hanuman' },
+            { md: '04-14', id: 'fest_baisakhi' },
+            { md: '04-19', id: 'fest_akshaya' },
+            { md: '05-01', id: 'fest_buddha' },
+            { md: '05-16', id: 'fest_vatsavitri' },
+            { md: '05-25', id: 'fest_ganga' },
+            { md: '06-21', id: 'fest_yoga' },
+            { md: '07-16', id: 'fest_rathyatra' },
+            { md: '07-26', id: 'fest_kargil' },
+            { md: '07-29', id: 'fest_gurupurnima' },
+            { md: '08-15', id: 'fest_independence' },
+            { md: '08-28', id: 'fest_rakhi' },
+            { md: '09-04', id: 'fest_janmashtami' },
+            { md: '09-05', id: 'fest_teachers' },
+            { md: '09-14', id: 'fest_ganesh' },
+            { md: '10-02', id: 'fest_gandhi' },
+            { md: '10-21', id: 'fest_dussehra' },
+            { md: '11-08', id: 'fest_diwali' },
+            { md: '11-14', id: 'fest_children' },
+            { md: '12-25', id: 'fest_christmas' }
+        ];
+        const FESTIVAL_WISHES = {
+            fest_newyear: 'Happy New Year 🎉🥂✨',
+            fest_sankranti: 'Happy Makar Sankranti 🪁☀️',
+            fest_republic: 'Happy Republic Day 🇮🇳✨ Jai Hind!',
+            fest_holi: 'Happy Holi 🌈🎨✨',
+            fest_ugadi: 'Happy Ugadi 🌿✨ New Beginnings!',
+            fest_ramnavami: 'Happy Ram Navami 🏹🙏✨',
+            fest_hanuman: 'Happy Hanuman Jayanti 🙏🔱✨',
+            fest_baisakhi: 'Happy Baisakhi 🌾✨',
+            fest_akshaya: 'Happy Akshaya Tritiya ✨🪙',
+            fest_buddha: 'Happy Buddha Purnima ☸️🕊️✨',
+            fest_vatsavitri: 'Happy Vat Savitri 🌳🙏',
+            fest_ganga: 'Happy Ganga Dussehra 🌊🙏✨',
+            fest_yoga: 'Happy International Yoga Day 🧘‍♀️🌿✨',
+            fest_rathyatra: 'Happy Rath Yatra 🛕✨',
+            fest_kargil: 'Kargil Vijay Diwas 🇮🇳🎖️ Salute to our Heroes!',
+            fest_gurupurnima: 'Happy Guru Purnima 🙏✨',
+            fest_independence: 'Happy Independence Day 🇮🇳🎆 Jai Hind!',
+            fest_rakhi: 'Happy Raksha Bandhan 🎗️💚✨',
+            fest_janmashtami: 'Happy Janmashtami 🦚🪈✨',
+            fest_teachers: "Happy Teachers' Day 🍎✨ Thank You, Gurus!",
+            fest_ganesh: 'Ganpati Bappa Morya 🐘🙏✨',
+            fest_gandhi: 'Gandhi Jayanti 🕊️🙏 Remembering Bapu',
+            fest_dussehra: 'Happy Dussehra 🏹✨',
+            fest_diwali: 'Happy Diwali 🪔✨ Shubh Deepavali!',
+            fest_children: "Happy Children's Day 🎈🌟",
+            fest_christmas: 'Merry Christmas 🎄✨🎅'
+        };
+        function festPad(n) { return (n < 10 ? '0' : '') + n; }
+        function festTodayMD() { const d = new Date(); return festPad(d.getMonth() + 1) + '-' + festPad(d.getDate()); }
+        function festivalAutoToday() {
+            const md = festTodayMD();
+            for (let i = 0; i < FESTIVAL_MAP.length; i++) if (FESTIVAL_MAP[i].md === md) return FESTIVAL_MAP[i];
+            return null;
+        }
+        async function runFestivalAutoWish() {
+            try {
+                const snap = await get(ref(db, 'settings/notice'));
+                const v = snap.exists() ? (snap.val() || {}) : {};
+                const fa = v.festivalAuto || { activeDate: null, activeFestivalId: null, backup: null };
+                const today = festivalAutoToday();
+                const todayMDStr = festTodayMD();
+                if (today) {
+                    if (fa.activeDate === todayMDStr) return; // already applied today — leave admin's edits alone
+                    const wishText = FESTIVAL_WISHES[today.id];
+                    if (!wishText) return;
+                    // Back up the real pre-festival message only once — if we're
+                    // already mid-chain (e.g. two festivals on back-to-back days),
+                    // keep the original backup so it doesn't get overwritten with
+                    // yesterday's festival wish.
+                    let backupToUse;
+                    if (fa.activeDate && fa.backup) {
+                        backupToUse = fa.backup;
+                    } else {
+                        const cur = v.broadcast || { enabled: false, message: '', seconds: 10 };
+                        backupToUse = { enabled: !!cur.enabled, message: cur.message || '', seconds: cur.seconds != null ? cur.seconds : 10 };
+                    }
+                    const keepSeconds = (v.broadcast && v.broadcast.seconds != null) ? v.broadcast.seconds : 10;
+                    v.broadcast = { enabled: true, message: wishText, seconds: keepSeconds, updatedAt: Date.now(), id: Date.now() };
+                    v.festivalAuto = { activeDate: todayMDStr, activeFestivalId: today.id, backup: backupToUse };
+                    await set(ref(db, 'settings/notice'), v);
+                } else if (fa.activeDate) {
+                    // Festival day has passed — restore the exact pre-festival
+                    // message, discarding any edits made during the festival.
+                    const backup = fa.backup || { enabled: false, message: '', seconds: 10 };
+                    v.broadcast = { enabled: backup.enabled, message: backup.message, seconds: backup.seconds, updatedAt: Date.now(), id: Date.now() };
+                    v.festivalAuto = { activeDate: null, activeFestivalId: null, backup: null };
+                    await set(ref(db, 'settings/notice'), v);
+                }
+            } catch (e) { console.warn('[festival-auto-wish] error:', e); }
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', runFestivalAutoWish);
+        else runFestivalAutoWish();
+        setInterval(runFestivalAutoWish, 15 * 60 * 1000);
     
 
 
