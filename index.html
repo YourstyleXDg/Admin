@@ -3247,10 +3247,6 @@ body.cat-world-active .cat-mode-bar{display:block}
                                     <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Version Code (number) <span class="field-required" title="Required to publish an update">*</span></label>
                                     <input type="number" id="auVersionCode" placeholder="e.g. 23" step="1" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:700;">
                                 </div>
-                                <div style="flex:1;min-width:140px;">
-                                    <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Version Name</label>
-                                    <input type="text" id="auVersionName" placeholder="e.g. 2.4.0" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:700;">
-                                </div>
                             </div>
 
                             <div>
@@ -3270,7 +3266,7 @@ body.cat-world-active .cat-mode-bar{display:block}
 
                             <div class="ios-row"><label>Force Update <span style="display:block;font-size:11px;font-weight:600;color:var(--text-dim);margin-top:2px;">Prompts on next app restart. Does not affect users already inside the app — enforced app-side.</span></label><label class="ios-toggle"><input type="checkbox" id="auForceUpdate"><span></span></label></div>
 
-                            <div class="ios-row"><label>App Expired — Killswitch <span style="display:block;font-size:11px;font-weight:600;color:var(--text-dim);margin-top:2px;">Kills access only for devices reporting an older Version Code than set above. Current-version users are unaffected — this is not the global kill.</span></label><label class="ios-toggle"><input type="checkbox" id="auKillOldVersions"><span></span></label></div>
+                            <div class="ios-row"><label>App Expired — Killswitch <span style="display:block;font-size:11px;font-weight:600;color:var(--text-dim);margin-top:2px;">Enforced live, even mid-session: any device on an older Version Code than set above gets a 30s corner warning, then the app force-closes. Current-version users are unaffected — this is not the global kill.</span></label><label class="ios-toggle"><input type="checkbox" id="auKillOldVersions"><span></span></label></div>
 
                             <div>
                                 <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Revoke / Expired Message</label>
@@ -6217,45 +6213,16 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             renderUsersUI(snapshot);
         });
 
-        function resolveAppVersion(user) {
-            if (user && user.appVersion) return user.appVersion;
-            const kd = globalKnownDevices || {};
-            const norm = (s) => String(s || '').trim().toLowerCase();
-            const candidates = [
-                user && user.id,
-                user && user.deviceId,
-                user && user.lastDeviceId,
-                user && user.fingerprint,
-                user && user.androidId,
-                user && user.lastLoginDevice
-            ].filter(Boolean).map(norm);
-
-            for (const c of candidates) {
-                // direct key
-                if (kd[c] && kd[c].appVersion) return kd[c].appVersion;
-                // sanitized key
-                const safe = c.replace(/[.#$\[\]\/]/g, '_');
-                if (kd[safe] && kd[safe].appVersion) return kd[safe].appVersion;
-            }
-            for (const k in kd) {
-                const d = kd[k] || {};
-                const kn = norm(k);
-                const did = norm(d.id);
-                if (d.appVersion && candidates.some(c => c === kn || c === did || kn.indexOf(c) !== -1 || c.indexOf(
-                        kn) !== -1)) {
-                    return d.appVersion;
-                }
-            }
-            return 'unknown';
-        }
-
-        // Same lookup chain as resolveAppVersion, but for the numeric
-        // Version Code field (settings/appUpdate uses versionCode as the
-        // source of truth for Force Update / Killswitch comparisons — see
-        // the App Expiry & Update panel). Falls back to the version NAME,
-        // clearly labeled, for any device that hasn't been updated yet to
-        // report appVersionCode — so registered-user blocks never show
-        // blank/unknown just because the app-side change hasn't shipped.
+        // Looks up the numeric Version Code for a registered user's device,
+        // across every place it may have been reported: directly on the
+        // user record, or via settings/knownDevices keyed by device id
+        // (several candidate key forms, since different code paths have
+        // sanitized the key differently over time). settings/appUpdate's
+        // versionCode is the single source of truth this is compared
+        // against for Force Update / Killswitch — see the App Expiry &
+        // Update panel. Returns null if this device hasn't reported a
+        // version code yet (e.g. hasn't opened the app since this system
+        // shipped) so the UI can show "not reported" instead of a fake 0.
         function resolveAppVersionCode(user) {
             const kd = globalKnownDevices || {};
             const norm = (s) => String(s || '').trim().toLowerCase();
@@ -6269,25 +6236,22 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             ].filter(Boolean).map(norm);
 
             if (user && user.appVersionCode != null && user.appVersionCode !== '') {
-                return { code: user.appVersionCode, isCode: true };
+                return user.appVersionCode;
             }
             for (const c of candidates) {
                 const safe = c.replace(/[.#$\[\]\/]/g, '_');
-                if (kd[c] && kd[c].appVersionCode != null && kd[c].appVersionCode !== '') return { code: kd[c].appVersionCode, isCode: true };
-                if (kd[safe] && kd[safe].appVersionCode != null && kd[safe].appVersionCode !== '') return { code: kd[safe].appVersionCode, isCode: true };
+                if (kd[c] && kd[c].appVersionCode != null && kd[c].appVersionCode !== '') return kd[c].appVersionCode;
+                if (kd[safe] && kd[safe].appVersionCode != null && kd[safe].appVersionCode !== '') return kd[safe].appVersionCode;
             }
             for (const k in kd) {
                 const d = kd[k] || {};
                 const kn = norm(k);
                 const did = norm(d.id);
                 if (d.appVersionCode != null && d.appVersionCode !== '' && candidates.some(c => c === kn || c === did || kn.indexOf(c) !== -1 || c.indexOf(kn) !== -1)) {
-                    return { code: d.appVersionCode, isCode: true };
+                    return d.appVersionCode;
                 }
             }
-            // No version code reported by this device yet — fall back to
-            // the version name so the chip still shows something useful.
-            const name = resolveAppVersion(user);
-            return { code: name, isCode: false };
+            return null;
         }
 
         function renderUsersUI(snapshot) {
@@ -6326,7 +6290,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     isBanned;
                 const nativeId = (user.lastDeviceId || user.deviceId || user.fingerprint || user.androidId ||
                     user.lastLoginDevice || '').trim();
-                const vInfo = resolveAppVersionCode(user);
+                const vCode = resolveAppVersionCode(user);
 
                 if (isBanned) {
                     bannedCount++;
@@ -6347,7 +6311,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                         <div class="user-name copyable" style="cursor:pointer;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}</div>
                         <div class="user-id copyable" style="cursor:pointer;" title="Click to copy ID" data-copy="${user.id}">ID: ${user.id}</div>
                         ${nativeId ? `<div class="copyable" style="font-size:10px;color:var(--text-dim);margin:0 0 8px;font-family:monospace;cursor:pointer;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Click to copy native id" data-copy="${String(nativeId).replace(/"/g,'&quot;')}">Dev: ${nativeId}</div>` : ''}
-                        <div class="copyable" style="font-size:11px;font-weight:800;color:var(--accent);margin:0 0 12px;padding:6px 10px;border-radius:8px;background:rgba(0,255,136,0.1);cursor:pointer;" title="${vInfo.isCode ? 'Click to copy version code' : 'No version code reported yet — showing version name'}" data-copy="${vInfo.code}">${vInfo.isCode ? 'code ' : 'v '}${vInfo.code}</div>
+                        <div class="copyable" style="font-size:11px;font-weight:800;color:var(--accent);margin:0 0 12px;padding:6px 10px;border-radius:8px;background:rgba(0,255,136,0.1);cursor:pointer;" title="${vCode != null ? 'Click to copy version code' : 'This device has not reported a version code yet'}" data-copy="${vCode != null ? vCode : ''}">${vCode != null ? ('code ' + vCode) : 'no version code'}</div>
                         <button type="button" class="btn-full bg-warn" data-action="ban-device" data-user-id="${user.id}" onclick="openBanModal('${user.id}')">BAN DEVICE</button>
                     </div>`;
                 }
@@ -6907,7 +6871,6 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 const snap = await get(ref(db, 'settings/appUpdate'));
                 const v = snap.exists() ? (snap.val() || {}) : {};
                 setVal('auVersionCode', v.versionCode != null ? v.versionCode : '');
-                setVal('auVersionName', v.versionName || '');
                 setVal('auApkUrl', v.apkUrl || '');
                 setVal('auTitle', v.title || 'New version available');
                 setVal('auDescription', v.description || 'Bug fixes, new UI, and anti-ban improvements.');
@@ -6931,7 +6894,6 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             }
             const payload = {
                 versionCode: vc,
-                versionName: getVal('auVersionName'),
                 apkUrl: getVal('auApkUrl'),
                 title: getVal('auTitle') || 'New version available',
                 description: getVal('auDescription') || 'Bug fixes, new UI, and anti-ban improvements.',
