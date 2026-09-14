@@ -7144,7 +7144,16 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             fest_christmas: 'Merry Christmas 🎄✨🎅'
         };
         function festPad(n) { return (n < 10 ? '0' : '') + n; }
-        function festTodayMD() { const d = new Date(); return festPad(d.getMonth() + 1) + '-' + festPad(d.getDate()); }
+        // Computes "today" in IST explicitly (UTC+5:30), matching the
+        // Cloudflare Worker's scheduled() logic exactly — not the admin's
+        // own device timezone. Without this, an admin checking the panel
+        // from a different timezone could see this backup disagree with
+        // the Worker about what day it is, right around midnight IST.
+        function festTodayMD() {
+            const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+            const d = new Date(Date.now() + IST_OFFSET_MS);
+            return festPad(d.getUTCMonth() + 1) + '-' + festPad(d.getUTCDate());
+        }
         function festivalAutoToday() {
             const md = festTodayMD();
             for (let i = 0; i < FESTIVAL_MAP.length; i++) if (FESTIVAL_MAP[i].md === md) return FESTIVAL_MAP[i];
@@ -7188,7 +7197,17 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         }
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', runFestivalAutoWish);
         else runFestivalAutoWish();
-        setInterval(runFestivalAutoWish, 15 * 60 * 1000);
+        // Backup/safety-net only — the Cloudflare Worker's scheduled() cron
+        // is the primary system now and runs even with no browser tab open.
+        // This just re-checks periodically and on regaining focus, so if
+        // the admin panel happens to be open (or gets reopened/refocused)
+        // around a festival boundary and the Worker hasn't caught up yet
+        // for any reason, it self-heals within a few minutes instead of
+        // requiring a full page reload.
+        setInterval(runFestivalAutoWish, 5 * 60 * 1000);
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') runFestivalAutoWish();
+        });
     
 
 
@@ -9450,6 +9469,41 @@ function explainFetchError(e) {
   // SMART UPLOAD ROUTER
   // =========================================================
 
+  // Splits "DGXEN.apk" into ["DGXEN", ".apk"] so a numbered suffix can be
+  // inserted before the extension (DGXEN(1).apk), not after it. A name
+  // with no extension (or a leading-dot dotfile) just gets the suffix
+  // appended at the end.
+  function splitNameExt(name) {
+    const idx = name.lastIndexOf('.');
+    if (idx <= 0) return [name, ''];
+    return [name.slice(0, idx), name.slice(idx)];
+  }
+
+  // If safeName already exists in the bucket, finds the next free
+  // "name(1).ext", "name(2).ext", ... instead of silently overwriting the
+  // existing file — matching the same convention browsers/OSes already
+  // use for duplicate downloads.
+  async function uniqueCloudFileName(safeName) {
+    let existing;
+    try {
+      existing = await listAllFiles();
+    } catch (e) {
+      console.warn('[cloud] could not check for existing files, uploading as-is', e);
+      return safeName;
+    }
+    const names = new Set((existing || []).map(f => f.fileName));
+    if (!names.has(safeName)) return safeName;
+
+    const [base, ext] = splitNameExt(safeName);
+    let n = 1;
+    let candidate;
+    do {
+      candidate = base + '(' + n + ')' + ext;
+      n++;
+    } while (names.has(candidate));
+    return candidate;
+  }
+
   async function uploadOne(
     file,
     progressCallback
@@ -9472,12 +9526,17 @@ function explainFetchError(e) {
 
     await authorizeB2();
 
-    const safeName =
+    const rawSafeName =
       file.name
         .replace(
           /[\\]/g,
           '_'
         );
+
+    // Never silently overwrite an existing file with the same name — get
+    // the next free "name(1).ext" style name instead, same convention as
+    // OS/browser download managers.
+    const safeName = await uniqueCloudFileName(rawSafeName);
 
     // -------------------------------------------------------
     // <= 10 MiB:
