@@ -2575,30 +2575,33 @@
             overflow: hidden;
             opacity: 0;
             transform: translateY(-8px) scale(0.98);
-            transition: max-height .38s cubic-bezier(.22,1,.36,1), opacity .3s ease, transform .32s cubic-bezier(.22,1,.36,1);
+            transition: max-height .4s cubic-bezier(.22,1,.36,1), opacity .3s ease, transform .32s cubic-bezier(.22,1,.36,1);
             pointer-events: none;
         }
         #noticePanel.open {
+            max-height: 1200px !important; /* hard ceiling so PUBLISH/CLEAR never clip */
             opacity: 1;
             transform: translateY(0) scale(1);
             pointer-events: auto;
-            /* Allow full content (PUBLISH/CLEAR row) — never clip bottom buttons */
             overflow: visible;
         }
         #noticePanelInner {
-            padding-bottom: 6px;
-        }
-        /* Notice action row: never squeeze PUBLISH / CLEAR off-screen */
-        #noticePanelInner .notice-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-            width: 100%;
+            padding-bottom: 12px;
             box-sizing: border-box;
         }
+        #noticePanelInner .notice-actions {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 12px;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 4px;
+            padding-bottom: 8px;
+        }
         #noticePanelInner .notice-actions .btn {
-            flex-shrink: 0;
+            flex-shrink: 0 !important;
+            white-space: nowrap;
         }
 
         /* --- CAT WORLD EASTER EGG --- */
@@ -3086,12 +3089,9 @@ body.cat-world-active .cat-mode-bar{display:block}
         const open = p.classList.toggle('open');
         if (c) c.classList.toggle('active', open);
         if (open) {
-          // +64px buffer so PUBLISH/CLEAR never get clipped by max-height
-          p.style.maxHeight = (inner.scrollHeight + 64) + 'px';
-          requestAnimationFrame(function() {
-            if (p.classList.contains('open')) {
-              p.style.maxHeight = (inner.scrollHeight + 64) + 'px';
-            }
+          p.style.maxHeight = '1200px';
+          requestAnimationFrame(function(){
+            if (p.classList.contains('open')) p.style.maxHeight = '1200px';
           });
         } else {
           p.style.maxHeight = '0px';
@@ -3106,7 +3106,7 @@ body.cat-world-active .cat-mode-bar{display:block}
         const p = document.getElementById('noticePanel');
         const inner = document.getElementById('noticePanelInner');
         if (p && inner && p.classList.contains('open')) {
-          p.style.maxHeight = (inner.scrollHeight + 64) + 'px';
+          p.style.maxHeight = '1200px';
         }
       };
       window.addEventListener('resize', window.__remeasureNoticePanel);
@@ -3251,13 +3251,13 @@ body.cat-world-active .cat-mode-bar{display:block}
                                 <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Broadcast Message</label>
                                 <input type="text" id="noticeMessage" placeholder="Popup message (broadcast)" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
                             </div>
-                            <div class="notice-actions" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;padding-bottom:4px;">
+                            <div class="notice-actions">
                                 <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:140px;">
                                     <span style="font-size:13px;font-weight:700;color:var(--text-dim);">Seconds:</span>
                                     <input type="number" id="noticeSeconds" placeholder="10" value="10" style="flex:1;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;min-width:70px;">
                                 </div>
-                                <button class="btn" style="background:var(--accent);color:#000;flex-shrink:0;" onclick="publishNotice()">PUBLISH</button>
-                                <button class="btn" style="background:var(--error);color:#fff;flex-shrink:0;" onclick="clearBroadcast()">CLEAR</button>
+                                <button class="btn" type="button" style="background:var(--accent);color:#000;" onclick="publishNotice()">PUBLISH</button>
+                                <button class="btn" type="button" style="background:var(--error);color:#fff;" onclick="clearBroadcast()">CLEAR</button>
                             </div>
                         </div>
                     </div>
@@ -3797,6 +3797,23 @@ body.cat-world-active .cat-mode-bar{display:block}
             <div id="tab-manual" class="m-content active">
                 <p style="margin-bottom: 20px; color: var(--text-dim); font-size: 14px;">Important system rules, security behaviour and tips.</p>
 
+                <div class="acc-item" id="acc-man-vercode">
+                    <div class="acc-header" onclick="toggleAccordion('acc-man-vercode')">
+                        App Version Code — when it is read
+                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="acc-body">
+                        <p style="margin-bottom:12px;color:var(--text-dim);font-size:13px;line-height:1.5;">Source: native <b style="color:var(--accent);">Auth.getAppVersionCode()</b> → PackageManager real installed versionCode (JS cannot spoof it).</p>
+                        <ul class="check-list">
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Every app open</b> — reportAppVersionCode() → Firebase knownDevices; killswitch watcher starts.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Realtime</b> — settings/appUpdate listener; Force Update / Killswitch changes apply live.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Before unlock</b> — after key OK, force-update gate; stale + Force Update = unlock blocked.</li>
+                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>After key success</b> — reportAppVersionCode(uid) updates device/user version again.</li>
+                        </ul>
+                        <p style="margin-top:12px;color:var(--text-dim);font-size:13px;line-height:1.5;"><b>Short:</b> not only on key insert — <b>open + live + unlock</b>, all three.</p>
+                    </div>
+                </div>
+
                 <div class="acc-item active" id="acc-man-1">
                     <div class="acc-header" onclick="toggleAccordion('acc-man-1')">
                         One Key = One Device (Multi-login Prevention)
@@ -3809,23 +3826,6 @@ body.cat-world-active .cat-mode-bar{display:block}
                             <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Works for both normal DGXEN- keys and Master Keys.</li>
                             <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Same device can log in again without increasing usage count.</li>
                         </ul>
-                    </div>
-                </div>
-
-                <div class="acc-item" id="acc-man-vercode">
-                    <div class="acc-header" onclick="toggleAccordion('acc-man-vercode')">
-                        App Version Code — when it is read
-                        <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </div>
-                    <div class="acc-body">
-                        <p style="margin-bottom:12px;color:var(--text-dim);font-size:13px;line-height:1.5;">Source: native <code style="color:var(--accent);">Auth.getAppVersionCode()</code> → PackageManager real installed versionCode (not spoofable from JS).</p>
-                        <ul class="check-list">
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Every app open</b> — reportAppVersionCode() saves to Firebase knownDevices; killswitch watcher starts.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Realtime</b> — settings/appUpdate listener; admin Force Update / Killswitch changes apply live.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>Before unlock</b> — after key OK, shouldBlockUnlockForForceUpdate(); stale + Force Update = unlock blocked.</li>
-                            <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> <b>After key success</b> — reportAppVersionCode(uid) updates device/user version again.</li>
-                        </ul>
-                        <p style="margin-top:12px;color:var(--text-dim);font-size:13px;line-height:1.5;"><b>Short:</b> not only on key insert — open + live + unlock, all three.</p>
                     </div>
                 </div>
 
