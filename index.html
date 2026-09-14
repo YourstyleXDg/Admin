@@ -3074,6 +3074,19 @@ body.cat-world-active .cat-mode-bar{display:block}
           p.style.maxHeight = '0px';
         }
       };
+      // Keep the animated height correct whenever the panel's own content
+      // changes size while it's open — e.g. loadNoticeSettings() filling
+      // in a long saved broadcast message after the panel was already
+      // measured/opened, which previously left max-height too small and
+      // made the bottom of the panel look clipped/overlapped.
+      window.__remeasureNoticePanel = function() {
+        const p = document.getElementById('noticePanel');
+        const inner = document.getElementById('noticePanelInner');
+        if (p && inner && p.classList.contains('open')) {
+          p.style.maxHeight = inner.scrollHeight + 'px';
+        }
+      };
+      window.addEventListener('resize', window.__remeasureNoticePanel);
       document.addEventListener('click', function(e){
         const p = document.getElementById('noticePanel');
         const c = document.getElementById('noticeChip');
@@ -3266,12 +3279,7 @@ body.cat-world-active .cat-mode-bar{display:block}
 
                             <div class="ios-row"><label>Force Update <span style="display:block;font-size:11px;font-weight:600;color:var(--text-dim);margin-top:2px;">Prompts on next app restart. Does not affect users already inside the app — enforced app-side.</span></label><label class="ios-toggle"><input type="checkbox" id="auForceUpdate"><span></span></label></div>
 
-                            <div class="ios-row"><label>App Expired — Killswitch <span style="display:block;font-size:11px;font-weight:600;color:var(--text-dim);margin-top:2px;">Enforced live, even mid-session: any device on an older Version Code than set above gets a 30s corner warning, then the app force-closes. Current-version users are unaffected — this is not the global kill.</span></label><label class="ios-toggle"><input type="checkbox" id="auKillOldVersions"><span></span></label></div>
-
-                            <div>
-                                <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Revoke / Expired Message</label>
-                                <input type="text" id="auExpiredMessage" placeholder="This version has expired. Please update to continue." style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
-                            </div>
+                            <div class="ios-row"><label>App Expired — Killswitch <span style="display:block;font-size:11px;font-weight:600;color:var(--text-dim);margin-top:2px;">Enforced live, even mid-session: any device on an older Version Code than set above gets a native 30s "App Expired" countdown overlay, then the app force-closes. Current-version users are unaffected — this is not the global kill.</span></label><label class="ios-toggle"><input type="checkbox" id="auKillOldVersions"><span></span></label></div>
 
                             <div style="display:flex;gap:10px;flex-wrap:wrap;">
                                 <button class="btn" type="button" style="flex:1;min-width:140px;background:linear-gradient(135deg,#5cc8ff,var(--accent));color:#000;font-weight:900;" onclick="saveAppUpdateSettings()">SAVE &amp; PUBLISH</button>
@@ -6876,7 +6884,6 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 setVal('auDescription', v.description || 'Bug fixes, new UI, and anti-ban improvements.');
                 setChecked('auForceUpdate', !!v.forceUpdate);
                 setChecked('auKillOldVersions', !!v.killOldVersions);
-                setVal('auExpiredMessage', v.expiredMessage || '');
                 refreshAppUpdateBadge(v);
                 if (st) { st.style.color = 'var(--text-dim)'; st.textContent = v.updatedAt ? ('Last published: ' + new Date(v.updatedAt).toLocaleString()) : 'No update published yet.'; }
             } catch (e) {
@@ -6899,7 +6906,6 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 description: getVal('auDescription') || 'Bug fixes, new UI, and anti-ban improvements.',
                 forceUpdate: !!getChecked('auForceUpdate'),
                 killOldVersions: !!getChecked('auKillOldVersions'),
-                expiredMessage: getVal('auExpiredMessage'),
                 updatedAt: Date.now()
             };
             try {
@@ -6968,6 +6974,10 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 if (sec) sec.value = bc.seconds != null ? bc.seconds : 10;
                 if (tt) tt.checked = !!(v.taglineEnabled);
                 if (tl) tl.value = v.tagline || '';
+                // Field values (esp. the message textarea) may have just
+                // changed the panel's natural height — re-measure if it's
+                // currently open so nothing ends up clipped/overlapped.
+                if (window.__remeasureNoticePanel) window.__remeasureNoticePanel();
             } catch (e) { console.warn('notice load', e); }
         }
         try { onValue(ref(db, 'settings/notice'), () => loadNoticeSettings()); } catch (e) {}
