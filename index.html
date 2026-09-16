@@ -4381,7 +4381,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         // settings/adminTelegram. Enrollment requires settings/adminEnrollment === true.
         // Prefer private: window.__DGXEN_TG_BOT_TOKEN = '...' in a non-public snippet,
         // OR paste once in TG_BOT_TOKEN_HARDCODE (avoid public GitHub commit with real token).
-        const TG_BOT_TOKEN_HARDCODE = '8913799207:AAGUa3Wxswr3EaPP1rh0HHDeWphGY3VmT9E';
+        const TG_BOT_TOKEN_HARDCODE = '8913799207';
         const TG_BOT_TOKEN = String(
             (typeof window !== 'undefined' && window.__DGXEN_TG_BOT_TOKEN) || TG_BOT_TOKEN_HARDCODE || ''
         ).trim();
@@ -4733,27 +4733,77 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 setGateStatus('WebAuthn not supported on this browser.', false);
                 return;
             }
-            try {
-                setGateStatus('Registering fingerprint…', true);
-                const userId = crypto.getRandomValues(new Uint8Array(16));
-                const cred = await navigator.credentials.create({
-                    publicKey: {
-                        challenge: crypto.getRandomValues(new Uint8Array(32)),
-                        rp: { name: 'DGXEN Admin', id: location.hostname || 'localhost' },
-                        user: { id: userId, name: 'admin@dgxen', displayName: 'DGXEN Admin' },
-                        pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
-                        authenticatorSelection: {
-                            authenticatorAttachment: 'platform',
-                            userVerification: 'required',
-                            residentKey: 'preferred'
-                        },
-                        timeout: 60000
+            // Must stay on this page in the foreground. Leaving for Telegram
+            // mid-prompt or denying the system dialog causes NotAllowedError.
+            setGateStatus('Follow the system fingerprint / screen-lock prompt…', true);
+
+            const rpId = (location.hostname || '').replace(/^www\./, '') || 'localhost';
+            const userId = crypto.getRandomValues(new Uint8Array(16));
+            const challenge = crypto.getRandomValues(new Uint8Array(32));
+            const base = {
+                challenge: challenge,
+                rp: { name: 'DGXEN Admin', id: rpId },
+                user: {
+                    id: userId,
+                    name: 'admin@' + rpId,
+                    displayName: 'DGXEN Admin'
+                },
+                pubKeyCredParams: [
+                    { type: 'public-key', alg: -7 },
+                    { type: 'public-key', alg: -257 }
+                ],
+                timeout: 120000,
+                // Avoid excludeCredentials so first enroll on a clean device works
+            };
+
+            // Android Chrome often fails with platform+required. Try soft first,
+            // then platform as fallback — both still from this click gesture.
+            const attempts = [
+                {
+                    authenticatorSelection: {
+                        userVerification: 'preferred',
+                        residentKey: 'discouraged'
                     }
-                });
-                if (!cred) {
-                    setGateStatus('Registration cancelled.', false);
-                    return;
+                },
+                {
+                    authenticatorSelection: {
+                        authenticatorAttachment: 'platform',
+                        userVerification: 'preferred',
+                        residentKey: 'discouraged'
+                    }
                 }
+            ];
+
+            let cred = null;
+            let lastErr = null;
+            for (let i = 0; i < attempts.length; i++) {
+                try {
+                    cred = await navigator.credentials.create({
+                        publicKey: Object.assign({}, base, attempts[i])
+                    });
+                    if (cred) break;
+                } catch (e) {
+                    lastErr = e;
+                    // User cancel / timeout → stop; don't loop into another prompt
+                    const name = (e && e.name) || '';
+                    if (name === 'NotAllowedError' || name === 'AbortError') break;
+                }
+            }
+
+            if (!cred) {
+                const msg = String((lastErr && lastErr.message) || lastErr || 'cancelled');
+                if (/not allowed|timed out|NotAllowed|Abort/i.test(msg) || (lastErr && lastErr.name === 'NotAllowedError')) {
+                    setGateStatus(
+                        'Fingerprint prompt closed or blocked. Keep Chrome open, unlock phone with FP/PIN, tap REGISTER again (OTP still valid).',
+                        false
+                    );
+                } else {
+                    setGateStatus('Register failed: ' + msg, false);
+                }
+                return;
+            }
+
+            try {
                 const id = bufferToBase64(cred.rawId);
                 const safe = String(id).split('').map(function(ch) {
                     return ('.$[]#/'.indexOf(ch) >= 0) ? '_' : ch;
@@ -4776,7 +4826,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 setGateStatus('Fingerprint registered. Unlocking…', true);
                 unlockAdmin('fingerprint-enroll', id);
             } catch (e) {
-                setGateStatus('Register failed: ' + (e.message || e), false);
+                setGateStatus('Saved locally but Firebase write failed: ' + (e.message || e), false);
             }
         }
 
