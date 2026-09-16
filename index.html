@@ -2569,6 +2569,28 @@
         }
 
         /* --- Notice Panel --- */
+        #noticeScheduleChip.visible {
+            display: inline-flex !important;
+        }
+        #noticeSchedulePanel {
+            display: block;
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(-8px) scale(0.98);
+            transition: max-height .38s cubic-bezier(.22,1,.36,1), opacity .3s ease, transform .32s cubic-bezier(.22,1,.36,1);
+            pointer-events: none;
+        }
+        #noticeSchedulePanel.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+            overflow: visible;
+        }
+        #noticeSchedulePanelInner .notice-actions,
+        #noticeSchedulePanelInner > div > div:last-child {
+            box-sizing: border-box;
+        }
         #noticePanel {
             display: block;
             max-height: 0;
@@ -3082,9 +3104,22 @@ body.cat-world-active .cat-mode-bar{display:block}
         const p = document.getElementById('noticePanel');
         const inner = document.getElementById('noticePanelInner');
         const c = document.getElementById('noticeChip');
+        const schedChip = document.getElementById('noticeScheduleChip');
         if (!p || !inner) return;
         const open = p.classList.toggle('open');
         if (c) c.classList.toggle('active', open);
+        // The Schedule button only ever makes sense next to an open Notice
+        // Center — hide it (and collapse its own panel, in case it was
+        // left open) the moment Notice Center itself closes.
+        if (schedChip) schedChip.classList.toggle('visible', open);
+        if (!open) {
+          const sp = document.getElementById('noticeSchedulePanel');
+          const schedInner = document.getElementById('noticeSchedulePanelInner');
+          if (sp && sp.classList.contains('open')) {
+            sp.classList.remove('open');
+            sp.style.maxHeight = '0px';
+          }
+        }
         if (open) {
           // +64px buffer so PUBLISH/CLEAR never get clipped by max-height
           p.style.maxHeight = (inner.scrollHeight + 64) + 'px';
@@ -3096,6 +3131,40 @@ body.cat-world-active .cat-mode-bar{display:block}
         } else {
           p.style.maxHeight = '0px';
         }
+      };
+      // Mirrors toggleNoticePanel()'s exact open/close/measure pattern, for
+      // the Scheduled Notice sub-panel.
+      window.toggleNoticeSchedulePanel = function() {
+        const p = document.getElementById('noticeSchedulePanel');
+        const inner = document.getElementById('noticeSchedulePanelInner');
+        const c = document.getElementById('noticeScheduleChip');
+        if (!p || !inner) return;
+        const open = p.classList.toggle('open');
+        if (c) c.classList.toggle('active', open);
+        if (open) {
+          p.style.maxHeight = (inner.scrollHeight + 64) + 'px';
+          requestAnimationFrame(function() {
+            if (p.classList.contains('open')) {
+              p.style.maxHeight = (inner.scrollHeight + 64) + 'px';
+            }
+          });
+        } else {
+          p.style.maxHeight = '0px';
+        }
+      };
+      window.__remeasureNoticeSchedulePanel = function() {
+        const p = document.getElementById('noticeSchedulePanel');
+        const inner = document.getElementById('noticeSchedulePanelInner');
+        if (p && inner && p.classList.contains('open')) {
+          p.style.maxHeight = (inner.scrollHeight + 64) + 'px';
+        }
+      };
+      window.toggleScheduleAdv = function() {
+        const box = document.getElementById('scheduleAdvBox');
+        if (!box) return;
+        box.style.display = (box.style.display === 'none' || !box.style.display) ? 'flex' : 'none';
+        if (box.style.display === 'flex' && window.refreshScheduleStatus) window.refreshScheduleStatus();
+        window.__remeasureNoticeSchedulePanel();
       };
       // Keep the animated height correct whenever the panel's own content
       // changes size while it's open — e.g. loadNoticeSettings() filling
@@ -3110,14 +3179,28 @@ body.cat-world-active .cat-mode-bar{display:block}
         }
       };
       window.addEventListener('resize', window.__remeasureNoticePanel);
+      window.addEventListener('resize', window.__remeasureNoticeSchedulePanel);
       document.addEventListener('click', function(e){
         const p = document.getElementById('noticePanel');
         const c = document.getElementById('noticeChip');
-        if (!p || !p.classList.contains('open')) return;
-        if (p.contains(e.target) || (c && c.contains(e.target))) return;
-        p.classList.remove('open');
-        if (c) c.classList.remove('active');
-        p.style.maxHeight = '0px';
+        const sp = document.getElementById('noticeSchedulePanel');
+        const sc = document.getElementById('noticeScheduleChip');
+        // Clicking anywhere inside either panel/chip pair should never
+        // close things — only a genuine outside click does.
+        const insideEither = (p && p.contains(e.target)) || (c && c.contains(e.target)) ||
+                              (sp && sp.contains(e.target)) || (sc && sc.contains(e.target));
+        if (insideEither) return;
+        if (p && p.classList.contains('open')) {
+          p.classList.remove('open');
+          if (c) c.classList.remove('active');
+          p.style.maxHeight = '0px';
+          if (sc) sc.classList.remove('visible');
+        }
+        if (sp && sp.classList.contains('open')) {
+          sp.classList.remove('open');
+          if (sc) sc.classList.remove('active');
+          sp.style.maxHeight = '0px';
+        }
       });
     </script>
 
@@ -3224,9 +3307,15 @@ body.cat-world-active .cat-mode-bar{display:block}
 
             <!-- 🔔 NOTICE CENTER CARD -->
             <div class="section-box glass-panel" style="margin-bottom:22px;">
-                <div id="noticeChip" onclick="toggleNoticePanel()" style="display:inline-flex;align-items:center;gap:10px;cursor:pointer;padding:12px 18px;border-radius:14px;background:rgba(0,255,136,.1);color:var(--accent);font-weight:800;user-select:none;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                    NOTICE CENTER
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <div id="noticeChip" onclick="toggleNoticePanel()" style="display:inline-flex;align-items:center;gap:10px;cursor:pointer;padding:12px 18px;border-radius:14px;background:rgba(0,255,136,.1);color:var(--accent);font-weight:800;user-select:none;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                        NOTICE CENTER
+                    </div>
+                    <div id="noticeScheduleChip" onclick="toggleNoticeSchedulePanel()" style="display:none;align-items:center;gap:8px;cursor:pointer;padding:12px 16px;border-radius:14px;background:rgba(120,140,255,.1);color:#8ea0ff;font-weight:800;user-select:none;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+                        SCHEDULE
+                    </div>
                 </div>
                 <div id="noticePanel">
                     <div id="noticePanelInner" style="margin-top:15px;">
@@ -3261,6 +3350,63 @@ body.cat-world-active .cat-mode-bar{display:block}
                             </div>
                         </div>
                     </div>
+                    </div>
+                </div>
+
+                <!-- 🕒 SCHEDULED NOTICE PANEL — same field layout as the live
+                     Notice Center above, but this is a separate DRAFT that
+                     only takes effect at the configured Send time. Only
+                     reachable while Notice Center itself is open (see the
+                     chip's display:none default + toggleNoticePanel()). -->
+                <div id="noticeSchedulePanel">
+                    <div id="noticeSchedulePanelInner" style="margin-top:15px;padding-top:15px;border-top:1px dashed var(--glass-border);">
+                        <div style="display:flex;flex-direction:column;gap:16px;">
+                            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                                <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;cursor:pointer;color:var(--text-main);">
+                                    <input type="checkbox" id="schedTaglineToggle"> Tagline
+                                </label>
+                                <label style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;cursor:pointer;color:var(--text-main);">
+                                    <input type="checkbox" id="schedBroadcastToggle"> Broadcast Popup
+                                </label>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:8px;">
+                                <div>
+                                    <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Tagline</label>
+                                    <input type="text" id="schedTagline" placeholder="Tagline text (shown on login)" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
+                                </div>
+                                <div>
+                                    <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Broadcast Message</label>
+                                    <input type="text" id="schedMessage" placeholder="Popup message (broadcast)" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
+                                </div>
+                                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;">
+                                    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:140px;">
+                                        <span style="font-size:13px;font-weight:700;color:var(--text-dim);">Seconds:</span>
+                                        <input type="number" id="schedSeconds" placeholder="10" value="10" style="flex:1;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;min-width:70px;">
+                                    </div>
+                                    <button class="btn" type="button" onclick="toggleScheduleAdv()" style="background:rgba(120,140,255,.14);color:#8ea0ff;flex-shrink:0;">ADV ▾</button>
+                                </div>
+                            </div>
+
+                            <div id="scheduleAdvBox" style="display:none;flex-direction:column;gap:12px;padding:14px;border-radius:12px;background:rgba(120,140,255,.06);border:1px solid rgba(120,140,255,.18);">
+                                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                                    <div style="flex:1;min-width:180px;">
+                                        <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Send at</label>
+                                        <input type="datetime-local" id="schedSendAt" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
+                                    </div>
+                                    <div style="flex:1;min-width:180px;">
+                                        <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Revert at</label>
+                                        <input type="datetime-local" id="schedRevertAt" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
+                                    </div>
+                                </div>
+                                <p style="margin:0;font-size:12px;color:var(--text-dim);line-height:1.5;">At <b>Send at</b>, this message replaces whatever's currently live (the current message is backed up automatically). At <b>Revert at</b>, the backed-up message is restored.</p>
+                                <div id="scheduleStatusLine" style="font-size:12px;font-weight:700;color:#8ea0ff;"></div>
+                            </div>
+
+                            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;width:100%;padding-bottom:4px;">
+                                <button class="btn" style="background:#8ea0ff;color:#0a0a14;flex-shrink:0;" onclick="scheduleNotice()">SCHEDULE</button>
+                                <button class="btn" style="background:var(--error);color:#fff;flex-shrink:0;" onclick="cancelScheduledNotice()">CANCEL SCHEDULE</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -7074,6 +7220,147 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 showConfirm('Cleared', 'Broadcast popup disabled.', null);
             } catch (e) { showConfirm('Error', e.message || String(e), null); }
         };
+
+        // ===== SCHEDULED NOTICE =====
+        // A one-off (not recurring, unlike Festival Auto-Wish) scheduled
+        // message: at scheduled.sendAt it replaces the live broadcast
+        // (backing up whatever was live first, same principle as the
+        // festival system), and at scheduled.revertAt it restores that
+        // backup. Draft fields (scheduleDraft) persist independently of
+        // the live notice.broadcast fields, so reopening the Schedule
+        // panel shows what was last typed here — not the live message.
+        function schedToLocalInputValue(ts) {
+            if (!ts) return '';
+            const d = new Date(ts);
+            const pad = n => String(n).padStart(2, '0');
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        }
+        function schedFromLocalInputValue(v) {
+            if (!v) return null;
+            const t = new Date(v).getTime();
+            return Number.isFinite(t) ? t : null;
+        }
+        async function loadScheduleDraft() {
+            try {
+                const snap = await get(ref(db, 'settings/notice/scheduleDraft'));
+                const v = snap.exists() ? (snap.val() || {}) : {};
+                const setChk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+                const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+                setChk('schedTaglineToggle', v.taglineEnabled);
+                setVal('schedTagline', v.tagline || '');
+                setChk('schedBroadcastToggle', v.broadcastEnabled);
+                setVal('schedMessage', v.message || '');
+                setVal('schedSeconds', v.seconds != null ? v.seconds : 10);
+                setVal('schedSendAt', schedToLocalInputValue(v.sendAt));
+                setVal('schedRevertAt', schedToLocalInputValue(v.revertAt));
+                if (window.__remeasureNoticeSchedulePanel) window.__remeasureNoticeSchedulePanel();
+            } catch (e) { console.warn('schedule draft load', e); }
+        }
+        window.refreshScheduleStatus = async function refreshScheduleStatus() {
+            const line = document.getElementById('scheduleStatusLine');
+            if (!line) return;
+            try {
+                const snap = await get(ref(db, 'settings/notice/scheduled'));
+                if (!snap.exists() || !snap.val()) { line.textContent = 'No message currently scheduled.'; return; }
+                const s = snap.val();
+                const fmt = ts => ts ? new Date(ts).toLocaleString() : '—';
+                if (s.appliedAt) {
+                    line.textContent = 'Live now — will revert at ' + fmt(s.revertAt) + '.';
+                } else {
+                    line.textContent = 'Will go out at ' + fmt(s.sendAt) + ', revert at ' + fmt(s.revertAt) + '.';
+                }
+            } catch (e) { line.textContent = ''; }
+        }
+        try { onValue(ref(db, 'settings/notice/scheduleDraft'), () => loadScheduleDraft()); } catch (e) {}
+        try { onValue(ref(db, 'settings/notice/scheduled'), () => refreshScheduleStatus()); } catch (e) {}
+
+        window.scheduleNotice = async function() {
+            const taglineEnabled = !!(document.getElementById('schedTaglineToggle') && document.getElementById('schedTaglineToggle').checked);
+            const tagline = (document.getElementById('schedTagline') && document.getElementById('schedTagline').value || '').trim();
+            const broadcastEnabled = !!(document.getElementById('schedBroadcastToggle') && document.getElementById('schedBroadcastToggle').checked);
+            const message = (document.getElementById('schedMessage') && document.getElementById('schedMessage').value || '').trim();
+            let seconds = Number(document.getElementById('schedSeconds') && document.getElementById('schedSeconds').value);
+            if (!seconds || seconds < 1) seconds = 10;
+            const sendAt = schedFromLocalInputValue(document.getElementById('schedSendAt') && document.getElementById('schedSendAt').value);
+            const revertAt = schedFromLocalInputValue(document.getElementById('schedRevertAt') && document.getElementById('schedRevertAt').value);
+
+            if (!sendAt || !revertAt) {
+                showConfirm('Missing times', 'Set both Send at and Revert at under ADV before scheduling.', null);
+                return;
+            }
+            if (revertAt <= sendAt) {
+                showConfirm('Invalid range', 'Revert at must be after Send at.', null);
+                return;
+            }
+            try {
+                // Save the draft as-is (so reopening the panel shows exactly
+                // this), independent of whether it's actually scheduled yet.
+                await set(ref(db, 'settings/notice/scheduleDraft'), {
+                    taglineEnabled, tagline, broadcastEnabled, message, seconds, sendAt, revertAt
+                });
+                await set(ref(db, 'settings/notice/scheduled'), {
+                    taglineEnabled, tagline, broadcastEnabled, message, seconds,
+                    sendAt, revertAt, appliedAt: null, backup: null, createdAt: Date.now()
+                });
+                showConfirm('Scheduled', 'Message will go out at ' + new Date(sendAt).toLocaleString() + ' and revert at ' + new Date(revertAt).toLocaleString() + '.', null);
+            } catch (e) { showConfirm('Error', e.message || String(e), null); }
+        };
+
+        window.cancelScheduledNotice = async function() {
+            try {
+                const snap = await get(ref(db, 'settings/notice/scheduled'));
+                const s = snap.exists() ? snap.val() : null;
+                // If the scheduled message is already live (appliedAt set),
+                // cancelling should restore the backup immediately rather
+                // than leaving the scheduled message stuck live forever.
+                if (s && s.appliedAt && s.backup) {
+                    await set(ref(db, 'settings/notice/broadcast'), s.backup);
+                }
+                await set(ref(db, 'settings/notice/scheduled'), null);
+                showConfirm('Cancelled', 'Scheduled notice removed.', null);
+            } catch (e) { showConfirm('Error', e.message || String(e), null); }
+        };
+
+        // Backup/safety-net check — same role as runFestivalAutoWish(): the
+        // Cloudflare Worker's scheduled() cron is primary and runs even
+        // with no browser tab open; this just self-heals within a few
+        // minutes if the admin panel happens to be open around the
+        // send/revert boundary and, for any reason, the Worker hasn't
+        // caught up yet.
+        async function runScheduledNoticeCheck() {
+            try {
+                const snap = await get(ref(db, 'settings/notice/scheduled'));
+                if (!snap.exists() || !snap.val()) return;
+                const s = snap.val();
+                const now = Date.now();
+                if (!s.appliedAt && s.sendAt && now >= s.sendAt) {
+                    const liveSnap = await get(ref(db, 'settings/notice/broadcast'));
+                    const backup = liveSnap.exists() ? liveSnap.val() : { enabled: false, message: '', seconds: 10 };
+                    await set(ref(db, 'settings/notice/broadcast'), {
+                        enabled: !!s.broadcastEnabled,
+                        message: s.message || '',
+                        seconds: s.seconds != null ? s.seconds : 10,
+                        updatedAt: Date.now(),
+                        id: Date.now()
+                    });
+                    if (s.taglineEnabled) {
+                        await update(ref(db, 'settings/notice'), { taglineEnabled: true, tagline: s.tagline || '' });
+                    }
+                    await update(ref(db, 'settings/notice/scheduled'), { appliedAt: now, backup });
+                } else if (s.appliedAt && s.revertAt && now >= s.revertAt) {
+                    if (s.backup) {
+                        await set(ref(db, 'settings/notice/broadcast'), s.backup);
+                    }
+                    await set(ref(db, 'settings/notice/scheduled'), null);
+                }
+            } catch (e) { console.warn('scheduled notice check', e); }
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', runScheduledNoticeCheck);
+        else runScheduledNoticeCheck();
+        setInterval(runScheduledNoticeCheck, 5 * 60 * 1000);
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') runScheduledNoticeCheck();
+        });
 
         // ===== FESTIVAL AUTO-WISH BROADCAST =====
         // On a festival day, automatically force the Broadcast Popup ON with a
