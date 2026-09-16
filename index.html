@@ -2453,6 +2453,26 @@
         #gateCodeWrap.show {
             display: block;
         }
+        #gateEnrollWrap {
+            display: none;
+            margin-top: 14px;
+            text-align: left;
+        }
+        #gateEnrollWrap.show {
+            display: block;
+        }
+        #gateEnrollWrap .enroll-step {
+            display: none;
+        }
+        #gateEnrollWrap .enroll-step.show {
+            display: block;
+        }
+        #gateEnrollWrap .enroll-hint {
+            font-size: 12px;
+            color: var(--text-dim);
+            line-height: 1.45;
+            margin: 0 0 10px;
+        }
 
         /* Global Kill sad / paused overlay — sits on top of any theme */
         body.global-kill-mode {
@@ -3213,6 +3233,22 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <div style="margin:14px 0 8px;font-size:11px;font-weight:800;color:var(--text-dim);">ADMIN CODE</div>
                 <input type="password" id="gateCodeInput" placeholder="Admin code" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other" name="admin_gate_code">
                 <button class="btn" id="gateCodeBtn" type="button">ENTER WITH CODE</button>
+            </div>
+            <div id="gateEnrollWrap">
+                <div class="enroll-step show" id="enrollStepRequest">
+                    <p class="enroll-hint">No fingerprint on this device. Request access — OTP goes to the owner’s Telegram. Then register your fingerprint.</p>
+                    <button class="btn" id="gateRequestAccessBtn" type="button" style="background:var(--accent);color:#000;">REQUEST ACCESS (OTP)</button>
+                </div>
+                <div class="enroll-step" id="enrollStepOtp">
+                    <p class="enroll-hint">Enter the 6-digit OTP sent on Telegram (valid ~10 min).</p>
+                    <input type="text" id="gateOtpInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="6-digit OTP" autocomplete="one-time-code" data-lpignore="true" data-1p-ignore="true">
+                    <button class="btn" id="gateVerifyOtpBtn" type="button" style="background:var(--accent);color:#000;">VERIFY OTP</button>
+                    <button class="btn" id="gateResendOtpBtn" type="button" style="margin-top:8px;">RESEND OTP</button>
+                </div>
+                <div class="enroll-step" id="enrollStepRegister">
+                    <p class="enroll-hint">OTP OK. Register this device’s fingerprint to finish.</p>
+                    <button class="btn" id="gateRegisterFpBtn" type="button" style="background:var(--accent);color:#000;">REGISTER FINGERPRINT</button>
+                </div>
             </div>
             <div class="gate-status" id="gateStatus"></div>
         </div>
@@ -4339,6 +4375,18 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
 
         const DEFAULT_ADMIN_CODE = 'adminxdeygayan'; // never shown in UI
         const FP_STORE_KEY = 'dgxen_admin_fp_ids_v1';
+
+        // Telegram OTP enrollment (0 cost). PASTE token only on a private
+        // copy — public GitHub will leak it. chat_id is read from Firebase
+        // settings/adminTelegram. Enrollment requires settings/adminEnrollment === true.
+        // Prefer private: window.__DGXEN_TG_BOT_TOKEN = '...' in a non-public snippet,
+        // OR paste once in TG_BOT_TOKEN_HARDCODE (avoid public GitHub commit with real token).
+        const TG_BOT_TOKEN_HARDCODE = '8913799207:AAGUa3Wxswr3EaPP1rh0HHDeWphGY3VmT9E';
+        const TG_BOT_TOKEN = String(
+            (typeof window !== 'undefined' && window.__DGXEN_TG_BOT_TOKEN) || TG_BOT_TOKEN_HARDCODE || ''
+        ).trim();
+        let __enrollOtpVerified = false;
+        let __enrollLastSendAt = 0;
         let adminUnlocked = sessionStorage.getItem('dgxen_admin_unlocked') === '1';
         // Rehydrate primary flag from session
         window.__adminIsPrimary = sessionStorage.getItem('dgxen_admin_is_primary') === '1';
@@ -4545,6 +4593,205 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             if (!el) return;
             el.style.color = ok ? 'var(--accent)' : 'var(--error)';
             el.textContent = msg || '';
+        }
+
+        function showEnrollStep(name) {
+            const wrap = document.getElementById('gateEnrollWrap');
+            if (!wrap) return;
+            wrap.classList.add('show');
+            ['enrollStepRequest', 'enrollStepOtp', 'enrollStepRegister'].forEach(function(id) {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('show', id === name);
+            });
+        }
+
+        function hideEnrollUI() {
+            const wrap = document.getElementById('gateEnrollWrap');
+            if (wrap) wrap.classList.remove('show');
+            __enrollOtpVerified = false;
+        }
+
+        async function isEnrollmentAllowed() {
+            try {
+                const snap = await get(ref(db, 'settings/adminEnrollment'));
+                if (!snap.exists()) return false;
+                const v = snap.val();
+                return v === true || v === 'true' || v === 1 || (v && v.allowEnrollment === true);
+            } catch (e) { return false; }
+        }
+
+        async function getTelegramChatId() {
+            try {
+                const snap = await get(ref(db, 'settings/adminTelegram'));
+                if (!snap.exists()) return '';
+                const v = snap.val();
+                if (v == null) return '';
+                if (typeof v === 'object' && v.chatId != null) return String(v.chatId).trim();
+                return String(v).trim();
+            } catch (e) { return ''; }
+        }
+
+        function randomOtp6() {
+            const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1000000;
+            return String(n).padStart(6, '0');
+        }
+
+        async function sendTelegramOtp(chatId, code) {
+            const token = TG_BOT_TOKEN;
+            if (!token) throw new Error('Bot token missing — set window.__DGXEN_TG_BOT_TOKEN or TG_BOT_TOKEN in admin.html');
+            if (!chatId) throw new Error('Telegram chat_id missing in settings/adminTelegram');
+            const text = 'DGXEN Admin OTP: ' + code + '\nValid ~10 minutes.\nIf you did not request this, set adminEnrollment to false.';
+            const url = 'https://api.telegram.org/bot' + encodeURIComponent(token) + '/sendMessage';
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, text: text })
+            });
+            const data = await res.json().catch(function() { return {}; });
+            if (!res.ok || !data.ok) {
+                throw new Error((data && data.description) || ('Telegram HTTP ' + res.status));
+            }
+        }
+
+        async function requestAdminEnrollmentOtp() {
+            try {
+                if (!(await isEnrollmentAllowed())) {
+                    setGateStatus('Enrollment closed. Owner must set settings/adminEnrollment = true.', false);
+                    return;
+                }
+                const now = Date.now();
+                if (now - __enrollLastSendAt < 60000) {
+                    setGateStatus('Wait 60s before resending OTP.', false);
+                    return;
+                }
+                const chatId = await getTelegramChatId();
+                const code = randomOtp6();
+                const expiresAt = now + 10 * 60 * 1000;
+                await set(ref(db, 'settings/adminOtp'), {
+                    code: code,
+                    expiresAt: expiresAt,
+                    attempts: 0,
+                    createdAt: now
+                });
+                setGateStatus('Sending OTP to Telegram…', true);
+                await sendTelegramOtp(chatId, code);
+                __enrollLastSendAt = now;
+                showEnrollStep('enrollStepOtp');
+                setGateStatus('OTP sent to owner Telegram. Enter it below.', true);
+            } catch (e) {
+                setGateStatus('OTP send failed: ' + (e.message || e), false);
+            }
+        }
+
+        async function verifyAdminEnrollmentOtp() {
+            const input = document.getElementById('gateOtpInput');
+            const typed = String((input && input.value) || '').trim();
+            if (!/^\d{6}$/.test(typed)) {
+                setGateStatus('Enter the 6-digit OTP.', false);
+                return;
+            }
+            try {
+                if (!(await isEnrollmentAllowed())) {
+                    setGateStatus('Enrollment closed.', false);
+                    return;
+                }
+                const snap = await get(ref(db, 'settings/adminOtp'));
+                if (!snap.exists()) {
+                    setGateStatus('No OTP pending. Request access again.', false);
+                    return;
+                }
+                const v = snap.val() || {};
+                const attempts = Number(v.attempts) || 0;
+                if (attempts >= 5) {
+                    setGateStatus('Too many attempts. Request a new OTP.', false);
+                    return;
+                }
+                if (!v.expiresAt || Date.now() > Number(v.expiresAt)) {
+                    setGateStatus('OTP expired. Request a new one.', false);
+                    return;
+                }
+                if (String(v.code) !== typed) {
+                    await set(ref(db, 'settings/adminOtp/attempts'), attempts + 1);
+                    setGateStatus('Wrong OTP.', false);
+                    return;
+                }
+                await set(ref(db, 'settings/adminOtp'), null);
+                __enrollOtpVerified = true;
+                showEnrollStep('enrollStepRegister');
+                setGateStatus('OTP verified. Register fingerprint now.', true);
+            } catch (e) {
+                setGateStatus('Verify failed: ' + (e.message || e), false);
+            }
+        }
+
+        async function registerFingerprintAfterOtp() {
+            if (!__enrollOtpVerified) {
+                setGateStatus('Verify OTP first.', false);
+                return;
+            }
+            if (!window.PublicKeyCredential) {
+                setGateStatus('WebAuthn not supported on this browser.', false);
+                return;
+            }
+            try {
+                setGateStatus('Registering fingerprint…', true);
+                const userId = crypto.getRandomValues(new Uint8Array(16));
+                const cred = await navigator.credentials.create({
+                    publicKey: {
+                        challenge: crypto.getRandomValues(new Uint8Array(32)),
+                        rp: { name: 'DGXEN Admin', id: location.hostname || 'localhost' },
+                        user: { id: userId, name: 'admin@dgxen', displayName: 'DGXEN Admin' },
+                        pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+                        authenticatorSelection: {
+                            authenticatorAttachment: 'platform',
+                            userVerification: 'required',
+                            residentKey: 'preferred'
+                        },
+                        timeout: 60000
+                    }
+                });
+                if (!cred) {
+                    setGateStatus('Registration cancelled.', false);
+                    return;
+                }
+                const id = bufferToBase64(cred.rawId);
+                const safe = String(id).split('').map(function(ch) {
+                    return ('.$[]#/'.indexOf(ch) >= 0) ? '_' : ch;
+                }).join('');
+                const fpRecord = {
+                    id: id,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                    userAgent: (navigator.userAgent || '').slice(0, 180),
+                    platform: navigator.platform || '',
+                    origin: location.origin || '',
+                    host: location.host || '',
+                    note: 'enroll-via-telegram-otp'
+                };
+                await set(ref(db, 'settings/adminGate/fingerprints/' + safe), fpRecord);
+                __cachedFpIds = null;
+                setLocalFpIds(await getFirebaseFpIds(true));
+                __enrollOtpVerified = false;
+                hideEnrollUI();
+                setGateStatus('Fingerprint registered. Unlocking…', true);
+                unlockAdmin('fingerprint-enroll', id);
+            } catch (e) {
+                setGateStatus('Register failed: ' + (e.message || e), false);
+            }
+        }
+
+        async function offerEnrollmentIfAllowed() {
+            try {
+                if (await isEnrollmentAllowed()) {
+                    showEnrollStep('enrollStepRequest');
+                    setGateStatus('No passkey here. Request access for Telegram OTP.', false);
+                } else {
+                    hideEnrollUI();
+                    setGateStatus('No fingerprint in Firebase. Hold FP 10s for code (or owner enables enrollment).', false);
+                }
+            } catch (e) {
+                setGateStatus('No fingerprint in Firebase. Hold FP 10s for code.', false);
+            }
         }
 
         // Primary fingerprint (#1) = oldest enrolled by createdAt
@@ -4775,7 +5022,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 setGateStatus('Checking Firebase…', true);
                 const ids = await getFirebaseFpIds();
                 if (!ids.length) {
-                    setGateStatus('No fingerprint in Firebase. Use code (hold FP 10s), then enroll in Security.');
+                    await offerEnrollmentIfAllowed();
                     return;
                 }
                 setLocalFpIds(ids);
@@ -4798,11 +5045,21 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 try { usedId = bufferToBase64(assertion.rawId); } catch (e) {}
                 if (!usedId || ids.indexOf(usedId) === -1) {
                     setGateStatus('Fingerprint not registered in Firebase.');
+                    await offerEnrollmentIfAllowed();
                     return;
                 }
+                hideEnrollUI();
                 unlockAdmin('fingerprint', usedId);
             } catch (e) {
-                setGateStatus('Fingerprint cancelled or failed.');
+                const msg = String((e && e.message) || e || '');
+                // Typical when this browser/device has no passkey for the site
+                if (/not allowed|no authenticator|no credentials|credential|abort|NotAllowed/i.test(msg) || (e && e.name === 'NotAllowedError')) {
+                    setGateStatus('No passkey on this device for this site.');
+                    await offerEnrollmentIfAllowed();
+                } else {
+                    setGateStatus('Fingerprint cancelled or failed.');
+                    try { if (await isEnrollmentAllowed()) showEnrollStep('enrollStepRequest'); } catch (e2) {}
+                }
             }
         }
 
@@ -5062,6 +5319,17 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             if (codeBtn) codeBtn.onclick = () => tryCodeLogin();
             if (codeIn) codeIn.addEventListener('keydown', e => { if (e.key === 'Enter') tryCodeLogin(); });
 
+            const reqBtn = document.getElementById('gateRequestAccessBtn');
+            const verBtn = document.getElementById('gateVerifyOtpBtn');
+            const resendBtn = document.getElementById('gateResendOtpBtn');
+            const regFpBtn = document.getElementById('gateRegisterFpBtn');
+            const otpIn = document.getElementById('gateOtpInput');
+            if (reqBtn) reqBtn.onclick = function() { requestAdminEnrollmentOtp(); };
+            if (verBtn) verBtn.onclick = function() { verifyAdminEnrollmentOtp(); };
+            if (resendBtn) resendBtn.onclick = function() { requestAdminEnrollmentOtp(); };
+            if (regFpBtn) regFpBtn.onclick = function() { registerFingerprintAfterOtp(); };
+            if (otpIn) otpIn.addEventListener('keydown', function(e) { if (e.key === 'Enter') verifyAdminEnrollmentOtp(); });
+
             // ---- FINGERPRINT BUTTON: TAP = FINGERPRINT, HOLD 10s = CODE ----
             if (fpBtn) {
                 let holdTimer = null;
@@ -5136,7 +5404,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                         if (!adminUnlocked) tryFingerprintLogin();
                     }, 150);
                 } else {
-                    setGateStatus('ℹ️ No fingerprint found. Hold FINGERPRINT 10s for code.', false);
+                    offerEnrollmentIfAllowed();
                 }
             }).catch(() => {
                 setGateStatus('⚠️ Could not check fingerprints. Hold 10s for code.', false);
