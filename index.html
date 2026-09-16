@@ -413,6 +413,68 @@
             }
         }
 
+
+        /* --- Trial Key compact toggle (dashboard, beside clock) --- */
+        .trial-toggle-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+            flex-shrink: 0;
+            user-select: none;
+        }
+        .trial-toggle-wrap .trial-lab {
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.4px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+        .trial-toggle-wrap.on .trial-lab { color: var(--accent); }
+        .trial-switch {
+            position: relative;
+            width: 44px;
+            height: 26px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            transition: background .25s ease, border-color .25s ease, box-shadow .25s ease;
+            flex-shrink: 0;
+        }
+        .trial-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px; left: 2px;
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,.35);
+            transition: transform .25s cubic-bezier(.34,1.4,.44,1);
+        }
+        .trial-toggle-wrap.on .trial-switch {
+            background: rgba(var(--accent-rgb), 0.45);
+            border-color: var(--accent);
+            box-shadow: 0 0 14px var(--accent-glow);
+        }
+        .trial-toggle-wrap.on .trial-switch::after {
+            transform: translateX(18px);
+            background: var(--accent);
+        }
+        .trial-badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 900;
+            letter-spacing: .6px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: rgba(255,159,10,.18);
+            color: var(--warn);
+            border: 1px solid rgba(255,159,10,.35);
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
         /* --- AUTO-SYNC NOTCH --- */
         .auto-notch {
             position: fixed;
@@ -3379,9 +3441,15 @@ body.cat-world-active .cat-mode-bar{display:block}
     <div class="main-content">
         <div id="dashboard" class="tab-section active">
             <div class="section-box glass-panel float-anim" style="border-color: rgba(0, 255, 136, 0.4); box-shadow: inset 0 0 40px rgba(0, 255, 136, 0.05), 0 25px 60px var(--shadow-color);">
-                <h2 style="color: var(--accent);">
+                <h2 style="color: var(--accent); display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <span style="display:inline-flex;align-items:center;gap:10px;">
                     <svg style="width:28px; fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     Global Key Expiry Control
+                    </span>
+                    <div class="trial-toggle-wrap" id="trialToggleWrap" title="New devices get one 30-min free trial key from login tagline">
+                        <span class="trial-lab">Trial 30m</span>
+                        <div class="trial-switch" id="trialKeySwitch" role="switch" aria-checked="false" tabindex="0"></div>
+                    </div>
                 </h2>
                 <p>Set how many hours a normal user's generated key will remain valid. (e.g., 1.5 for 1.5 hours)</p>
                 <div class="input-group">
@@ -7011,7 +7079,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     <div class="user-card glass-panel float-anim${user.pinned ? ' user-pinned' : ''}" style="border-color:rgba(0,255,136,0.3); position:relative; overflow:visible;">
                         ${user.pinned ? `<div class="pin-badge" title="Pinned">📌</div>` : ''}
                         <div class="live-timer" data-expires="${user.keyExpiresAt}" style="color:var(--accent); position:absolute; top:14px; right:14px; font-size:12px; font-weight:800; z-index:5; background:rgba(0,0,0,0.35); padding:4px 10px; border-radius:8px;"></div>
-                        <div class="user-name copyable" style="cursor:pointer; margin-top:6px; padding-right:100px;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}</div>
+                        <div class="user-name copyable" style="cursor:pointer; margin-top:6px; padding-right:100px;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}${user.isTrial ? '<span class="trial-badge">TRIAL</span>' : ''}</div>
                         <div class="user-id copyable" style="cursor:pointer;" title="Click to copy ID" data-copy="${user.id}">ID: ${user.id}</div>
                         <div style="font-size:13px;color:var(--text-dim);margin:12px 0 8px;font-family:monospace;word-break:break-all;" class="copyable" data-copy="${user.lastGeneratedKey || ''}" title="Click to copy key">${user.lastGeneratedKey || '—'}</div>
                         <button type="button" class="btn-full bg-warn" data-action="ban-key" data-user-id="${user.id}" data-key="${String(user.lastGeneratedKey||'').replace(/"/g,'&quot;')}" onclick="banUserKey('${user.id}', this.getAttribute('data-key'))">BAN KEY</button>
@@ -12421,6 +12489,66 @@ function explainFetchError(e) {
 
 })();
     
+
+
+        // ===== Trial Key (30m) admin toggle =====
+        async function loadTrialKeySetting() {
+            try {
+                const snap = await get(ref(db, 'settings/trialKey'));
+                const on = snap.exists() && !!(snap.val() && (snap.val().enabled === true || snap.val().enabled === 'true' || snap.val().enabled === 1));
+                const wrap = document.getElementById('trialToggleWrap');
+                const sw = document.getElementById('trialKeySwitch');
+                if (wrap) wrap.classList.toggle('on', on);
+                if (sw) sw.setAttribute('aria-checked', on ? 'true' : 'false');
+            } catch (e) {}
+        }
+        async function setTrialKeyEnabled(on) {
+            try {
+                await set(ref(db, 'settings/trialKey'), {
+                    enabled: !!on,
+                    durationMin: 30,
+                    updatedAt: Date.now()
+                });
+                const wrap = document.getElementById('trialToggleWrap');
+                const sw = document.getElementById('trialKeySwitch');
+                if (wrap) wrap.classList.toggle('on', !!on);
+                if (sw) sw.setAttribute('aria-checked', on ? 'true' : 'false');
+            } catch (e) {
+                alert('Trial toggle save failed: ' + (e.message || e));
+            }
+        }
+        function bindTrialKeyToggle() {
+            const wrap = document.getElementById('trialToggleWrap');
+            const sw = document.getElementById('trialKeySwitch');
+            if (!sw || sw._trialBound) return;
+            sw._trialBound = true;
+            const toggle = function() {
+                const next = !(wrap && wrap.classList.contains('on'));
+                setTrialKeyEnabled(next);
+            };
+            sw.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); toggle(); });
+            sw.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+            });
+            if (wrap) wrap.addEventListener('click', function(e) {
+                if (e.target === sw) return;
+                e.preventDefault();
+                toggle();
+            });
+            loadTrialKeySetting();
+            try {
+                onValue(ref(db, 'settings/trialKey'), function(snap) {
+                    const on = snap.exists() && !!(snap.val() && (snap.val().enabled === true || snap.val().enabled === 'true' || snap.val().enabled === 1));
+                    if (wrap) wrap.classList.toggle('on', on);
+                    if (sw) sw.setAttribute('aria-checked', on ? 'true' : 'false');
+                });
+            } catch (e) {}
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bindTrialKeyToggle);
+        } else {
+            try { bindTrialKeyToggle(); } catch (e) {}
+        }
 
 // ===== ATMOSPHERE STUDIO =====
 (function(){
