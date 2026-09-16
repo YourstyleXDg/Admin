@@ -7057,6 +7057,9 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                         ${user.banReason ? `<p style="font-size:12px; color:var(--error); margin-bottom:14px; font-weight:700;">Reason: "${user.banReason}"</p>` : ''}
                         <button class="btn-full bg-green" onclick="unbanUser('${user.id}')">UNBAN DEVICE</button>
                     </div>`;
+                } else if (user.isTrial) {
+                    // Trial placeholder — not a real registration; only Live Active shows TRIAL badge
+                    // (avoids 2 blocks: "Trial User" + real name after Get Key)
                 } else {
                     registeredCount++;
                     if (activeListDiv) activeListDiv.innerHTML += `
