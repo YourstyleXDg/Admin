@@ -4813,9 +4813,9 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 setGateStatus('WebAuthn not supported on this browser.', false);
                 return;
             }
-            // Must stay on this page in the foreground. Leaving for Telegram
-            // mid-prompt or denying the system dialog causes NotAllowedError.
-            setGateStatus('Follow the system fingerprint / screen-lock prompt…', true);
+            // Keep Chrome in foreground. Do NOT switch apps during the prompt.
+            // If a sheet appears: choose "This device" (not USB / another device).
+            setGateStatus('Tap “This device” if asked, then use fingerprint / PIN…', true);
 
             const rpId = (location.hostname || '').replace(/^www\./, '') || 'localhost';
             const userId = crypto.getRandomValues(new Uint8Array(16));
@@ -4832,18 +4832,20 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     { type: 'public-key', alg: -7 },
                     { type: 'public-key', alg: -257 }
                 ],
-                timeout: 120000,
-                // Avoid excludeCredentials so first enroll on a clean device works
+                timeout: 120000
             };
 
-            // Android Chrome often fails with platform+required. Try soft first,
-            // then platform as fallback — both still from this click gesture.
+            // Platform FIRST — forces phone biometrics, avoids USB/hybrid picker when possible.
+            // Second attempt without attachment only if platform is unsupported.
             const attempts = [
                 {
                     authenticatorSelection: {
-                        userVerification: 'preferred',
-                        residentKey: 'discouraged'
-                    }
+                        authenticatorAttachment: 'platform',
+                        userVerification: 'required',
+                        residentKey: 'discouraged',
+                        requireResidentKey: false
+                    },
+                    hints: ['client-device']
                 },
                 {
                     authenticatorSelection: {
@@ -4858,25 +4860,28 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             let lastErr = null;
             for (let i = 0; i < attempts.length; i++) {
                 try {
-                    cred = await navigator.credentials.create({
-                        publicKey: Object.assign({}, base, attempts[i])
-                    });
+                    const opts = Object.assign({}, base, attempts[i]);
+                    cred = await navigator.credentials.create({ publicKey: opts });
                     if (cred) break;
                 } catch (e) {
                     lastErr = e;
-                    // User cancel / timeout → stop; don't loop into another prompt
                     const name = (e && e.name) || '';
+                    // Cancel by user → stop (don't open a second sheet)
                     if (name === 'NotAllowedError' || name === 'AbortError') break;
+                    // NotSupported / InvalidState → try next option
                 }
             }
 
             if (!cred) {
+                const name = (lastErr && lastErr.name) || '';
                 const msg = String((lastErr && lastErr.message) || lastErr || 'cancelled');
-                if (/not allowed|timed out|NotAllowed|Abort/i.test(msg) || (lastErr && lastErr.name === 'NotAllowedError')) {
+                if (name === 'NotAllowedError' || name === 'AbortError' || /not allowed|timed out|Abort/i.test(msg)) {
                     setGateStatus(
-                        'Fingerprint prompt closed or blocked. Keep Chrome open, unlock phone with FP/PIN, tap REGISTER again (OTP still valid).',
+                        'Not finished. Tap REGISTER → choose “This device” → fingerprint/PIN. Stay in Chrome. OTP still valid.',
                         false
                     );
+                } else if (name === 'InvalidStateError') {
+                    setGateStatus('A passkey may already exist on this phone. Try FINGERPRINT unlock, or clear site data once.', false);
                 } else {
                     setGateStatus('Register failed: ' + msg, false);
                 }
@@ -4906,7 +4911,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 setGateStatus('Fingerprint registered. Unlocking…', true);
                 unlockAdmin('fingerprint-enroll', id);
             } catch (e) {
-                setGateStatus('Saved locally but Firebase write failed: ' + (e.message || e), false);
+                setGateStatus('Saved on device but Firebase write failed: ' + (e.message || e), false);
             }
         }
 
