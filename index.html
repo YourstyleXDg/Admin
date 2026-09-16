@@ -4376,23 +4376,23 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         const DEFAULT_ADMIN_CODE = 'adminxdeygayan'; // never shown in UI
         const FP_STORE_KEY = 'dgxen_admin_fp_ids_v1';
 
-        // Telegram OTP — FULL token = "botId:secret" (colon required).
-        // Optional: Firebase settings/adminBotToken or window.__DGXEN_TG_BOT_TOKEN
-        const TG_BOT_TOKEN_HARDCODE = '8913799207:AAHatDAtxT4j2Zv-0fChY71OVlZiA4mGHLI';
+        // Telegram OTP — FULL token = "botId:AAH...." 
+        // Priority: Firebase settings/adminBotToken → window.__DGXEN_TG_BOT_TOKEN → HARDCODE
+        const TG_BOT_TOKEN_HARDCODE = '8913799207:AAGUa3Wxswr3EaPP1rh0HHDeWphGY3VmT9E';
         let __enrollOtpVerified = false;
         let __enrollLastSendAt = 0;
 
         async function resolveTelegramBotToken() {
             try {
-                if (typeof window !== 'undefined' && window.__DGXEN_TG_BOT_TOKEN) {
-                    const t = String(window.__DGXEN_TG_BOT_TOKEN).trim();
+                const snap = await get(ref(db, 'settings/adminBotToken'));
+                if (snap.exists()) {
+                    const t = String(snap.val() || '').trim();
                     if (t.indexOf(':') > 0) return t;
                 }
             } catch (e) {}
             try {
-                const snap = await get(ref(db, 'settings/adminBotToken'));
-                if (snap.exists()) {
-                    const t = String(snap.val() || '').trim();
+                if (typeof window !== 'undefined' && window.__DGXEN_TG_BOT_TOKEN) {
+                    const t = String(window.__DGXEN_TG_BOT_TOKEN).trim();
                     if (t.indexOf(':') > 0) return t;
                 }
             } catch (e) {}
@@ -4671,10 +4671,10 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 lastDetail = (data && data.description) || ('HTTP ' + res.status);
                 // Unauthorized = bad token — stop, don't pretend success
                 if (res.status === 401 || /unauthorized/i.test(lastDetail)) {
-                    throw new Error('Telegram: ' + lastDetail + ' (check full bot token)');
+                    throw new Error('Unauthorized — put CURRENT full token in Firebase settings/adminBotToken (BotFather → API Token)');
                 }
             } catch (e1) {
-                if (e1 && /Telegram:|full bot token/i.test(String(e1.message || e1))) throw e1;
+                if (e1 && /Unauthorized|adminBotToken|full bot token/i.test(String(e1.message || e1))) throw e1;
                 lastDetail = String((e1 && e1.message) || e1 || 'fetch failed');
             }
 
@@ -4691,10 +4691,10 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 if (res2.ok && data2 && data2.ok) return true;
                 lastDetail = (data2 && data2.description) || ('HTTP ' + res2.status);
                 if (res2.status === 401 || /unauthorized/i.test(lastDetail)) {
-                    throw new Error('Telegram: ' + lastDetail + ' (check full bot token)');
+                    throw new Error('Unauthorized — put CURRENT full token in Firebase settings/adminBotToken (BotFather → API Token)');
                 }
             } catch (e2) {
-                if (e2 && /Telegram:|full bot token/i.test(String(e2.message || e2))) throw e2;
+                if (e2 && /Unauthorized|adminBotToken|full bot token/i.test(String(e2.message || e2))) throw e2;
                 lastDetail = String((e2 && e2.message) || e2 || lastDetail);
             }
 
@@ -4742,7 +4742,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 }
                 const tokenCheck = await resolveTelegramBotToken();
                 if (!tokenCheck || tokenCheck.indexOf(':') < 1) {
-                    setGateStatus('Bot token incomplete (need id:secret). Fix TG_BOT_TOKEN_HARDCODE.', false);
+                    setGateStatus('Add full bot token in Firebase: settings/adminBotToken = "123:AAH..."', false);
                     return;
                 }
                 const code = randomOtp6();
