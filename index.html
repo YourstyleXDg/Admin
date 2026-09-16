@@ -461,6 +461,30 @@
             transform: translateX(18px);
             background: var(--accent);
         }
+        .trial-min-arrow {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 22px; height: 14px; margin-top: 2px; padding: 0; border: 0;
+            background: transparent; color: var(--text-dim); cursor: pointer;
+            font-size: 10px; line-height: 1; opacity: 0.7; transition: opacity .2s, color .2s, transform .2s;
+        }
+        .trial-min-arrow:hover, .trial-min-arrow.open { opacity: 1; color: var(--accent); }
+        .trial-min-arrow.open { transform: rotate(180deg); }
+        .trial-min-box {
+            display: none; margin-top: 10px; padding: 12px 14px; border-radius: 14px;
+            background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.1);
+            max-width: 280px;
+        }
+        .trial-min-box.show { display: block; }
+        .trial-min-box label { font-size: 12px; color: var(--text-dim); font-weight: 700; display: block; margin-bottom: 8px; }
+        .trial-min-box .row { display: flex; gap: 8px; align-items: center; }
+        .trial-min-box input {
+            flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12);
+            background: rgba(0,0,0,.4); color: var(--text-main); font-weight: 800; font-size: 14px;
+        }
+        .trial-min-box button {
+            padding: 10px 14px; border-radius: 10px; border: 0; font-weight: 800; font-size: 12px;
+            background: var(--accent); color: #000; cursor: pointer;
+        }
         .trial-badge {
             display: inline-block;
             font-size: 10px;
@@ -3446,11 +3470,21 @@ body.cat-world-active .cat-mode-bar{display:block}
                     <svg style="width:28px; fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     Global Key Expiry Control
                     </span>
-                    <div class="trial-toggle-wrap" id="trialToggleWrap" title="New devices get one 30-min free trial key from login tagline">
-                        <span class="trial-lab">Trial 30m</span>
+                    <div class="trial-toggle-wrap" id="trialToggleWrap" title="New devices get one free trial key from login tagline">
+                        <div style="display:flex;flex-direction:column;align-items:center;line-height:1.15;">
+                            <span class="trial-lab">Trial <span id="trialMinLabel">30</span>m</span>
+                            <button type="button" class="trial-min-arrow" id="trialMinArrow" title="Set trial minutes" aria-label="Set trial minutes">▼</button>
+                        </div>
                         <div class="trial-switch" id="trialKeySwitch" role="switch" aria-checked="false" tabindex="0"></div>
                     </div>
                 </h2>
+                <div class="trial-min-box" id="trialMinBox">
+                    <label>Trial duration (minutes)</label>
+                    <div class="row">
+                        <input type="number" id="trialMinInput" min="1" max="10080" step="1" value="30" inputmode="numeric">
+                        <button type="button" id="trialMinSave">SAVE</button>
+                    </div>
+                </div>
                 <p>Set how many hours a normal user's generated key will remain valid. (e.g., 1.5 for 1.5 hours)</p>
                 <div class="input-group">
                     <input type="number" id="expiryHoursInput" placeholder="Enter hours (e.g. 0.5 or 4)" min="0.01" step="any">
@@ -7178,6 +7212,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             if (usersMap) {
                 for (const uid in usersMap) {
                     const u = usersMap[uid] || {};
+                    // Trial placeholders must NOT hide "User is coming"
+                    if (u.isTrial) continue;
                     [uid, u.deviceId, u.fingerprint, u.lastDeviceId, u.androidId, u.lastLoginDevice].forEach(function(
                     x) {
                         const n = normId(x);
@@ -7204,12 +7240,16 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 const n = normId(id);
                 if (seen.has(n)) return;
                 seen.add(n);
-                if (reg.has(n)) return;
+                const localId = String(r.localId || r.localStorageId || '').trim();
+                // Hide only when fully registered (not trial) — native OR uuid path
+                if (reg.has(n) || (localId && reg.has(normId(localId)))) return;
                 const exp = Number(r.expiresAt || 0);
                 const t = Number(r.time) || 0;
+                // Strict window: expired → never show
                 if (exp && now > exp) return;
                 if (!exp && t && (now - t) > 12 * 60 * 1000) return;
-                items.push({ id: id, time: t, localId: r.localId || r.localStorageId || '' });
+                if (!exp && !t) return; // garbage entry without time
+                items.push({ id: id, time: t, localId: localId });
             });
             items.sort(function(a, b) { return b.time - a.time; });
             if (!items.length) { wrap.style.display = 'none';
@@ -12494,30 +12534,64 @@ function explainFetchError(e) {
     
 
 
-        // ===== Trial Key (30m) admin toggle =====
+        // ===== Trial Key admin toggle + minutes =====
+        window.__trialDurationMin = 30;
+        function applyTrialMinUI(min, on) {
+            const m = Math.max(1, Math.min(10080, Number(min) || 30));
+            window.__trialDurationMin = m;
+            const lab = document.getElementById('trialMinLabel');
+            if (lab) lab.textContent = String(m);
+            const inp = document.getElementById('trialMinInput');
+            if (inp && document.activeElement !== inp) inp.value = String(m);
+            const wrap = document.getElementById('trialToggleWrap');
+            const sw = document.getElementById('trialKeySwitch');
+            if (typeof on === 'boolean') {
+                if (wrap) wrap.classList.toggle('on', on);
+                if (sw) sw.setAttribute('aria-checked', on ? 'true' : 'false');
+            }
+        }
         async function loadTrialKeySetting() {
             try {
                 const snap = await get(ref(db, 'settings/trialKey'));
-                const on = snap.exists() && !!(snap.val() && (snap.val().enabled === true || snap.val().enabled === 'true' || snap.val().enabled === 1));
-                const wrap = document.getElementById('trialToggleWrap');
-                const sw = document.getElementById('trialKeySwitch');
-                if (wrap) wrap.classList.toggle('on', on);
-                if (sw) sw.setAttribute('aria-checked', on ? 'true' : 'false');
+                const v = snap.exists() ? (snap.val() || {}) : {};
+                const on = !!(v.enabled === true || v.enabled === 'true' || v.enabled === 1);
+                const min = Number(v.durationMin) || 30;
+                applyTrialMinUI(min, on);
             } catch (e) {}
         }
         async function setTrialKeyEnabled(on) {
             try {
+                const min = window.__trialDurationMin || 30;
                 await set(ref(db, 'settings/trialKey'), {
                     enabled: !!on,
-                    durationMin: 30,
+                    durationMin: min,
                     updatedAt: Date.now()
                 });
-                const wrap = document.getElementById('trialToggleWrap');
-                const sw = document.getElementById('trialKeySwitch');
-                if (wrap) wrap.classList.toggle('on', !!on);
-                if (sw) sw.setAttribute('aria-checked', on ? 'true' : 'false');
+                applyTrialMinUI(min, !!on);
             } catch (e) {
                 alert('Trial toggle save failed: ' + (e.message || e));
+            }
+        }
+        async function saveTrialMinutes() {
+            try {
+                const inp = document.getElementById('trialMinInput');
+                let min = parseInt(inp && inp.value, 10);
+                if (!min || min < 1) min = 30;
+                if (min > 10080) min = 10080;
+                const wrap = document.getElementById('trialToggleWrap');
+                const on = !!(wrap && wrap.classList.contains('on'));
+                await set(ref(db, 'settings/trialKey'), {
+                    enabled: on,
+                    durationMin: min,
+                    updatedAt: Date.now()
+                });
+                applyTrialMinUI(min, on);
+                const box = document.getElementById('trialMinBox');
+                const arrow = document.getElementById('trialMinArrow');
+                if (box) box.classList.remove('show');
+                if (arrow) arrow.classList.remove('open');
+            } catch (e) {
+                alert('Trial minutes save failed: ' + (e.message || e));
             }
         }
         function bindTrialKeyToggle() {
@@ -12533,17 +12607,40 @@ function explainFetchError(e) {
             sw.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
             });
+            // Label click toggles; arrow has its own handler
             if (wrap) wrap.addEventListener('click', function(e) {
                 if (e.target === sw) return;
+                if (e.target && e.target.closest && e.target.closest('#trialMinArrow')) return;
+                if (e.target && e.target.closest && e.target.closest('#trialMinBox')) return;
                 e.preventDefault();
                 toggle();
             });
+            const arrow = document.getElementById('trialMinArrow');
+            const box = document.getElementById('trialMinBox');
+            if (arrow && !arrow._bound) {
+                arrow._bound = true;
+                arrow.addEventListener('click', function(e) {
+                    e.preventDefault(); e.stopPropagation();
+                    if (!box) return;
+                    const open = box.classList.toggle('show');
+                    arrow.classList.toggle('open', open);
+                });
+            }
+            const saveBtn = document.getElementById('trialMinSave');
+            if (saveBtn && !saveBtn._bound) {
+                saveBtn._bound = true;
+                saveBtn.addEventListener('click', function(e) {
+                    e.preventDefault(); e.stopPropagation();
+                    saveTrialMinutes();
+                });
+            }
             loadTrialKeySetting();
             try {
                 onValue(ref(db, 'settings/trialKey'), function(snap) {
-                    const on = snap.exists() && !!(snap.val() && (snap.val().enabled === true || snap.val().enabled === 'true' || snap.val().enabled === 1));
-                    if (wrap) wrap.classList.toggle('on', on);
-                    if (sw) sw.setAttribute('aria-checked', on ? 'true' : 'false');
+                    const v = snap.exists() ? (snap.val() || {}) : {};
+                    const on = !!(v.enabled === true || v.enabled === 'true' || v.enabled === 1);
+                    const min = Number(v.durationMin) || 30;
+                    applyTrialMinUI(min, on);
                 });
             } catch (e) {}
         }
