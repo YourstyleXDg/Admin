@@ -4327,7 +4327,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     <!-- Firebase SDK & Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, remove, set, onValue, update, get } from
+        import { getDatabase, ref, push, remove, set, onValue, update, get, runTransaction } from
         "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = { databaseURL: "https://login-pass-1a196-default-rtdb.firebaseio.com/" };
@@ -7329,11 +7329,40 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         // caught up yet.
         async function runScheduledNoticeCheck() {
             try {
-                const snap = await get(ref(db, 'settings/notice/scheduled'));
-                if (!snap.exists() || !snap.val()) return;
-                const s = snap.val();
                 const now = Date.now();
-                if (!s.appliedAt && s.sendAt && now >= s.sendAt) {
+                // Atomic claim: the transaction's update function may be
+                // invoked multiple times if Firebase detects a conflicting
+                // write (e.g. the Worker's cron and this admin tab's own
+                // check both landing at nearly the same moment) — only ONE
+                // caller's write is ever actually committed as a result.
+                // This is what the previous get()-then-set() version was
+                // missing: both runners could read "not yet applied",
+                // both decide independently to apply, and each capture its
+                // own (possibly already-poisoned) copy of the live message
+                // as the backup — which is exactly why revert stopped
+                // working (the "backup" ended up being the scheduled
+                // message itself). Claiming the state change atomically
+                // first, then doing the actual broadcast read/write only
+                // if this call's claim won, closes that race.
+                const txResult = await runTransaction(ref(db, 'settings/notice/scheduled'), (s) => {
+                    if (!s) return s; // nothing scheduled — leave untouched
+                    if (!s.appliedAt && s.sendAt && now >= s.sendAt) {
+                        return Object.assign({}, s, { appliedAt: now, claimPending: 'send' });
+                    }
+                    if (s.appliedAt && s.revertAt && now >= s.revertAt && !s.claimPending) {
+                        return Object.assign({}, s, { claimPending: 'revert' });
+                    }
+                    return s; // no state change due right now
+                });
+
+                if (!txResult.committed || !txResult.snapshot.exists()) return;
+                const s = txResult.snapshot.val();
+                if (!s) return;
+
+                if (s.claimPending === 'send') {
+                    // This call's transaction attempt is the one that actually
+                    // flipped appliedAt from null → now, so it — and only it —
+                    // does the real backup+publish work.
                     const liveSnap = await get(ref(db, 'settings/notice/broadcast'));
                     const backup = liveSnap.exists() ? liveSnap.val() : { enabled: false, message: '', seconds: 10 };
                     await set(ref(db, 'settings/notice/broadcast'), {
@@ -7346,8 +7375,8 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                     if (s.taglineEnabled) {
                         await update(ref(db, 'settings/notice'), { taglineEnabled: true, tagline: s.tagline || '' });
                     }
-                    await update(ref(db, 'settings/notice/scheduled'), { appliedAt: now, backup });
-                } else if (s.appliedAt && s.revertAt && now >= s.revertAt) {
+                    await update(ref(db, 'settings/notice/scheduled'), { backup, claimPending: null });
+                } else if (s.claimPending === 'revert') {
                     if (s.backup) {
                         await set(ref(db, 'settings/notice/broadcast'), s.backup);
                     }
