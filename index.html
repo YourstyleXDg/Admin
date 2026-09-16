@@ -4414,7 +4414,15 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         <div class="modal">
             <h2>Ban User</h2>
             <p>Enter a custom reason for this ban (User will see this).</p>
-            <input type="text" id="banReasonInput" placeholder="e.g., Suspicious activity detected." style="width: 100%; margin-bottom: 0;">
+            <input type="text" id="banReasonInput" placeholder="e.g., Suspicious activity detected." style="width: 100%; margin-bottom: 14px;">
+            <div class="ios-row" style="margin-bottom:0;">
+                <label>Snooze (temporary ban) <span style="display:block;font-size:11px;font-weight:600;color:var(--text-dim);margin-top:2px;">Auto-lifts after the chosen duration instead of staying banned permanently.</span></label>
+                <label class="ios-toggle"><input type="checkbox" id="banSnoozeToggle" onchange="document.getElementById('banSnoozeDurationRow').style.display=this.checked?'flex':'none'"><span></span></label>
+            </div>
+            <div id="banSnoozeDurationRow" style="display:none;gap:10px;margin-top:12px;">
+                <button type="button" class="btn" data-snooze-hours="6" onclick="selectSnoozeDuration(6, this)" style="flex:1;background:rgba(150,150,150,.18);color:var(--text-main);">6 HOURS</button>
+                <button type="button" class="btn" data-snooze-hours="24" onclick="selectSnoozeDuration(24, this)" style="flex:1;background:rgba(150,150,150,.18);color:var(--text-main);">24 HOURS</button>
+            </div>
             <div class="modal-btns">
                 <button class="btn-confirm" onclick="confirmBan()">CONFIRM BAN</button>
                 <button class="btn-cancel" onclick="closeModals()">CANCEL</button>
@@ -4462,7 +4470,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     <!-- Undo toast — bottom of screen, appears right after a ban action,
          30s to reverse it before it auto-dismisses. Shared by both device
          bans and key bans. -->
-    <div id="undoToast" style="display:none;position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60000;max-width:92vw;padding:14px 18px;border-radius:16px;background:rgba(20,20,28,.96);border:1px solid var(--glass-border);box-shadow:0 12px 40px rgba(0,0,0,.5);backdrop-filter:blur(14px);display:flex;align-items:center;gap:14px;">
+    <div id="undoToast" style="display:none;position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60000;max-width:92vw;padding:14px 18px;border-radius:16px;background:rgba(20,20,28,.96);border:1px solid var(--glass-border);box-shadow:0 12px 40px rgba(0,0,0,.5);backdrop-filter:blur(14px);align-items:center;gap:14px;">
         <span id="undoToastText" style="font-size:13px;font-weight:700;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
         <button type="button" onclick="performUndo()" style="flex-shrink:0;background:var(--accent);color:#000;border:none;padding:8px 16px;border-radius:10px;font-weight:900;font-size:12px;cursor:pointer;">UNDO (<span id="undoToastSeconds">30</span>s)</button>
     </div>
@@ -4477,6 +4485,19 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         const app = initializeApp(firebaseConfig);
 
         const db = getDatabase(app);
+
+        // Pulls "Android <version>" and the device model out of a
+        // User-Agent string — same parser as login.html's, so both sides
+        // agree on format. Returns nulls for anything it can't parse.
+        function parseDeviceOsAndModel(ua) {
+            try {
+                const m = String(ua || '').match(/Android\s+([\d.]+);\s*([^)]+?)\s*(?:Build\/|\))/i);
+                if (!m) return { os: null, model: null };
+                const version = m[1] || null;
+                let model = (m[2] || '').trim().replace(/\s*(wv|Build)\s*$/i, '').trim();
+                return { os: version ? ('Android ' + version) : null, model: model || null };
+            } catch (e) { return { os: null, model: null }; }
+        }
 
         // ========== ADMIN GATE (fingerprint + code) ==========
 
@@ -5239,9 +5260,13 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     .slice(0, 80);
                 list.innerHTML = rows.map(r => {
                     const when = r.at ? new Date(r.at).toLocaleString() : '—';
-                    return '<div class="mk-item" style="padding:16px 18px;"><div style="font-size:15px;font-weight:800;">' + (r
+                    const dm = parseDeviceOsAndModel(r.ua);
+                    const deviceLabel = (dm.os || dm.model) ? [dm.os, dm.model].filter(Boolean).join(' · ') : '';
+                    return '<div class="mk-item" style="padding:16px 18px;"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;"><div style="font-size:15px;font-weight:800;">' + (r
                         .method || 'login') + '<div style="font-size:12px;color:var(--text-dim);margin-top:6px;">' +
-                        when + '</div></div></div>';
+                        when + '</div></div>' +
+                        (deviceLabel ? '<div style="font-size:11px;color:var(--text-dim);text-align:right;white-space:nowrap;flex-shrink:0;padding-top:2px;">' + deviceLabel + '</div>' : '') +
+                        '</div></div>';
                 }).join('');
             } catch (e) {
                 list.innerHTML = '<div style="color:var(--error);padding:12px;">Could not load history.</div>';
@@ -7066,7 +7091,14 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                         ${user.pinned ? `<div class="pin-badge" title="Pinned">📌</div>` : ''}
                         <div class="pin-action-btn" data-user-id="${user.id}" data-pinned="${user.pinned ? '1' : '0'}" style="display:none;">${user.pinned ? 'UNPIN' : 'PIN TO TOP'}</div>
                         <div class="user-date">${dateStr}</div>
-                        <div class="user-name copyable" style="cursor:pointer;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}</div>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <div class="user-name copyable" style="cursor:pointer;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}</div>
+                            ${(user.deviceOs || user.deviceModel) ? `<svg class="device-info-arrow" data-user-id="${user.id}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;cursor:pointer;color:var(--text-dim);transition:transform .25s ease;"><polyline points="6 9 12 15 18 9"/></svg>` : ''}
+                        </div>
+                        <div class="device-info-row" data-user-id="${user.id}" style="display:none;font-size:11px;color:var(--text-dim);background:rgba(255,255,255,.04);border-radius:8px;padding:8px 10px;margin:2px 0 8px;line-height:1.5;">
+                            <div>Device: <span style="color:var(--text-main);font-weight:600;">${user.deviceOs || 'unknown'}</span></div>
+                            <div>Model: <span style="color:var(--text-main);font-weight:600;">${user.deviceModel || 'unknown'}</span></div>
+                        </div>
                         <div class="user-id copyable" style="cursor:pointer;" title="Click to copy ID" data-copy="${user.id}">ID: ${user.id}</div>
                         ${nativeId ? `<div class="copyable" style="font-size:10px;color:var(--text-dim);margin:0 0 8px;font-family:monospace;cursor:pointer;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Click to copy native id" data-copy="${String(nativeId).replace(/"/g,'&quot;')}">Dev: ${nativeId}</div>` : ''}
                         <div class="copyable" style="font-size:11px;font-weight:800;color:var(--accent);margin:0 0 12px;padding:6px 10px;border-radius:8px;background:rgba(0,255,136,0.1);cursor:pointer;" title="${vCode != null ? 'Click to copy version code' : 'This device has not reported a version code yet'}" data-copy="${vCode != null ? vCode : ''}">${vCode != null ? ('code ' + vCode) : 'no version code'}</div>
@@ -7107,6 +7139,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             if (liveStat) liveStat.innerText = liveCount;
         try { bindBanButtons(document); } catch (e) {}
         try { setupPinHoldToReveal(document.getElementById('activeUserList')); } catch (e) {}
+        try { setupDeviceInfoToggle(document.getElementById('activeUserList')); } catch (e) {}
         }
 
         window.togglePinUser = async function(userId, currentlyPinned) {
@@ -7114,6 +7147,25 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 await update(ref(db, 'users/' + userId), { pinned: !currentlyPinned });
             } catch (e) { console.warn('pin toggle failed', e); }
         };
+
+        // Tap the arrow beside a registered user's name to expand/collapse
+        // their Device (OS) / Model row — arrow flips 180° to reflect
+        // state. Delegated on the container since cards are re-rendered on
+        // every Firebase update.
+        function setupDeviceInfoToggle(box) {
+            if (!box || box.dataset.deviceInfoBound === '1') return;
+            box.dataset.deviceInfoBound = '1';
+            box.addEventListener('click', function(e) {
+                const arrow = e.target.closest('.device-info-arrow');
+                if (!arrow) return;
+                const uid = arrow.getAttribute('data-user-id');
+                const row = box.querySelector('.device-info-row[data-user-id="' + CSS.escape(uid) + '"]');
+                if (!row) return;
+                const opening = row.style.display === 'none' || !row.style.display;
+                row.style.display = opening ? 'block' : 'none';
+                arrow.style.transform = opening ? 'rotate(180deg)' : 'rotate(0deg)';
+            });
+        }
 
         // Hold empty card space (not the name/ID/version chip — those stay
         // copyable as before) to reveal a PIN TO TOP / UNPIN action, same
@@ -7313,6 +7365,15 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 currentBanUserId = userId;
                 const inp = document.getElementById('banReasonInput');
                 if (inp) inp.value = '';
+                // Reset snooze state every time the modal opens — a leftover
+                // selection from a previous ban should never silently carry
+                // over to this one.
+                window.__pendingSnoozeHours = null;
+                const snoozeToggle = document.getElementById('banSnoozeToggle');
+                if (snoozeToggle) snoozeToggle.checked = false;
+                const durRow = document.getElementById('banSnoozeDurationRow');
+                if (durRow) durRow.style.display = 'none';
+                document.querySelectorAll('#banSnoozeDurationRow .btn').forEach(b => b.style.outline = 'none');
                 const modal = document.getElementById('banModal');
                 if (!modal) { alert('Ban modal missing'); return; }
                 modal.style.setProperty('display', 'flex', 'important');
@@ -7321,18 +7382,36 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             } catch (e) { alert('Ban error: ' + (e.message || e)); }
         };
 
+        window.selectSnoozeDuration = function(hours, btnEl) {
+            window.__pendingSnoozeHours = hours;
+            document.querySelectorAll('#banSnoozeDurationRow .btn').forEach(b => {
+                b.style.outline = 'none';
+                b.style.background = 'rgba(150,150,150,.18)';
+            });
+            btnEl.style.outline = '2px solid var(--accent)';
+            btnEl.style.background = 'rgba(0,255,136,.15)';
+        };
+
         window.confirmBan = async function() {
             try {
                 const uid = currentBanUserId;
                 if (!uid) return showConfirm("Error", "No user selected.", null);
                 const reasonEl = document.getElementById('banReasonInput');
                 const reason = (reasonEl && reasonEl.value.trim()) || "violations of terms!";
+                const snoozeOn = !!(document.getElementById('banSnoozeToggle') && document.getElementById('banSnoozeToggle').checked);
+                if (snoozeOn && !window.__pendingSnoozeHours) {
+                    showConfirm('Pick a duration', 'Choose 6 or 24 hours for the snooze ban.', null);
+                    return;
+                }
+                const snoozeUntil = snoozeOn ? (Date.now() + window.__pendingSnoozeHours * 60 * 60 * 1000) : null;
                 closeModals();
-                await update(ref(db, 'users/' + uid), { status: 'banned', banReason: reason });
+                await update(ref(db, 'users/' + uid), { status: 'banned', banReason: reason, banSnoozeUntil: snoozeUntil });
                 currentBanUserId = null;
-                showUndoToast('Device banned.', async () => {
-                    await update(ref(db, 'users/' + uid), { status: 'active', banReason: null });
+                const label = snoozeOn ? ('Device banned for ' + window.__pendingSnoozeHours + 'h.') : 'Device banned.';
+                showUndoToast(label, async () => {
+                    await update(ref(db, 'users/' + uid), { status: 'active', banReason: null, banSnoozeUntil: null });
                 });
+                window.__pendingSnoozeHours = null;
             } catch (e) { showConfirm("Error", "Ban failed: " + (e.message || e), null); }
         };
         window.unbanUser = async function(userId) {
@@ -8260,6 +8339,14 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                     // does the real backup+publish work.
                     const liveSnap = await get(ref(db, 'settings/notice/broadcast'));
                     const backup = liveSnap.exists() ? liveSnap.val() : { enabled: false, message: '', seconds: 10 };
+                    // Also capture the tagline as it stood right before this
+                    // scheduled message goes live, alongside the broadcast —
+                    // otherwise revert has no way to know what to put back.
+                    const noticeSnap = await get(ref(db, 'settings/notice'));
+                    const noticeVal = noticeSnap.exists() ? noticeSnap.val() : {};
+                    backup.taglineEnabled = !!noticeVal.taglineEnabled;
+                    backup.tagline = noticeVal.tagline || '';
+
                     await set(ref(db, 'settings/notice/broadcast'), {
                         enabled: !!s.broadcastEnabled,
                         message: s.message || '',
@@ -8275,6 +8362,14 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                     // wasSend === false → this was a revert claim
                     if (s.backup) {
                         await set(ref(db, 'settings/notice/broadcast'), s.backup);
+                        // Restore the tagline exactly as it was before the
+                        // scheduled message went live — the tagline fields
+                        // travel alongside the broadcast backup (see above),
+                        // not inside settings/notice/broadcast itself.
+                        await update(ref(db, 'settings/notice'), {
+                            taglineEnabled: !!s.backup.taglineEnabled,
+                            tagline: s.backup.tagline || ''
+                        });
                     }
                     await set(ref(db, 'settings/notice/scheduled'), null);
                 }
@@ -8419,6 +8514,31 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         setInterval(runFestivalAutoWish, 5 * 60 * 1000);
         document.addEventListener('visibilitychange', function() {
             if (document.visibilityState === 'visible') runFestivalAutoWish();
+        });
+
+        // Snooze Ban auto-lift — backup/safety-net alongside the Worker's
+        // cron, same reasoning as the festival/scheduled-notice checks
+        // above: self-heals quickly if this admin tab happens to be open
+        // around the moment a snooze expires.
+        async function runSnoozeBanCheck() {
+            try {
+                const snap = await get(ref(db, 'users'));
+                if (!snap.exists()) return;
+                const users = snap.val();
+                const now = Date.now();
+                for (const uid in users) {
+                    const u = users[uid] || {};
+                    if (u.status === 'banned' && u.banSnoozeUntil && now >= u.banSnoozeUntil) {
+                        await update(ref(db, 'users/' + uid), { status: 'active', banReason: null, banSnoozeUntil: null });
+                    }
+                }
+            } catch (e) { console.warn('snooze ban check', e); }
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', runSnoozeBanCheck);
+        else runSnoozeBanCheck();
+        setInterval(runSnoozeBanCheck, 5 * 60 * 1000);
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') runSnoozeBanCheck();
         });
     
 
