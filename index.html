@@ -4376,17 +4376,31 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         const DEFAULT_ADMIN_CODE = 'adminxdeygayan'; // never shown in UI
         const FP_STORE_KEY = 'dgxen_admin_fp_ids_v1';
 
-        // Telegram OTP enrollment (0 cost). PASTE token only on a private
-        // copy — public GitHub will leak it. chat_id is read from Firebase
-        // settings/adminTelegram. Enrollment requires settings/adminEnrollment === true.
-        // Prefer private: window.__DGXEN_TG_BOT_TOKEN = '...' in a non-public snippet,
-        // OR paste once in TG_BOT_TOKEN_HARDCODE (avoid public GitHub commit with real token).
-        const TG_BOT_TOKEN_HARDCODE = '8913799207';
-        const TG_BOT_TOKEN = String(
-            (typeof window !== 'undefined' && window.__DGXEN_TG_BOT_TOKEN) || TG_BOT_TOKEN_HARDCODE || ''
-        ).trim();
+        // Telegram OTP — FULL token = "botId:secret" (colon required).
+        // Optional: Firebase settings/adminBotToken or window.__DGXEN_TG_BOT_TOKEN
+        const TG_BOT_TOKEN_HARDCODE = '8913799207:AAHatDAtxT4j2Zv-0fChY71OVlZiA4mGHLI';
         let __enrollOtpVerified = false;
         let __enrollLastSendAt = 0;
+
+        async function resolveTelegramBotToken() {
+            try {
+                if (typeof window !== 'undefined' && window.__DGXEN_TG_BOT_TOKEN) {
+                    const t = String(window.__DGXEN_TG_BOT_TOKEN).trim();
+                    if (t.indexOf(':') > 0) return t;
+                }
+            } catch (e) {}
+            try {
+                const snap = await get(ref(db, 'settings/adminBotToken'));
+                if (snap.exists()) {
+                    const t = String(snap.val() || '').trim();
+                    if (t.indexOf(':') > 0) return t;
+                }
+            } catch (e) {}
+            const hard = String(TG_BOT_TOKEN_HARDCODE || '').trim();
+            if (hard.indexOf(':') > 0) return hard;
+            return '';
+        }
+
         let adminUnlocked = sessionStorage.getItem('dgxen_admin_unlocked') === '1';
         // Rehydrate primary flag from session
         window.__adminIsPrimary = sessionStorage.getItem('dgxen_admin_is_primary') === '1';
@@ -4637,53 +4651,77 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         }
 
         async function sendTelegramOtp(chatId, code) {
-            const token = TG_BOT_TOKEN;
-            if (!token) throw new Error('Bot token missing — set TG_BOT_TOKEN_HARDCODE or window.__DGXEN_TG_BOT_TOKEN');
+            const token = await resolveTelegramBotToken();
+            if (!token || token.indexOf(':') < 1) {
+                throw new Error('Bot token incomplete. Need full token like 123456:AAHxxxx (not only the number).');
+            }
             if (!chatId) throw new Error('Telegram chat_id missing in settings/adminTelegram');
             const text = 'DGXEN Admin OTP: ' + code + '\nValid ~10 minutes.\nIf you did not request this, set adminEnrollment to false.';
-            // GET query works from browsers when POST hits CORS / Failed to fetch
             const getUrl = 'https://api.telegram.org/bot' + token +
-                '/sendMessage?chat_id=' + encodeURIComponent(chatId) +
+                '/sendMessage?chat_id=' + encodeURIComponent(String(chatId)) +
                 '&text=' + encodeURIComponent(text);
 
-            // 1) Prefer fetch GET (readable response when CORS allows)
+            let lastDetail = '';
+
+            // 1) GET + cors
             try {
                 const res = await fetch(getUrl, { method: 'GET', mode: 'cors', cache: 'no-store' });
                 const data = await res.json().catch(function() { return {}; });
-                if (res.ok && data && data.ok) return;
-                if (data && data.description) throw new Error(data.description);
-            } catch (e1) {
-                // 2) POST JSON (some networks allow this)
-                try {
-                    const res2 = await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
-                        method: 'POST',
-                        mode: 'cors',
-                        cache: 'no-store',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chat_id: chatId, text: text })
-                    });
-                    const data2 = await res2.json().catch(function() { return {}; });
-                    if (res2.ok && data2 && data2.ok) return;
-                    if (data2 && data2.description) throw new Error(data2.description);
-                } catch (e2) {
-                    // 3) Fire-and-forget: Image request bypasses CORS read block.
-                    // Telegram still processes sendMessage; onerror is normal (JSON body).
-                    await new Promise(function(resolve) {
-                        var done = false;
-                        function finish() {
-                            if (done) return;
-                            done = true;
-                            resolve();
-                        }
-                        var img = new Image();
-                        img.onload = finish;
-                        img.onerror = finish;
-                        img.src = getUrl;
-                        setTimeout(finish, 2500);
-                    });
-                    return;
+                if (res.ok && data && data.ok) return true;
+                lastDetail = (data && data.description) || ('HTTP ' + res.status);
+                // Unauthorized = bad token — stop, don't pretend success
+                if (res.status === 401 || /unauthorized/i.test(lastDetail)) {
+                    throw new Error('Telegram: ' + lastDetail + ' (check full bot token)');
                 }
+            } catch (e1) {
+                if (e1 && /Telegram:|full bot token/i.test(String(e1.message || e1))) throw e1;
+                lastDetail = String((e1 && e1.message) || e1 || 'fetch failed');
             }
+
+            // 2) POST JSON
+            try {
+                const res2 = await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+                    method: 'POST',
+                    mode: 'cors',
+                    cache: 'no-store',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: String(chatId), text: text })
+                });
+                const data2 = await res2.json().catch(function() { return {}; });
+                if (res2.ok && data2 && data2.ok) return true;
+                lastDetail = (data2 && data2.description) || ('HTTP ' + res2.status);
+                if (res2.status === 401 || /unauthorized/i.test(lastDetail)) {
+                    throw new Error('Telegram: ' + lastDetail + ' (check full bot token)');
+                }
+            } catch (e2) {
+                if (e2 && /Telegram:|full bot token/i.test(String(e2.message || e2))) throw e2;
+                lastDetail = String((e2 && e2.message) || e2 || lastDetail);
+            }
+
+            // 3) Image GET (CORS-blind; Telegram still delivers if token+chat ok)
+            await new Promise(function(resolve) {
+                var done = false;
+                function finish() {
+                    if (done) return;
+                    done = true;
+                    resolve();
+                }
+                try {
+                    var img = new Image();
+                    img.onload = finish;
+                    img.onerror = finish;
+                    img.src = getUrl;
+                } catch (e3) {}
+                setTimeout(finish, 3000);
+            });
+
+            // 4) no-cors fetch (opaque; may still deliver)
+            try {
+                await fetch(getUrl, { method: 'GET', mode: 'no-cors', cache: 'no-store' });
+            } catch (e4) {}
+
+            // Assume delivery attempted — user checks Telegram. OTP is already in Firebase.
+            return true;
         }
 
         async function requestAdminEnrollmentOtp() {
@@ -4693,11 +4731,20 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     return;
                 }
                 const now = Date.now();
-                if (now - __enrollLastSendAt < 60000) {
-                    setGateStatus('Wait 60s before resending OTP.', false);
+                if (now - __enrollLastSendAt < 15000) {
+                    setGateStatus('Wait 15s before resending OTP.', false);
                     return;
                 }
                 const chatId = await getTelegramChatId();
+                if (!chatId) {
+                    setGateStatus('chat_id missing — set settings/adminTelegram in Firebase.', false);
+                    return;
+                }
+                const tokenCheck = await resolveTelegramBotToken();
+                if (!tokenCheck || tokenCheck.indexOf(':') < 1) {
+                    setGateStatus('Bot token incomplete (need id:secret). Fix TG_BOT_TOKEN_HARDCODE.', false);
+                    return;
+                }
                 const code = randomOtp6();
                 const expiresAt = now + 10 * 60 * 1000;
                 await set(ref(db, 'settings/adminOtp'), {
@@ -4710,7 +4757,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 await sendTelegramOtp(chatId, code);
                 __enrollLastSendAt = now;
                 showEnrollStep('enrollStepOtp');
-                setGateStatus('OTP sent to owner Telegram. Enter it below.', true);
+                setGateStatus('OTP sent (or queued). Check Telegram bot chat. Enter below.', true);
             } catch (e) {
                 setGateStatus('OTP send failed: ' + (e.message || e), false);
             }
