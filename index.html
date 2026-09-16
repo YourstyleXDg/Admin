@@ -470,9 +470,9 @@
         .trial-min-arrow:hover, .trial-min-arrow.open { opacity: 1; color: var(--accent); }
         .trial-min-arrow.open { transform: rotate(180deg); }
         .trial-min-box {
-            display: none; margin-top: 10px; padding: 12px 14px; border-radius: 14px;
-            background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.1);
-            max-width: 280px;
+            display: none; margin-top: 6px; padding: 12px 14px; border-radius: 14px;
+            background: rgba(12,14,16,.96); border: 1px solid rgba(255,255,255,.14);
+            max-width: 280px; text-align: left;
         }
         .trial-min-box.show { display: block; }
         .trial-min-box label { font-size: 12px; color: var(--text-dim); font-weight: 700; display: block; margin-bottom: 8px; }
@@ -485,6 +485,12 @@
             padding: 10px 14px; border-radius: 10px; border: 0; font-weight: 800; font-size: 12px;
             background: var(--accent); color: #000; cursor: pointer;
         }
+        .user-device-arrow {
+            flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12);
+            background: rgba(255,255,255,.04); color: var(--text-dim); cursor: pointer; font-size: 11px;
+            display: inline-flex; align-items: center; justify-content: center; transition: transform .25s, color .2s, border-color .2s;
+        }
+        .user-device-arrow.open { transform: rotate(180deg); color: var(--accent); border-color: rgba(0,255,136,.35); }
         .trial-badge {
             display: inline-block;
             font-size: 10px;
@@ -3470,21 +3476,21 @@ body.cat-world-active .cat-mode-bar{display:block}
                     <svg style="width:28px; fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     Global Key Expiry Control
                     </span>
-                    <div class="trial-toggle-wrap" id="trialToggleWrap" title="New devices get one free trial key from login tagline">
-                        <div style="display:flex;flex-direction:column;align-items:center;line-height:1.15;">
+                    <div class="trial-toggle-wrap" id="trialToggleWrap" title="New devices get one free trial key from login tagline" style="position:relative;align-items:flex-start;">
+                        <div style="display:flex;flex-direction:column;align-items:center;line-height:1.15;position:relative;">
                             <span class="trial-lab">Trial <span id="trialMinLabel">30</span>m</span>
                             <button type="button" class="trial-min-arrow" id="trialMinArrow" title="Set trial minutes" aria-label="Set trial minutes">▼</button>
+                            <div class="trial-min-box" id="trialMinBox" style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:6px;z-index:20;min-width:220px;box-shadow:0 12px 32px rgba(0,0,0,.45);">
+                                <label>Trial duration (minutes)</label>
+                                <div class="row">
+                                    <input type="number" id="trialMinInput" min="1" max="10080" step="1" value="30" inputmode="numeric">
+                                    <button type="button" id="trialMinSave">SAVE</button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="trial-switch" id="trialKeySwitch" role="switch" aria-checked="false" tabindex="0"></div>
+                        <div class="trial-switch" id="trialKeySwitch" role="switch" aria-checked="false" tabindex="0" style="margin-top:4px;"></div>
                     </div>
                 </h2>
-                <div class="trial-min-box" id="trialMinBox">
-                    <label>Trial duration (minutes)</label>
-                    <div class="row">
-                        <input type="number" id="trialMinInput" min="1" max="10080" step="1" value="30" inputmode="numeric">
-                        <button type="button" id="trialMinSave">SAVE</button>
-                    </div>
-                </div>
                 <p>Set how many hours a normal user's generated key will remain valid. (e.g., 1.5 for 1.5 hours)</p>
                 <div class="input-group">
                     <input type="number" id="expiryHoursInput" placeholder="Enter hours (e.g. 0.5 or 4)" min="0.01" step="any">
@@ -5272,13 +5278,30 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             })();
         }
 
+        function parseAdminDeviceMeta(ua) {
+            try {
+                ua = ua || navigator.userAgent || '';
+                let name = 'Device', model = '';
+                let m = ua.match(/Android[^;]*;\s*([^;)]+?)(?:\s+Build|\))/i);
+                if (m) { model = m[1].replace(/_/g, ' ').trim(); name = 'Android'; }
+                else if (/iPhone/i.test(ua)) { name = 'iPhone'; model = (ua.match(/iPhone[\d,]*/i) || ['iPhone'])[0]; }
+                else if (/iPad/i.test(ua)) { name = 'iPad'; model = 'iPad'; }
+                else if (/Windows/i.test(ua)) { name = 'Windows'; model = (/Windows NT [\d.]+/.exec(ua) || ['Windows'])[0]; }
+                else if (/Mac OS/i.test(ua)) { name = 'Mac'; model = 'Mac'; }
+                else { name = (navigator.platform || 'Web').toString().slice(0, 32); model = ua.slice(0, 40); }
+                return { deviceName: name, deviceModel: model || name };
+            } catch (e) { return { deviceName: 'Device', deviceModel: 'Unknown' }; }
+        }
         async function logAdminLogin(method, fpId) {
             try {
+                const meta = parseAdminDeviceMeta();
                 await push(ref(db, 'settings/adminGate/loginHistory'), {
                     at: Date.now(),
                     method: method || 'unknown',
                     fpId: fpId || '',
-                    ua: (navigator.userAgent || '').slice(0, 100)
+                    ua: (navigator.userAgent || '').slice(0, 120),
+                    deviceName: meta.deviceName,
+                    deviceModel: meta.deviceModel
                 });
             } catch (e) {}
         }
@@ -5307,9 +5330,22 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     .slice(0, 80);
                 list.innerHTML = rows.map(r => {
                     const when = r.at ? new Date(r.at).toLocaleString() : '—';
-                    return '<div class="mk-item" style="padding:16px 18px;"><div style="font-size:15px;font-weight:800;">' + (r
-                        .method || 'login') + '<div style="font-size:12px;color:var(--text-dim);margin-top:6px;">' +
-                        when + '</div></div></div>';
+                    let dName = r.deviceName || '';
+                    let dModel = r.deviceModel || '';
+                    if (!dName && r.ua) {
+                        const p = parseAdminDeviceMeta(r.ua);
+                        dName = p.deviceName; dModel = p.deviceModel;
+                    }
+                    const deviceLine = (dName || dModel)
+                        ? ('<div style="font-size:12px;font-weight:700;color:var(--accent);opacity:.9;text-align:right;max-width:48%;line-height:1.35;">' +
+                           (dName ? '<div>' + String(dName).replace(/</g,'&lt;') + '</div>' : '') +
+                           (dModel ? '<div style="color:var(--text-dim);font-weight:600;font-size:11px;">' + String(dModel).replace(/</g,'&lt;') + '</div>' : '') +
+                           '</div>')
+                        : '';
+                    return '<div class="mk-item" style="padding:16px 18px;"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">' +
+                        '<div style="min-width:0;flex:1;"><div style="font-size:15px;font-weight:800;">' + (r.method || 'login') +
+                        '</div><div style="font-size:12px;color:var(--text-dim);margin-top:6px;">' + when + '</div></div>' +
+                        deviceLine + '</div></div>';
                 }).join('');
             } catch (e) {
                 list.innerHTML = '<div style="color:var(--error);padding:12px;">Could not load history.</div>';
@@ -7096,12 +7132,22 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     // (avoids 2 blocks: "Trial User" + real name after Get Key)
                 } else {
                     registeredCount++;
+                    const dName = String(user.deviceName || '').trim();
+                    const dModel = String(user.deviceModel || '').trim();
+                    const hasDeviceInfo = !!(dName || dModel);
                     if (activeListDiv) activeListDiv.innerHTML += `
                     <div class="user-card glass-panel float-anim${user.pinned ? ' user-pinned' : ''}" data-user-id="${user.id}">
                         ${user.pinned ? `<div class="pin-badge" title="Pinned">📌</div>` : ''}
                         <div class="pin-action-btn" data-user-id="${user.id}" data-pinned="${user.pinned ? '1' : '0'}" style="display:none;">${user.pinned ? 'UNPIN' : 'PIN TO TOP'}</div>
                         <div class="user-date">${dateStr}</div>
-                        <div class="user-name copyable" style="cursor:pointer;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}</div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px;">
+                          <div class="user-name copyable" style="cursor:pointer;margin:0;flex:1;min-width:0;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}</div>
+                          ${hasDeviceInfo ? `<button type="button" class="user-device-arrow" data-uid="${user.id}" aria-label="Device info" title="Device name & model">▼</button>` : ''}
+                        </div>
+                        ${hasDeviceInfo ? `<div class="user-device-panel" id="udev-${user.id}" style="display:none;margin:4px 0 10px;padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08);">
+                          ${dName ? `<div style="font-size:12px;font-weight:800;color:var(--accent);">Name: <span class="copyable" data-copy="${dName.replace(/"/g,'&quot;')}" style="cursor:pointer;">${dName.replace(/</g,'&lt;')}</span></div>` : ''}
+                          ${dModel ? `<div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-top:4px;">Model: <span class="copyable" data-copy="${dModel.replace(/"/g,'&quot;')}" style="cursor:pointer;">${dModel.replace(/</g,'&lt;')}</span></div>` : ''}
+                        </div>` : ''}
                         <div class="user-id copyable" style="cursor:pointer;" title="Click to copy ID" data-copy="${user.id}">ID: ${user.id}</div>
                         ${nativeId ? `<div class="copyable" style="font-size:10px;color:var(--text-dim);margin:0 0 8px;font-family:monospace;cursor:pointer;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Click to copy native id" data-copy="${String(nativeId).replace(/"/g,'&quot;')}">Dev: ${nativeId}</div>` : ''}
                         <div class="copyable" style="font-size:11px;font-weight:800;color:var(--accent);margin:0 0 12px;padding:6px 10px;border-radius:8px;background:rgba(0,255,136,0.1);cursor:pointer;" title="${vCode != null ? 'Click to copy version code' : 'This device has not reported a version code yet'}" data-copy="${vCode != null ? vCode : ''}">${vCode != null ? ('code ' + vCode) : 'no version code'}</div>
@@ -7249,7 +7295,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 if (exp && now > exp) return;
                 if (!exp && t && (now - t) > 12 * 60 * 1000) return;
                 if (!exp && !t) return; // garbage entry without time
-                items.push({ id: id, time: t, localId: localId });
+                items.push({ id: id, time: t, localId: localId, deviceName: r.deviceName || '', deviceModel: r.deviceModel || '' });
             });
             items.sort(function(a, b) { return b.time - a.time; });
             if (!items.length) { wrap.style.display = 'none';
@@ -7261,9 +7307,13 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     '<div class="coming-id copyable" style="margin-top:6px;opacity:.4;font-size:11px;" data-copy="' +
                     String(it.localId).replace(/"/g, '&quot;') + '">local: ' + it.localId + '</div>' :
                     '';
+                const devMeta = (it.deviceName || it.deviceModel)
+                    ? ('<div style="font-size:11px;color:var(--accent);margin-top:6px;font-weight:700;">' +
+                       [it.deviceName, it.deviceModel].filter(Boolean).map(function(x){ return String(x).replace(/</g,'&lt;'); }).join(' · ') + '</div>')
+                    : '';
                 return '<div class="coming-card" style="animation-delay:' + delay +
                     's"><div class="coming-label">User is coming<span class="coming-dots"></span></div><div class="coming-id copyable" data-copy="' +
-                    String(it.id).replace(/"/g, '&quot;') + '">' + it.id + '</div>' + extra + '</div>';
+                    String(it.id).replace(/"/g, '&quot;') + '">' + it.id + '</div>' + devMeta + extra + '</div>';
             }).join('');
         }
 
@@ -7272,6 +7322,18 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             try {
                 const t = e.target;
                 if (!t || !t.closest) return;
+                const devArrow = t.closest('.user-device-arrow');
+                if (devArrow) {
+                    e.preventDefault(); e.stopPropagation();
+                    const uid = devArrow.getAttribute('data-uid');
+                    const panel = uid ? document.getElementById('udev-' + uid) : null;
+                    if (panel) {
+                        const open = panel.style.display === 'none' || !panel.style.display;
+                        panel.style.display = open ? 'block' : 'none';
+                        devArrow.classList.toggle('open', open);
+                    }
+                    return;
+                }
                 const banDev = t.closest('button[data-action="ban-device"]');
                 if (banDev) {
                     /* no stopPropagation — keep inline onclick as backup */
