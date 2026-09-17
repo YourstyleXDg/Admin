@@ -3380,8 +3380,11 @@ body.cat-world-active .cat-mode-bar{display:block}
         <div id="dashboard" class="tab-section active">
             <div class="section-box glass-panel float-anim" style="border-color: rgba(0, 255, 136, 0.4); box-shadow: inset 0 0 40px rgba(0, 255, 136, 0.05), 0 25px 60px var(--shadow-color);">
                 <h2 style="color: var(--accent);">
-                    <svg style="width:28px; fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    Global Key Expiry Control
+                    <span style="display:flex;align-items:center;gap:10px;">
+                        <svg style="width:28px; fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <label class="ios-toggle" style="transform:scale(.8);" title="30-Minute Trial Key: one-time free trial key for brand-new devices, offered via the login page tagline."><input type="checkbox" id="trialKeyToggle" onchange="saveTrialKeyToggle(this.checked)"><span></span></label>
+                        Global Key Expiry Control
+                    </span>
                 </h2>
                 <p>Set how many hours a normal user's generated key will remain valid. (e.g., 1.5 for 1.5 hours)</p>
                 <div class="input-group">
@@ -6248,6 +6251,21 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             } else { showConfirm("Error", "Please enter a valid number of hours.", null); }
         }
 
+        // ===== TRIAL KEY TOGGLE =====
+        // One global on/off for the 30-minute trial-key offer shown via the
+        // login page tagline. login.html reads this same path live before
+        // ever offering the trial.
+        window.saveTrialKeyToggle = async function(enabled) {
+            try { await set(ref(db, 'settings/trialKeyEnabled'), !!enabled); }
+            catch (e) { showConfirm('Error', e.message || String(e), null); }
+        };
+        try {
+            onValue(ref(db, 'settings/trialKeyEnabled'), (snap) => {
+                const el = document.getElementById('trialKeyToggle');
+                if (el) el.checked = !!(snap.exists() && snap.val());
+            });
+        } catch (e) {}
+
         window.switchTab = function(tabId, el) {
             document.querySelectorAll('.nav-link').forEach(nav => nav.classList.remove('active'));
             el.classList.add('active');
@@ -7151,6 +7169,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     liveListDiv.innerHTML += `
                     <div class="user-card glass-panel float-anim${user.pinned ? ' user-pinned' : ''}" style="border-color:rgba(0,255,136,0.3); position:relative; overflow:visible;">
                         ${user.pinned ? `<div class="pin-badge" title="Pinned">📌</div>` : ''}
+                        ${user.trial ? `<div style="position:absolute;top:14px;left:14px;font-size:10px;font-weight:900;letter-spacing:.04em;color:#0a0a14;background:#ffcd3c;padding:3px 9px;border-radius:7px;z-index:5;">TRIAL</div>` : ''}
                         <div class="live-timer" data-expires="${user.keyExpiresAt}" style="color:var(--accent); position:absolute; top:14px; right:14px; font-size:12px; font-weight:800; z-index:5; background:rgba(0,0,0,0.35); padding:4px 10px; border-radius:8px;"></div>
                         <div class="user-name copyable" style="cursor:pointer; margin-top:6px; padding-right:100px;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}</div>
                         <div class="user-id copyable" style="cursor:pointer;" title="Click to copy ID" data-copy="${user.id}">ID: ${user.id}</div>
