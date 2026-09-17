@@ -3457,6 +3457,11 @@ body.cat-world-active .cat-mode-bar{display:block}
                                     <input type="number" id="trialMinInput" min="1" max="10080" step="1" value="30" inputmode="numeric">
                                     <button type="button" id="trialMinSave" onclick="saveTrialMinutes()">SAVE</button>
                                 </div>
+                                <label style="margin-top:10px;">Delete unused trial after (days)</label>
+                                <div class="row">
+                                    <input type="number" id="trialCleanupDaysInput" min="1" max="365" step="1" value="1" inputmode="numeric" title="A trial account that never logged in with a real key gets removed this many days after its trial expired.">
+                                    <button type="button" onclick="saveTrialCleanupDays()">SAVE</button>
+                                </div>
                             </div>
                         </div>
                         <div class="trial-switch" id="trialKeySwitch" role="switch" aria-checked="false" tabindex="0" style="margin-top:4px;" onclick="toggleTrialKeySwitch()"></div>
@@ -6364,6 +6369,17 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 window.toggleTrialMinBox();
             } catch (e) { showConfirm('Error', e.message || String(e), null); }
         };
+        window.saveTrialCleanupDays = async function() {
+            const inp = document.getElementById('trialCleanupDaysInput');
+            const days = inp ? parseInt(inp.value, 10) : NaN;
+            if (!Number.isFinite(days) || days < 1) {
+                showConfirm('Invalid value', 'Enter a whole number of days (1 or more).', null);
+                return;
+            }
+            try {
+                await update(ref(db, 'settings/trialKey'), { cleanupDays: days });
+            } catch (e) { showConfirm('Error', e.message || String(e), null); }
+        };
         document.addEventListener('click', function(e) {
             const box = document.getElementById('trialMinBox');
             const wrap = document.getElementById('trialToggleWrap');
@@ -6384,6 +6400,9 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 const inp = document.getElementById('trialMinInput');
                 if (lab) lab.textContent = String(mins);
                 if (inp && document.activeElement !== inp) inp.value = mins;
+                const cleanupDays = v.cleanupDays != null ? v.cleanupDays : 1;
+                const cInp = document.getElementById('trialCleanupDaysInput');
+                if (cInp && document.activeElement !== cInp) cInp.value = cleanupDays;
             });
         } catch (e) {}
 
