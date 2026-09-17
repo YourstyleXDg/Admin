@@ -6329,7 +6329,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         }
 
         // ===== TRIAL KEY: on/off + configurable duration =====
-        // settings/trialKey = { enabled: bool, minutes: number }. Both
+        // settings/trialKey = { enabled: bool, durationMin: number }. Both
         // login.html's eligibility check and its actual expiry math read
         // this same path live, so changing the minutes here also affects
         // any trial key generated after the change (not retroactively —
@@ -6360,7 +6360,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 return;
             }
             try {
-                await update(ref(db, 'settings/trialKey'), { minutes: mins });
+                await update(ref(db, 'settings/trialKey'), { durationMin: mins });
                 window.toggleTrialMinBox();
             } catch (e) { showConfirm('Error', e.message || String(e), null); }
         };
@@ -6379,7 +6379,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 const on = !!v.enabled;
                 if (wrap) wrap.classList.toggle('on', on);
                 if (sw) sw.setAttribute('aria-checked', on ? 'true' : 'false');
-                const mins = v.minutes != null ? v.minutes : 30;
+                const mins = v.durationMin != null ? v.durationMin : 30;
                 const lab = document.getElementById('trialMinLabel');
                 const inp = document.getElementById('trialMinInput');
                 if (lab) lab.textContent = String(mins);
