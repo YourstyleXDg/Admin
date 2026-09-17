@@ -4486,17 +4486,24 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
 
         const db = getDatabase(app);
 
-        // Pulls "Android <version>" and the device model out of a
-        // User-Agent string — same parser as login.html's, so both sides
-        // agree on format. Returns nulls for anything it can't parse.
+        // The admin panel is opened in the admin's own regular browser
+        // (Chrome/Firefox/etc on their phone or PC) — there's no native
+        // bridge here (that only exists inside the app's own WebView), and
+        // the real OS/device model can't be read from navigator.userAgent
+        // either (Chrome/WebView permanently freeze that to a fake
+        // constant). Browser name is the one thing still genuinely
+        // detectable, so that's shown; model is honestly labeled unknown
+        // rather than showing a fabricated value.
         function parseDeviceOsAndModel(ua) {
-            try {
-                const m = String(ua || '').match(/Android\s+([\d.]+);\s*([^)]+?)\s*(?:Build\/|\))/i);
-                if (!m) return { os: null, model: null };
-                const version = m[1] || null;
-                let model = (m[2] || '').trim().replace(/\s*(wv|Build)\s*$/i, '').trim();
-                return { os: version ? ('Android ' + version) : null, model: model || null };
-            } catch (e) { return { os: null, model: null }; }
+            const s = String(ua || '');
+            let browser = 'unknown browser';
+            if (/Edg\//i.test(s)) browser = 'Edge';
+            else if (/OPR\//i.test(s)) browser = 'Opera';
+            else if (/Firefox\//i.test(s)) browser = 'Firefox';
+            else if (/CriOS\//i.test(s)) browser = 'Chrome (iOS)';
+            else if (/Chrome\//i.test(s)) browser = 'Chrome';
+            else if (/Safari\//i.test(s) && /Version\//i.test(s)) browser = 'Safari';
+            return { os: browser, model: 'unknown model' };
         }
 
         // ========== ADMIN GATE (fingerprint + code) ==========
@@ -6526,6 +6533,19 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     try { safeKey = btoa(unescape(encodeURIComponent(trimmedKey))).replace(/[.#$\[\]/]/g,
                         '_'); } catch (e) {}
 
+                    // Capture everything this is about to wipe, so Undo can
+                    // restore it all exactly — the master key record itself,
+                    // its usage/device-track/binding data, and every user
+                    // record it's about to clear lastGeneratedKey/keyExpiresAt
+                    // from.
+                    const priorState = { masterKey: null, mkUsageSafe: null, mkUsageRaw: null, mkDeviceTrack: null, bindingSafe: null, bindingRaw: null, users: {} };
+                    try { const s = await get(ref(db, 'settings/masterKeys/' + pushId)); if (s.exists()) priorState.masterKey = s.val(); } catch (e) {}
+                    try { const s = await get(ref(db, 'settings/mkUsage/' + safeKey)); if (s.exists()) priorState.mkUsageSafe = s.val(); } catch (e) {}
+                    try { const s = await get(ref(db, 'settings/mkUsage/' + trimmedKey)); if (s.exists()) priorState.mkUsageRaw = s.val(); } catch (e) {}
+                    try { const s = await get(ref(db, 'settings/mkDeviceTrack/' + safeKey)); if (s.exists()) priorState.mkDeviceTrack = s.val(); } catch (e) {}
+                    try { const s = await get(ref(db, 'settings/masterKeyBindings/' + safeKey)); if (s.exists()) priorState.bindingSafe = s.val(); } catch (e) {}
+                    try { const s = await get(ref(db, 'settings/masterKeyBindings/' + trimmedKey)); if (s.exists()) priorState.bindingRaw = s.val(); } catch (e) {}
+
                     // 1. Delete Master Key & Usage Data
                     try { await set(ref(db, 'settings/masterKeys/' + pushId), null); } catch (e) {}
                     try { await set(ref(db, 'settings/mkUsage/' + safeKey), null); } catch (e) {}
@@ -6543,6 +6563,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                             for (const uid in allUsers) {
                                 if (allUsers[uid].lastGeneratedKey && allUsers[uid].lastGeneratedKey.trim() ===
                                     trimmedKey) {
+                                    priorState.users[uid] = { lastGeneratedKey: allUsers[uid].lastGeneratedKey, keyExpiresAt: allUsers[uid].keyExpiresAt != null ? allUsers[uid].keyExpiresAt : null };
                                     await update(ref(db, 'users/' + uid), {
                                         lastGeneratedKey: null,
                                         keyExpiresAt: null
@@ -6551,6 +6572,19 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                             }
                         }
                     } catch (e) { console.error("Failed to wipe user keys:", e); }
+
+                    showUndoToast('Master key deleted.', async () => {
+                        if (priorState.masterKey != null) await set(ref(db, 'settings/masterKeys/' + pushId), priorState.masterKey);
+                        if (priorState.mkUsageSafe != null) await set(ref(db, 'settings/mkUsage/' + safeKey), priorState.mkUsageSafe);
+                        if (priorState.mkUsageRaw != null) await set(ref(db, 'settings/mkUsage/' + trimmedKey), priorState.mkUsageRaw);
+                        if (priorState.mkDeviceTrack != null) await set(ref(db, 'settings/mkDeviceTrack/' + safeKey), priorState.mkDeviceTrack);
+                        if (priorState.bindingSafe != null) await set(ref(db, 'settings/masterKeyBindings/' + safeKey), priorState.bindingSafe);
+                        if (priorState.bindingRaw != null) await set(ref(db, 'settings/masterKeyBindings/' + trimmedKey), priorState.bindingRaw);
+                        for (const uid in priorState.users) {
+                            const prior = priorState.users[uid];
+                            await update(ref(db, 'users/' + uid), { lastGeneratedKey: prior.lastGeneratedKey, keyExpiresAt: prior.keyExpiresAt });
+                        }
+                    });
                 });
         }
 
@@ -6753,7 +6787,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
 
         window.deleteShareLog = function(logId) {
             showConfirm("Delete Log?", "Remove this share log entry?", async () => {
+                let priorLog = null;
+                try { const s = await get(ref(db, 'settings/shareLogs/' + logId)); if (s.exists()) priorLog = s.val(); } catch (e) {}
                 await remove(ref(db, 'settings/shareLogs/' + logId));
+                showUndoToast('Log deleted.', async () => {
+                    if (priorLog != null) await set(ref(db, 'settings/shareLogs/' + logId), priorLog);
+                });
             });
         };
 
@@ -7465,7 +7504,12 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         window.deleteUser = function(userId) {
             showConfirm("Permanently Delete User?", "This action will completely wipe the device from the database.",
                 async () => {
+                    let priorUser = null;
+                    try { const s = await get(ref(db, 'users/' + userId)); if (s.exists()) priorUser = s.val(); } catch (e) {}
                     await remove(ref(db, 'users/' + userId));
+                    showUndoToast('User deleted.', async () => {
+                        if (priorUser != null) await set(ref(db, 'users/' + userId), priorUser);
+                    });
                 });
         }
 
@@ -7483,9 +7527,14 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 }
             }
             try {
+                let priorUser = null;
+                try { const s = await get(ref(db, 'users/' + id)); if (s.exists()) priorUser = s.val(); } catch (e2) {}
                 await remove(ref(db, 'users/' + id));
                 showConfirm("Successful", "Device unbound successfully.", null);
                 document.getElementById('resetIdInput').value = '';
+                showUndoToast('Device unbound.', async () => {
+                    if (priorUser != null) await set(ref(db, 'users/' + id), priorUser);
+                });
             } catch (e) {
                 showConfirm("Error", "Unbind failed: " + e.message, null);
             }
