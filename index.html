@@ -3445,12 +3445,23 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <h2 style="color: var(--accent);">
                     <span style="display:flex;align-items:center;gap:10px;">
                         <svg style="width:28px; fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        <div class="trial-toggle-wrap" id="trialToggleWrap" title="New devices get one free 30-min trial key from the login page tagline.">
-                            <span class="trial-lab">Trial</span>
-                            <div class="trial-switch" id="trialKeySwitch" role="switch" aria-checked="false" onclick="toggleTrialKeySwitch()"></div>
-                        </div>
                         Global Key Expiry Control
                     </span>
+                    <div class="trial-toggle-wrap" id="trialToggleWrap" title="New devices get one free trial key from the login tagline" style="position:relative;align-items:flex-start;">
+                        <div style="display:flex;flex-direction:column;align-items:center;line-height:1.15;position:relative;">
+                            <span class="trial-lab">Trial <span id="trialMinLabel">30</span>m</span>
+                            <button type="button" class="trial-min-arrow" id="trialMinArrow" title="Set trial minutes" aria-label="Set trial minutes" onclick="toggleTrialMinBox(event)">▼</button>
+                            <div class="trial-min-box" id="trialMinBox" style="position:absolute;top:100%;right:0;margin-top:6px;z-index:20;min-width:220px;box-shadow:0 12px 32px rgba(0,0,0,.45);">
+                                <label>Trial duration (minutes)</label>
+                                <div class="row">
+                                    <input type="number" id="trialMinInput" min="1" max="10080" step="1" value="30" inputmode="numeric">
+                                    <button type="button" id="trialMinSave" onclick="saveTrialMinutes()">SAVE</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="trial-switch" id="trialKeySwitch" role="switch" aria-checked="false" tabindex="0" style="margin-top:4px;" onclick="toggleTrialKeySwitch()"></div>
+                    </div>
+                </h2>
                 </h2>
                 <p>Set how many hours a normal user's generated key will remain valid. (e.g., 1.5 for 1.5 hours)</p>
                 <div class="input-group">
@@ -6317,26 +6328,62 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             } else { showConfirm("Error", "Please enter a valid number of hours.", null); }
         }
 
-        // ===== TRIAL KEY TOGGLE =====
-        // One global on/off for the 30-minute trial-key offer shown via the
-        // login page tagline. login.html reads this same path live before
-        // ever offering the trial.
+        // ===== TRIAL KEY: on/off + configurable duration =====
+        // settings/trialKey = { enabled: bool, minutes: number }. Both
+        // login.html's eligibility check and its actual expiry math read
+        // this same path live, so changing the minutes here also affects
+        // any trial key generated after the change (not retroactively —
+        // an already-live trial keeps whatever expiresAt it was given at
+        // generation time).
         window.toggleTrialKeySwitch = async function() {
             const wrap = document.getElementById('trialToggleWrap');
-            const sw = document.getElementById('trialKeySwitch');
-            if (!wrap || !sw) return;
+            if (!wrap) return;
             const next = !wrap.classList.contains('on');
             try {
-                await set(ref(db, 'settings/trialKeyEnabled'), next);
+                await update(ref(db, 'settings/trialKey'), { enabled: next });
             } catch (e) { showConfirm('Error', e.message || String(e), null); }
         };
+        window.toggleTrialMinBox = function(e) {
+            if (e) e.stopPropagation();
+            const box = document.getElementById('trialMinBox');
+            const arrow = document.getElementById('trialMinArrow');
+            if (!box) return;
+            const opening = !box.classList.contains('show');
+            box.classList.toggle('show', opening);
+            if (arrow) arrow.classList.toggle('open', opening);
+        };
+        window.saveTrialMinutes = async function() {
+            const inp = document.getElementById('trialMinInput');
+            const mins = inp ? parseInt(inp.value, 10) : NaN;
+            if (!Number.isFinite(mins) || mins < 1) {
+                showConfirm('Invalid value', 'Enter a whole number of minutes (1 or more).', null);
+                return;
+            }
+            try {
+                await update(ref(db, 'settings/trialKey'), { minutes: mins });
+                window.toggleTrialMinBox();
+            } catch (e) { showConfirm('Error', e.message || String(e), null); }
+        };
+        document.addEventListener('click', function(e) {
+            const box = document.getElementById('trialMinBox');
+            const wrap = document.getElementById('trialToggleWrap');
+            if (!box || !box.classList.contains('show')) return;
+            if (wrap && wrap.contains(e.target)) return;
+            window.toggleTrialMinBox();
+        });
         try {
-            onValue(ref(db, 'settings/trialKeyEnabled'), (snap) => {
+            onValue(ref(db, 'settings/trialKey'), (snap) => {
+                const v = snap.exists() ? (snap.val() || {}) : {};
                 const wrap = document.getElementById('trialToggleWrap');
                 const sw = document.getElementById('trialKeySwitch');
-                const on = !!(snap.exists() && snap.val());
+                const on = !!v.enabled;
                 if (wrap) wrap.classList.toggle('on', on);
                 if (sw) sw.setAttribute('aria-checked', on ? 'true' : 'false');
+                const mins = v.minutes != null ? v.minutes : 30;
+                const lab = document.getElementById('trialMinLabel');
+                const inp = document.getElementById('trialMinInput');
+                if (lab) lab.textContent = String(mins);
+                if (inp && document.activeElement !== inp) inp.value = mins;
             });
         } catch (e) {}
 
@@ -7159,6 +7206,72 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             return null;
         }
 
+        // Groups currently being merged, by a stable key (sorted list of
+        // that group's real Firebase ids joined together) — prevents two
+        // overlapping onValue fires (e.g. the delete below immediately
+        // triggering another snapshot while this pass is still running)
+        // from both trying to merge/delete the same group at once.
+        const __dedupInFlight = new Set();
+
+        async function mergeDuplicateUserGroups(groups) {
+            for (const g of groups) {
+                if (g.users.length < 2) continue;
+                const ids = g.users.map(u => u.id).sort();
+                const groupKey = ids.join('|');
+                if (__dedupInFlight.has(groupKey)) continue;
+                __dedupInFlight.add(groupKey);
+
+                try {
+                    const now = Date.now();
+                    const sorted = g.users.slice().sort((a, b) => {
+                        const aLive = a.lastGeneratedKey && a.keyExpiresAt > now ? 1 : 0;
+                        const bLive = b.lastGeneratedKey && b.keyExpiresAt > now ? 1 : 0;
+                        if (aLive !== bLive) return bLive - aLive;
+                        return new Date(b.joined || 0) - new Date(a.joined || 0);
+                    });
+                    const survivorId = sorted[0].id;
+                    const loserIds = sorted.slice(1).map(u => u.id);
+                    const merged = Object.assign({}, ...sorted.slice().reverse());
+                    delete merged.id; // id is the Firebase key itself, never a field inside the record
+
+                    // Re-read the survivor + losers fresh right before writing,
+                    // in case anything changed between the render pass that
+                    // queued this and now (e.g. admin banned one of them a
+                    // moment ago) — never blindly trust the snapshot this
+                    // group was computed from once we're about to delete data.
+                    const allIds = [survivorId, ...loserIds];
+                    const freshSnaps = await Promise.all(allIds.map(id => get(ref(db, 'users/' + id))));
+                    if (!freshSnaps[0].exists()) continue; // survivor vanished — nothing to merge into
+                    const stillLoserPairs = loserIds
+                        .map((id, i) => ({ id, snap: freshSnaps[i + 1] }))
+                        .filter(p => p.snap.exists());
+                    if (stillLoserPairs.length === 0) continue; // losers already gone (another tab/pass beat us to it)
+
+                    // Recompute the merge from the FRESH data, not the
+                    // possibly-stale one from the original render pass.
+                    const freshSurvivor = { id: survivorId, ...freshSnaps[0].val() };
+                    const freshLosers = stillLoserPairs.map(p => ({ id: p.id, ...p.snap.val() }));
+                    const freshSorted = [freshSurvivor, ...freshLosers];
+                    const freshMerged = Object.assign({}, ...freshSorted.slice().reverse());
+                    delete freshMerged.id;
+
+                    // Write survivor FIRST, confirm it lands, THEN delete the
+                    // losers — if anything fails partway, we're left with a
+                    // (still-correct, if duplicated) set of records rather
+                    // than having deleted data that was never actually saved.
+                    await set(ref(db, 'users/' + survivorId), freshMerged);
+                    for (const p of stillLoserPairs) {
+                        await remove(ref(db, 'users/' + p.id));
+                    }
+                    console.log('[dedup] merged', stillLoserPairs.length, 'duplicate(s) into', survivorId);
+                } catch (e) {
+                    console.warn('[dedup] merge failed for group', groupKey, e);
+                } finally {
+                    __dedupInFlight.delete(groupKey);
+                }
+            }
+        }
+
         function renderUsersUI(snapshot) {
             const activeListDiv = document.getElementById('activeUserList');
             const bannedListDiv = document.getElementById('bannedUserList');
@@ -7182,13 +7295,13 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             const data = snapshot.val();
             const rawUsers = Object.keys(data).map(key => ({ id: key, ...data[key] }));
 
-            // Merge duplicate cards for the same physical device. This can
-            // happen because different parts of the system key users/ by
-            // different id schemes for the same device (native Android
+            // Detect duplicate cards for the same physical device — this
+            // can happen because different parts of the system key users/
+            // by different id schemes for the same device (native Android
             // fingerprint vs. the web "Get Key" page's own generated
-            // UUID) — without this, the same device can show up as two
-            // separate Registered Users cards even though every
-            // identifying field on them actually matches.
+            // UUID). Grouped here for BOTH rendering (below) and the real
+            // Firebase-level merge (mergeDuplicateUserGroups, called after
+            // render — see there for why it's async/separate).
             const norm = (s) => String(s || '').trim().toLowerCase();
             const identityKeysOf = (u, id) => {
                 const vals = [id, u.deviceId, u.fingerprint, u.lastDeviceId, u.androidId, u.lastLoginDevice]
@@ -7213,6 +7326,10 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 // any fields the others have that the primary is missing
                 // (e.g. deviceOs/deviceModel reported under one id, trial
                 // flag set under another), so nothing observed is lost.
+                // This is what's actually WRITTEN to the survivor key by
+                // mergeDuplicateUserGroups below — the render below uses
+                // the exact same computed value so there's no flash of
+                // stale data between "rendered merged" and "saved merged".
                 const now = Date.now();
                 const sorted = g.users.slice().sort((a, b) => {
                     const aLive = a.lastGeneratedKey && a.keyExpiresAt > now ? 1 : 0;
@@ -7224,6 +7341,16 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 merged.id = sorted[0].id;
                 return merged;
             });
+            // Fire-and-forget: actually collapse any real duplicate groups
+            // in Firebase itself (write survivor, delete the rest). Kept
+            // fully async and decoupled from this render pass — the render
+            // above already shows the correct merged view immediately
+            // regardless of whether/when the Firebase-side cleanup
+            // finishes, and the cleanup's own writes will trigger another
+            // onValue → renderUsersUI call that simply finds nothing left
+            // to merge the second time.
+            try { mergeDuplicateUserGroups(groups); } catch (e) { console.warn('dedup pass failed to start', e); }
+
             // Pinned users always float to the top, regardless of join
             // date — within each group (pinned / not pinned), newest-first
             // as before.
