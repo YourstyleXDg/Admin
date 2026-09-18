@@ -201,7 +201,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getDatabase, ref, get, set, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const firebaseConfig = {
         databaseURL: "https://login-pass-1a196-default-rtdb.firebaseio.com/"
@@ -223,22 +223,26 @@
     }
 
     async function verifyAndRun() {
-        // Single, tamper-resistant signal: a fresh, random, single-use
-        // token that steps.html writes to this same origin's localStorage
-        // right before sending the person to the shortener. This
-        // replaces the old checks:
-        //   - securePass === 'true' — a fixed value anyone could set
-        //     manually in devtools/console, no better than no check
-        //   - source === "official" — a static URL parameter, guessable
-        //     and shareable as a permanent backdoor once discovered
-        //   - referrer.includes(...) — unreliable across browsers and
-        //     redirect methods (many strip/empty the referrer by default
-        //     now), which is what caused genuine first-time visits to
-        //     intermittently and incorrectly hit "Bypass Detected"
-        // A per-visit random token can't be pre-shared as a fixed string,
-        // never appears in any URL, and is consumed (deleted) below the
-        // moment it's used, so it can't be replayed either.
-        const TOKEN_MAX_AGE_MS = 10 * 60 * 1000; // generous window for slow shortener redirects
+        // Tamper-resistant signal, read from Firebase rather than
+        // localStorage: steps.html writes settings/keyFlowClaims/lastClaimAt
+        // right before sending the person to the shortener. This replaces
+        // two earlier approaches that both turned out unreliable:
+        //   - securePass === 'true' / source === "official" / referrer
+        //     checks — fixed values or unreliable browser signals, easily
+        //     guessed/spoofed or simply empty depending on the browser
+        //   - a random token written to localStorage — this seemed
+        //     right in theory (per-visit, never in a URL) but broke in
+        //     real use: vplink opens the final destination in a NEW
+        //     browser tab, and on some devices/browsers that's enough for
+        //     localStorage not to be visible there even on the same
+        //     origin, so genuine first-time visits kept failing
+        // Firebase is read fresh over the network, so it doesn't matter
+        // how many tabs/redirects the shortener uses in between. The
+        // transaction below atomically checks AND consumes the claim in
+        // one step, so a refresh or a copied link immediately after a
+        // genuine pass still correctly fails — there's nothing left to
+        // read a second time.
+        const CLAIM_MAX_AGE_MS = 10 * 60 * 1000; // generous window for slow shortener redirects
         let isValidAccess = false;
 
         // Developer/testing override: ?dev=<value>, checked against
@@ -257,23 +261,26 @@
             }
         } catch (e) { /* Firebase unreachable — fall through to the normal check */ }
 
-        try {
-            const raw = localStorage.getItem('dgxen_secure_pass');
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                if (parsed && typeof parsed.token === 'string' && parsed.token.length >= 8 &&
-                    typeof parsed.at === 'number' && (Date.now() - parsed.at) <= TOKEN_MAX_AGE_MS) {
+        if (!isValidAccess) {
+            try {
+                let consumedAValidClaim = false;
+                const txResult = await runTransaction(ref(db, 'settings/keyFlowClaims/lastClaimAt'), (current) => {
+                    consumedAValidClaim = false; // reset each attempt — the callback can run more than once on retry
+                    if (typeof current !== 'number') return current; // nothing claimed — leave untouched
+                    if ((Date.now() - current) > CLAIM_MAX_AGE_MS) return current; // too old — leave untouched, don't consume
+                    consumedAValidClaim = true;
+                    return 0; // sentinel "consumed" value — distinct from both "never claimed" (undefined/null) and any future real timestamp
+                });
+                if (txResult.committed && consumedAValidClaim) {
                     isValidAccess = true;
                 }
-            }
-        } catch (e) { /* malformed value — treat as invalid, not a crash */ }
+            } catch (e) { /* Firebase unreachable — falls through to bypass screen below */ }
+        }
 
         if (!isValidAccess) {
             switchScreen('bypassContainer');
             return;
         }
-
-        localStorage.removeItem('dgxen_secure_pass'); // consume — single use only
 
         if (window.history.replaceState) {
             const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
