@@ -7232,6 +7232,32 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         // from both trying to merge/delete the same group at once.
         const __dedupInFlight = new Set();
 
+        // Admin-side backup for the same self-heal login.html already does
+        // on its own load/foreground: a users/ record can keep trial:true
+        // after being legitimately overwritten with a REAL key (the
+        // person generated their own key, which writes to the same
+        // device-keyed record). This never depends on the device ever
+        // reopening login.html again — it runs here independently,
+        // whenever the admin panel is looking at the data, so a stale
+        // TRIAL badge can't outlive both self-heals for long.
+        const __trialHealInFlight = new Set();
+        async function healStaleTrialFlags(users) {
+            for (const u of users) {
+                if (!u.trial || !u.id || __trialHealInFlight.has(u.id)) continue;
+                __trialHealInFlight.add(u.id);
+                try {
+                    const claimSnap = await get(ref(db, 'settings/trialClaims/' + u.id));
+                    const claim = claimSnap.exists() ? claimSnap.val() : null;
+                    const stillMatches = claim && claim.key &&
+                        String(u.lastGeneratedKey || '').trim() === String(claim.key).trim();
+                    if (!stillMatches) {
+                        await update(ref(db, 'users/' + u.id), { trial: false });
+                    }
+                } catch (e) { console.warn('trial heal failed for', u.id, e); }
+                finally { __trialHealInFlight.delete(u.id); }
+            }
+        }
+
         async function mergeDuplicateUserGroups(groups) {
             for (const g of groups) {
                 if (g.users.length < 2) continue;
@@ -7369,6 +7395,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             // onValue → renderUsersUI call that simply finds nothing left
             // to merge the second time.
             try { mergeDuplicateUserGroups(groups); } catch (e) { console.warn('dedup pass failed to start', e); }
+            try { healStaleTrialFlags(users); } catch (e) { console.warn('trial heal pass failed to start', e); }
 
             // Pinned users always float to the top, regardless of join
             // date — within each group (pinned / not pinned), newest-first
