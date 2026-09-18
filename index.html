@@ -3554,22 +3554,22 @@ body.cat-world-active .cat-mode-bar{display:block}
                                         <span style="font-size:13px;font-weight:700;color:var(--text-dim);">Seconds:</span>
                                         <input type="number" id="schedSeconds" placeholder="10" value="10" style="flex:1;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;min-width:70px;">
                                     </div>
+                                </div>
+                                <div>
+                                    <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Send at</label>
+                                    <input type="datetime-local" id="schedSendAt" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
+                                </div>
+                                <div style="display:flex;justify-content:flex-end;">
                                     <button class="btn" type="button" onclick="toggleScheduleAdv()" style="background:rgba(120,140,255,.14);color:#8ea0ff;flex-shrink:0;">ADV ▾</button>
                                 </div>
                             </div>
 
                             <div id="scheduleAdvBox" style="display:none;flex-direction:column;gap:12px;padding:14px;border-radius:12px;background:rgba(120,140,255,.06);border:1px solid rgba(120,140,255,.18);">
-                                <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                                    <div style="flex:1;min-width:180px;">
-                                        <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Send at</label>
-                                        <input type="datetime-local" id="schedSendAt" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
-                                    </div>
-                                    <div style="flex:1;min-width:180px;">
-                                        <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Revert at</label>
-                                        <input type="datetime-local" id="schedRevertAt" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
-                                    </div>
+                                <div>
+                                    <label style="display:block;font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:6px;">Revert at</label>
+                                    <input type="datetime-local" id="schedRevertAt" style="width:100%;padding:12px 16px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;">
                                 </div>
-                                <p style="margin:0;font-size:12px;color:var(--text-dim);line-height:1.5;">At <b>Send at</b>, this message replaces whatever's currently live (the current message is backed up automatically). At <b>Revert at</b>, the backed-up message is restored.</p>
+                                <p style="margin:0;font-size:12px;color:var(--text-dim);line-height:1.5;">At <b>Send at</b>, this message replaces whatever's currently live (the current message is backed up automatically). Set <b>Revert at</b> to restore it automatically afterward — if left empty, the message stays live indefinitely until you cancel or revert it manually.</p>
                                 <div id="scheduleStatusLine" style="font-size:12px;font-weight:700;color:#8ea0ff;"></div>
                             </div>
 
@@ -4582,9 +4582,16 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         function parseDeviceOsAndModel(ua) {
             const s = String(ua || '');
             let browser = 'unknown browser';
-            if (/Edg\//i.test(s)) browser = 'Edge';
-            else if (/OPR\//i.test(s)) browser = 'Opera';
-            else if (/Firefox\//i.test(s)) browser = 'Firefox';
+            // Order matters: many Chromium-based browsers also include
+            // "Chrome/" in their UA for compatibility, so their own more
+            // specific token must be checked first or they'd all show as
+            // plain Chrome.
+            if (/EdgA\//i.test(s) || /Edg\//i.test(s) || /EdgiOS\//i.test(s)) browser = 'Edge';
+            else if (/SamsungBrowser\//i.test(s)) browser = 'Samsung Internet';
+            else if (/OPR\//i.test(s) || /OPiOS\//i.test(s)) browser = 'Opera';
+            else if (/Brave\//i.test(s)) browser = 'Brave';
+            else if (/UCBrowser\//i.test(s)) browser = 'UC Browser';
+            else if (/Firefox\//i.test(s) || /FxiOS\//i.test(s)) browser = 'Firefox';
             else if (/CriOS\//i.test(s)) browser = 'Chrome (iOS)';
             else if (/Chrome\//i.test(s)) browser = 'Chrome';
             else if (/Safari\//i.test(s) && /Version\//i.test(s)) browser = 'Safari';
@@ -5323,7 +5330,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     at: Date.now(),
                     method: method || 'unknown',
                     fpId: fpId || '',
-                    ua: (navigator.userAgent || '').slice(0, 100)
+                    ua: (navigator.userAgent || '').slice(0, 300)
                 });
             } catch (e) {}
         }
@@ -8590,9 +8597,9 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 const s = snap.val();
                 const fmt = ts => ts ? new Date(ts).toLocaleString() : '—';
                 if (s.appliedAt) {
-                    line.textContent = 'Live now — will revert at ' + fmt(s.revertAt) + '.';
+                    line.textContent = s.revertAt ? ('Live now — will revert at ' + fmt(s.revertAt) + '.') : 'Live now — no revert set, stays live until cancelled.';
                 } else {
-                    line.textContent = 'Will go out at ' + fmt(s.sendAt) + ', revert at ' + fmt(s.revertAt) + '.';
+                    line.textContent = s.revertAt ? ('Will go out at ' + fmt(s.sendAt) + ', revert at ' + fmt(s.revertAt) + '.') : ('Will go out at ' + fmt(s.sendAt) + ' — no revert set, will stay live until cancelled.');
                 }
             } catch (e) { line.textContent = ''; }
         }
@@ -8607,10 +8614,11 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
             let seconds = Number(document.getElementById('schedSeconds') && document.getElementById('schedSeconds').value);
             if (!seconds || seconds < 1) seconds = 10;
             const sendAt = schedFromLocalInputValue(document.getElementById('schedSendAt') && document.getElementById('schedSendAt').value);
-            const revertAt = schedFromLocalInputValue(document.getElementById('schedRevertAt') && document.getElementById('schedRevertAt').value);
+            const revertAtRaw = document.getElementById('schedRevertAt') && document.getElementById('schedRevertAt').value;
+            const revertAt = revertAtRaw ? schedFromLocalInputValue(revertAtRaw) : null;
 
-            if (!sendAt || !revertAt) {
-                showConfirm('Missing times', 'Set both Send at and Revert at under ADV before scheduling.', null);
+            if (!sendAt) {
+                showConfirm('Missing time', 'Set Send at before scheduling.', null);
                 return;
             }
             const now = Date.now();
@@ -8618,13 +8626,15 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 showConfirm('Invalid time', 'Send at must be in the future — it can\'t be a past date/time.', null);
                 return;
             }
-            if (revertAt <= now) {
-                showConfirm('Invalid time', 'Revert at must be in the future — it can\'t be a past date/time.', null);
-                return;
-            }
-            if (revertAt <= sendAt) {
-                showConfirm('Invalid range', 'Revert at must be after Send at.', null);
-                return;
+            if (revertAt != null) {
+                if (revertAt <= now) {
+                    showConfirm('Invalid time', 'Revert at must be in the future — it can\'t be a past date/time.', null);
+                    return;
+                }
+                if (revertAt <= sendAt) {
+                    showConfirm('Invalid range', 'Revert at must be after Send at.', null);
+                    return;
+                }
             }
             try {
                 // Save the draft as-is (so reopening the panel shows exactly
@@ -8636,7 +8646,8 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                     taglineEnabled, tagline, broadcastEnabled, message, seconds,
                     sendAt, revertAt, appliedAt: null, backup: null, createdAt: Date.now()
                 });
-                showConfirm('Scheduled', 'Message will go out at ' + new Date(sendAt).toLocaleString() + ' and revert at ' + new Date(revertAt).toLocaleString() + '.', null);
+                const revertMsg = revertAt ? (' and revert at ' + new Date(revertAt).toLocaleString()) : ' — no revert set, it will stay live until you cancel or revert it manually';
+                showConfirm('Scheduled', 'Message will go out at ' + new Date(sendAt).toLocaleString() + revertMsg + '.', null);
             } catch (e) { showConfirm('Error', e.message || String(e), null); }
         };
 
