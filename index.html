@@ -8590,7 +8590,13 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 setVal('schedMessage', v.message || '');
                 setVal('schedSeconds', v.seconds != null ? v.seconds : 10);
                 setVal('schedSendAt', schedToLocalInputValue(v.sendAt));
-                setVal('schedRevertAt', schedToLocalInputValue(v.revertAt));
+                // A leftover Revert-at from a previous draft that's now in
+                // the past is stale, not a real choice the admin is making
+                // again — restoring it verbatim caused the "must be in the
+                // future" error to fire even when the admin only touched
+                // Send at this time and never looked at Revert at at all.
+                const revertStillFuture = v.revertAt && Number(v.revertAt) > Date.now();
+                setVal('schedRevertAt', revertStillFuture ? schedToLocalInputValue(v.revertAt) : '');
                 if (window.__remeasureNoticeSchedulePanel) window.__remeasureNoticeSchedulePanel();
             } catch (e) { console.warn('schedule draft load', e); }
         }
