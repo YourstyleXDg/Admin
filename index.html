@@ -8590,13 +8590,17 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
                 setVal('schedMessage', v.message || '');
                 setVal('schedSeconds', v.seconds != null ? v.seconds : 10);
                 setVal('schedSendAt', schedToLocalInputValue(v.sendAt));
-                // A leftover Revert-at from a previous draft that's now in
-                // the past is stale, not a real choice the admin is making
-                // again — restoring it verbatim caused the "must be in the
-                // future" error to fire even when the admin only touched
-                // Send at this time and never looked at Revert at at all.
-                const revertStillFuture = v.revertAt && Number(v.revertAt) > Date.now();
-                setVal('schedRevertAt', revertStillFuture ? schedToLocalInputValue(v.revertAt) : '');
+                // Revert-at is NEVER restored from the draft, regardless of
+                // whether it's still in the future — a schedule with no
+                // revert must default to no revert every time the panel is
+                // reopened, or a leftover value from an earlier schedule
+                // silently rides along on a later one the admin never
+                // touched this field for, which is exactly the bug this
+                // fixes: choosing only Send-at and tapping SCHEDULE picked
+                // up a stale-but-still-future Revert-at from before. The
+                // admin must explicitly set Revert-at each time they want
+                // one.
+                setVal('schedRevertAt', '');
                 if (window.__remeasureNoticeSchedulePanel) window.__remeasureNoticeSchedulePanel();
             } catch (e) { console.warn('schedule draft load', e); }
         }
