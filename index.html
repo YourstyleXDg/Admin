@@ -904,9 +904,10 @@
         .trial-toggle-wrap {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             flex-shrink: 0;
             user-select: none;
+            margin-left: auto;
         }
         .trial-toggle-wrap .trial-lab {
             font-size: 12px;
@@ -914,6 +915,7 @@
             letter-spacing: 0.4px;
             color: var(--text-dim);
             text-transform: uppercase;
+            white-space: nowrap;
         }
         .trial-toggle-wrap.on .trial-lab { color: var(--accent); }
         .trial-switch {
@@ -946,6 +948,69 @@
             transform: translateX(18px);
             background: var(--accent);
         }
+        .trial-min-arrow {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 10px;
+            cursor: pointer;
+            padding: 2px 4px;
+            line-height: 1;
+            transition: color .2s, transform .2s;
+        }
+        .trial-min-arrow:hover { color: var(--accent); }
+        .trial-min-box {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            z-index: 40;
+            min-width: 240px;
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: rgba(12, 14, 18, 0.96);
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,255,136,0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .trial-min-box.show { display: block; }
+        .trial-min-arrow.open { color: var(--accent); transform: rotate(180deg); }
+        .trial-min-box label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+        }
+        .trial-min-box .row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .trial-min-box input[type="number"] {
+            flex: 1;
+            min-width: 0;
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(0,0,0,0.35);
+            color: var(--text-main);
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .trial-min-box button {
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: none;
+            background: var(--accent);
+            color: #000;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+            white-space: nowrap;
+        }
         .trial-badge {
             display: inline-block;
             font-size: 9px;
@@ -957,6 +1022,22 @@
             border-radius: 6px;
             margin-left: 8px;
             vertical-align: middle;
+        }
+        .expiry-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+        .expiry-card-header h2 {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--accent);
+            font-size: 1.25rem;
         }
         .user-device-arrow {
             flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12);
@@ -3442,38 +3523,37 @@ body.cat-world-active .cat-mode-bar{display:block}
     <div class="main-content">
         <div id="dashboard" class="tab-section active">
             <div class="section-box glass-panel float-anim" style="border-color: rgba(0, 255, 136, 0.4); box-shadow: inset 0 0 40px rgba(0, 255, 136, 0.05), 0 25px 60px var(--shadow-color);">
-                <h2 style="color: var(--accent);">
-                    <span style="display:flex;align-items:center;gap:10px;">
-                        <svg style="width:28px; fill:none; stroke:currentColor; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <div class="expiry-card-header">
+                    <h2>
+                        <svg style="width:28px;height:28px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                         Global Key Expiry Control
-                    </span>
-                    <div class="trial-toggle-wrap" id="trialToggleWrap" title="New devices get one free trial key from the login tagline" style="position:relative;align-items:flex-start;">
-                        <div style="display:flex;flex-direction:column;align-items:center;line-height:1.15;position:relative;">
+                    </h2>
+                    <div class="trial-toggle-wrap" id="trialToggleWrap" title="New devices get one free trial key from the login tagline" style="position:relative;">
+                        <div style="display:flex;align-items:center;gap:6px;position:relative;">
                             <span class="trial-lab">Trial <span id="trialMinLabel">30</span>m</span>
                             <button type="button" class="trial-min-arrow" id="trialMinArrow" title="Set trial minutes" aria-label="Set trial minutes" onclick="toggleTrialMinBox(event)">▼</button>
-                            <div class="trial-min-box" id="trialMinBox" style="position:absolute;top:100%;right:0;margin-top:6px;z-index:20;min-width:220px;box-shadow:0 12px 32px rgba(0,0,0,.45);">
+                            <div class="trial-min-box" id="trialMinBox">
                                 <label>Trial duration (minutes)</label>
                                 <div class="row">
                                     <input type="number" id="trialMinInput" min="1" max="10080" step="1" value="30" inputmode="numeric">
                                     <button type="button" id="trialMinSave" onclick="saveTrialMinutes()">SAVE</button>
                                 </div>
-                                <label style="margin-top:10px;">Delete unused trial after (days)</label>
+                                <label style="margin-top:12px;">Delete unused trial after (days)</label>
                                 <div class="row">
                                     <input type="number" id="trialCleanupDaysInput" min="1" max="365" step="1" value="1" inputmode="numeric" title="A trial account that never logged in with a real key gets removed this many days after its trial expired.">
                                     <button type="button" onclick="saveTrialCleanupDays()">SAVE</button>
                                 </div>
                             </div>
                         </div>
-                        <div class="trial-switch" id="trialKeySwitch" role="switch" aria-checked="false" tabindex="0" style="margin-top:4px;" onclick="toggleTrialKeySwitch()"></div>
+                        <div class="trial-switch" id="trialKeySwitch" role="switch" aria-checked="false" tabindex="0" onclick="toggleTrialKeySwitch()"></div>
                     </div>
-                </h2>
-                </h2>
-                <p>Set how many hours a normal user's generated key will remain valid. (e.g., 1.5 for 1.5 hours)</p>
+                </div>
+                <p style="margin:8px 0 14px;color:var(--text-dim);font-size:14px;">Set how many hours a normal user's generated key will remain valid. (e.g., 1.5 for 1.5 hours)</p>
                 <div class="input-group">
                     <input type="number" id="expiryHoursInput" placeholder="Enter hours (e.g. 0.5 or 4)" min="0.01" step="any">
                     <button class="btn" style="background: var(--accent); color: #000;" onclick="updateExpiryHours()">UPDATE EXPIRY</button>
                 </div>
-                <p style="margin-bottom: 0; font-size: 17px; font-weight: 700;">Current Expiry Time: <strong id="currentExpiryDisplay" style="color: var(--accent); font-size: 26px; margin: 0 10px;">...</strong> <strong style="color: var(--text-main);">Hours</strong></p>
+                <p style="margin-bottom:0;font-size:17px;font-weight:700;">Current Expiry Time: <strong id="currentExpiryDisplay" style="color:var(--accent);font-size:26px;margin:0 10px;">...</strong> <strong style="color:var(--text-main);">Hours</strong></p>
             </div>
 
             <!-- 🔔 NOTICE CENTER CARD -->
