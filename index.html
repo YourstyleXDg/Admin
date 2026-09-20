@@ -3233,6 +3233,70 @@ body.cat-world-active .cat-mode-bar{display:block}
             border-radius: 99px;
             transition: width .2s linear;
         }
+        #cloudPathBar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin: 0 0 10px;
+            min-height: 28px;
+        }
+        #cloudPathBar .crumb {
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+        }
+        #cloudPathBar .crumb:hover {
+            color: var(--accent);
+            border-color: var(--glass-border);
+            background: var(--panel-bg);
+        }
+        #cloudPathBar .crumb.here {
+            color: var(--text-main);
+            cursor: default;
+        }
+        #cloudPathBar .sep { color: var(--text-dim); opacity: .5; font-size: 11px; }
+        .cloud-file-row.is-folder .name {
+            color: var(--accent);
+            font-weight: 900;
+        }
+        .cloud-file-row .folder-ico {
+            display: inline-block;
+            margin-right: 6px;
+            opacity: .9;
+        }
+        #cloudBgUpload {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+            max-width: min(94vw, 460px);
+        }
+        #cloudBgUpload .chip-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #cloudBgUpload .job-lines {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 90px;
+            overflow: auto;
+        }
+        #cloudBgUpload .job-line {
+            font-size: 11px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.85);
+            line-height: 1.3;
+        }
+        body.light-mode #cloudBgUpload .job-line { color: #334155; }
+        #cloudBgUpload .job-line b { color: #5cc8ff; }
+        body.light-mode #cloudBgUpload .job-line b { color: #0284c7; }
+        #cloudNewFolderBtn { padding: 8px 12px; font-size: 11px; }
 
         /* --- Custom fixed-layout video controls (replaces native <video controls>,
              whose control bar rearranges/collapses at different browser zoom levels) --- */
@@ -4243,7 +4307,8 @@ body.cat-world-active .cat-mode-bar{display:block}
 
         <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0;gap:8px;flex-wrap:wrap;">
             <span style="font-size:14px;font-weight:800;">Files</span>
-            <div style="display:flex;align-items:center;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <button class="btn" type="button" id="cloudNewFolderBtn" onclick="cloudCreateFolder()">+ Folder</button>
                 <select id="cloudSortSelect" onchange="setCloudSort(this.value)" style="padding:8px 10px;font-size:11px;font-weight:800;border-radius:10px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);">
                     <option value="date_desc">Newest first</option>
                     <option value="date_asc">Oldest first</option>
@@ -4253,13 +4318,17 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <button class="btn" type="button" style="padding:8px 14px;font-size:11px;" onclick="refreshCloudFiles()">REFRESH</button>
             </div>
         </div>
+        <div id="cloudPathBar" aria-label="Current folder"></div>
         <div id="cloudFileList" class="mk-list" style="overflow:auto;min-height:42vh;flex:1;"></div>
     </div>
 
         <div id="cloudBgUpload" aria-live="polite">
-        <span id="cloudBgUploadText">Uploading…</span>
-        <div class="bar"><i id="cloudBgUploadBar"></i></div>
-        <button type="button" id="cloudBgUploadCancel" title="Cancel" onclick="cancelCloudTransfer()">Cancel</button>
+        <div class="chip-row">
+            <span id="cloudBgUploadText">Uploading…</span>
+            <div class="bar"><i id="cloudBgUploadBar"></i></div>
+            <button type="button" id="cloudBgUploadCancel" title="Cancel" onclick="cancelCloudTransfer()">Cancel</button>
+        </div>
+        <div class="job-lines" id="cloudBgJobLines"></div>
     </div>
     <div id="cloudDelPop" role="dialog">
         <p id="cloudDelPopMsg">Delete this file?</p>
@@ -9443,29 +9512,125 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     } catch (e) {}
   };
 
-  window.setCloudBgUpload = function(show, text, percent) {
+  // Per-provider live progress (top bar = active provider only; bottom = all)
+  window.__cloudProg = window.__cloudProg || {
+    b2: { active: false, text: '', pct: 0 },
+    infini: { active: false, text: '', pct: 0 }
+  };
+
+  window.setCloudProviderProgress = function(provider, show, text, percent) {
+    const p = (provider === 'infini') ? 'infini' : 'b2';
+    window.__cloudProg = window.__cloudProg || { b2: { active: false, text: '', pct: 0 }, infini: { active: false, text: '', pct: 0 } };
+    if (show) {
+      window.__cloudProg[p] = {
+        active: true,
+        text: text || ((p === 'infini' ? 'Infini' : 'B2') + ' uploading…'),
+        pct: percent != null ? Math.max(0, Math.min(100, Number(percent) || 0)) : (window.__cloudProg[p].pct || 0)
+      };
+    } else {
+      window.__cloudProg[p] = { active: false, text: '', pct: 0 };
+    }
+    window.paintCloudTransferUI();
+  };
+
+  window.paintCloudTransferUI = function() {
+    const prog = window.__cloudProg || {};
+    const b2 = prog.b2 || {};
+    const inf = prog.infini || {};
+    const any = !!(b2.active || inf.active || window.__cloudDownloading);
+
     const el = document.getElementById('cloudBgUpload');
     const tx = document.getElementById('cloudBgUploadText');
     const bar = document.getElementById('cloudBgUploadBar');
     const inlineBar = document.getElementById('cloudUploadInlineBar');
     const inlineFill = document.getElementById('cloudUploadInlineBarFill');
+    const lines = document.getElementById('cloudBgJobLines');
     const cancelBtn = document.getElementById('cloudBgUploadCancel');
+
+    // Active provider for TOP inline bar only
+    let activeProv = 'b2';
+    try {
+      if (typeof getActiveCloudProvider === 'function') activeProv = getActiveCloudProvider();
+      else if (window.cloudProvider) activeProv = window.cloudProvider;
+    } catch (e) {}
+    // getActiveCloudProvider is inside another IIFE — use localStorage/settings fallback
+    try {
+      const ls = localStorage.getItem('dgxen_cloud_provider');
+      if (ls === 'infini' || ls === 'b2') activeProv = ls;
+    } catch (e) {}
+
+    // Prefer live window flag set by cloud module
+    if (window.__cloudActiveProvider === 'infini' || window.__cloudActiveProvider === 'b2') {
+      activeProv = window.__cloudActiveProvider;
+    }
+
+    const view = (activeProv === 'infini') ? inf : b2;
+    if (inlineBar && inlineFill) {
+      if (view.active) {
+        inlineBar.classList.add('show');
+        inlineFill.style.width = (view.pct || 0) + '%';
+      } else {
+        inlineBar.classList.remove('show');
+        inlineFill.style.width = '0%';
+      }
+    }
+
+    // Bottom chip: always show ALL active jobs
     if (!el) return;
-    if (show) {
+    if (any) {
       el.classList.add('show');
-      if (inlineBar) inlineBar.classList.add('show');
-      if (tx && text) tx.textContent = text;
-      const pct = percent != null ? Math.max(0, Math.min(100, Number(percent) || 0)) : null;
-      if (bar && pct != null) bar.style.width = pct + '%';
-      if (inlineFill && pct != null) inlineFill.style.width = pct + '%';
       if (cancelBtn) cancelBtn.style.display = '';
+      const parts = [];
+      if (b2.active) parts.push({ tag: 'B2', t: b2.text, pct: b2.pct });
+      if (inf.active) parts.push({ tag: 'Infini', t: inf.text, pct: inf.pct });
+      if (window.__cloudDownloading) parts.push({ tag: 'DL', t: (tx && tx.textContent) || 'Downloading…', pct: null });
+
+      if (tx) {
+        if (parts.length === 1) tx.textContent = parts[0].t;
+        else tx.textContent = parts.length + ' transfers';
+      }
+      // Bottom bar uses average of active pcts
+      const nums = parts.map(function(x) { return x.pct; }).filter(function(n) { return n != null && !isNaN(n); });
+      if (bar) {
+        if (nums.length) bar.style.width = (nums.reduce(function(a, b) { return a + b; }, 0) / nums.length) + '%';
+        else bar.style.width = '30%';
+      }
+      if (lines) {
+        lines.innerHTML = parts.map(function(x) {
+          const pct = (x.pct != null && !isNaN(x.pct)) ? (' · ' + Math.round(x.pct) + '%') : '';
+          return '<div class="job-line"><b>' + x.tag + '</b> ' + String(x.t || '').replace(/</g, '&lt;') + pct + '</div>';
+        }).join('');
+      }
     } else {
-      window.__cloudUploading = false;
-      window.__cloudDownloading = false;
       el.classList.remove('show');
       if (inlineBar) inlineBar.classList.remove('show');
       if (bar) bar.style.width = '0%';
       if (inlineFill) inlineFill.style.width = '0%';
+      if (lines) lines.innerHTML = '';
+      window.__cloudUploading = false;
+    }
+  };
+
+  // Back-compat wrapper used by older call sites
+  window.setCloudBgUpload = function(show, text, percent, provider) {
+    if (provider === 'b2' || provider === 'infini') {
+      window.setCloudProviderProgress(provider, show, text, percent);
+      return;
+    }
+    // Download / generic: only bottom chip
+    const el = document.getElementById('cloudBgUpload');
+    const tx = document.getElementById('cloudBgUploadText');
+    const bar = document.getElementById('cloudBgUploadBar');
+    if (show) {
+      window.__cloudDownloading = !!window.__cloudDownloading;
+      if (el) el.classList.add('show');
+      if (tx && text) tx.textContent = text;
+      if (bar && percent != null) bar.style.width = Math.max(0, Math.min(100, Number(percent) || 0)) + '%';
+      window.paintCloudTransferUI();
+    } else {
+      window.__cloudDownloading = false;
+      // Don't wipe provider uploads
+      window.paintCloudTransferUI();
     }
   };
 })();
@@ -9618,7 +9783,9 @@ window.__dgxenInitVideoControls = function(vId) {
   };
 
   function getActiveCloudProvider() {
-    return cloudProvider === 'infini' ? 'infini' : 'b2';
+    const p = cloudProvider === 'infini' ? 'infini' : 'b2';
+    window.__cloudActiveProvider = p;
+    return p;
   }
 
   function setInfiniStatus(msg, ok) {
@@ -9679,9 +9846,13 @@ window.__dgxenInitVideoControls = function(vId) {
 
   window.selectCloudProvider = async function(id) {
     cloudProvider = (id === 'infini') ? 'infini' : 'b2';
+    window.__cloudActiveProvider = cloudProvider;
+    // Reset path when switching provider
+    window.__cloudCwd = '';
     try { await set(ref(db, 'settings/cloudProvider'), cloudProvider); } catch (e) { console.warn('cloudProvider save', e); }
     try { localStorage.setItem('dgxen_cloud_provider', cloudProvider); } catch (e) {}
     updateCloudProviderUI();
+    if (typeof window.paintCloudTransferUI === 'function') window.paintCloudTransferUI();
     const menu = document.getElementById('cloudProviderMenu');
     const btn = document.getElementById('cloudProviderBtn');
     if (menu) menu.classList.remove('open');
@@ -9704,6 +9875,51 @@ window.__dgxenInitVideoControls = function(vId) {
     if (!u) throw new Error('Infini WebDAV URL missing');
     if (!u.endsWith('/')) u += '/';
     return u;
+  }
+
+  // Current working directory (relative, no leading slash). Shared for B2 prefix + Infini path.
+  window.__cloudCwd = window.__cloudCwd || '';
+  window.__cloudActiveProvider = window.__cloudActiveProvider || 'b2';
+
+  function cloudCwd() {
+    return String(window.__cloudCwd || '').replace(/^\/+/, '').replace(/\/+$/, '');
+  }
+  function cloudJoinPath() {
+    const parts = [];
+    for (let i = 0; i < arguments.length; i++) {
+      const s = String(arguments[i] || '').replace(/^\/+/, '').replace(/\/+$/, '');
+      if (s) parts.push(s);
+    }
+    return parts.join('/');
+  }
+  function cloudPathUrl(relPath) {
+    // Infini full WebDAV URL for a relative path (file or folder)
+    const base = infiniBaseUrl();
+    const rel = String(relPath || '').replace(/^\/+/, '');
+    if (!rel) return base;
+    return base + rel.split('/').map(encodeURIComponent).join('/');
+  }
+  function paintCloudPathBar() {
+    const bar = document.getElementById('cloudPathBar');
+    if (!bar) return;
+    const cwd = cloudCwd();
+    const segs = cwd ? cwd.split('/').filter(Boolean) : [];
+    let html = '<span class="crumb' + (segs.length ? '' : ' here') + '" data-path="">Root</span>';
+    let acc = '';
+    segs.forEach(function(s, i) {
+      acc = acc ? (acc + '/' + s) : s;
+      const last = i === segs.length - 1;
+      html += '<span class="sep">/</span>';
+      html += '<span class="crumb' + (last ? ' here' : '') + '" data-path="' + acc.replace(/"/g, '&quot;') + '">' + s.replace(/</g, '&lt;') + '</span>';
+    });
+    bar.innerHTML = html;
+    bar.querySelectorAll('.crumb').forEach(function(el) {
+      if (el.classList.contains('here')) return;
+      el.addEventListener('click', function() {
+        window.__cloudCwd = el.getAttribute('data-path') || '';
+        if (window.refreshCloudFiles) window.refreshCloudFiles();
+      });
+    });
   }
 
   async function infiniFetch(url, opts) {
@@ -9741,13 +9957,12 @@ window.__dgxenInitVideoControls = function(vId) {
         const resType = node.getElementsByTagNameNS('DAV:', 'resourcetype')[0]
           || node.getElementsByTagName('d:resourcetype')[0]
           || node.getElementsByTagName('resourcetype')[0];
-        if (resType && (resType.getElementsByTagNameNS('DAV:', 'collection').length
+        const isCollection = !!(resType && (resType.getElementsByTagNameNS('DAV:', 'collection').length
             || resType.getElementsByTagName('d:collection').length
-            || resType.getElementsByTagName('collection').length)) {
-          continue;
-        }
+            || resType.getElementsByTagName('collection').length));
         const name = normalized.split('/').filter(Boolean).pop() || '';
         if (!name) continue;
+        // Only list direct children of current listing base (Depth:1 already)
         const lenEl = node.getElementsByTagNameNS('DAV:', 'getcontentlength')[0]
           || node.getElementsByTagName('d:getcontentlength')[0]
           || node.getElementsByTagName('getcontentlength')[0];
@@ -9760,14 +9975,22 @@ window.__dgxenInitVideoControls = function(vId) {
           const d = Date.parse(modEl.textContent);
           if (!isNaN(d)) ts = d;
         }
+        // Relative path under cloud root for navigation/upload
+        let rel = normalized;
+        try {
+          if (basePath && rel.indexOf(basePath) === 0) rel = rel.slice(basePath.length);
+        } catch (e) {}
+        rel = rel.replace(/^\/+/, '');
         files.push({
           fileName: name,
-          fileId: 'infini:' + name,
-          contentLength: size,
+          fileId: 'infini:' + (rel || name),
+          contentLength: isCollection ? 0 : size,
           uploadTimestamp: ts,
           fileInfo: {},
           _provider: 'infini',
-          _href: href
+          _href: href,
+          _isFolder: isCollection,
+          _relPath: rel || name
         });
       }
     } catch (e) { console.warn('WebDAV parse', e); }
@@ -9776,7 +9999,8 @@ window.__dgxenInitVideoControls = function(vId) {
 
   async function listInfiniFiles() {
     if (!infini.user || !infini.pass) throw new Error('Add Infini Connection ID + Apps Password, then SAVE & CONNECT');
-    const base = infiniBaseUrl();
+    const cwd = cloudCwd();
+    const base = cwd ? (cloudPathUrl(cwd) + (cloudPathUrl(cwd).endsWith('/') ? '' : '/')) : infiniBaseUrl();
     const res = await infiniFetch(base, {
       method: 'PROPFIND',
       headers: {
@@ -9792,9 +10016,76 @@ window.__dgxenInitVideoControls = function(vId) {
     return parseWebDavPropfind(await res.text(), base);
   }
 
+  window.cloudCreateFolder = async function() {
+    const name = prompt('New folder name');
+    if (!name || !String(name).trim()) return;
+    const safe = String(name).trim().replace(/[\\/]/g, '_').replace(/^\.+/, '');
+    if (!safe) return;
+    try {
+      if (getActiveCloudProvider() === 'infini') {
+        const rel = cloudJoinPath(cloudCwd(), safe);
+        const url = cloudPathUrl(rel) + '/';
+        const res = await infiniFetch(url, { method: 'MKCOL' });
+        // 201 created, 405 already exists
+        if (!res.ok && res.status !== 405) {
+          const t = await res.text().catch(() => '');
+          throw new Error('Create folder failed (' + res.status + ') ' + (t.slice(0, 80) || ''));
+        }
+      } else {
+        // B2 has no real folders — create a marker object so prefix shows up
+        await authorizeB2();
+        const prefix = cloudJoinPath(cloudCwd(), safe) + '/.keep';
+        // small empty placeholder via small upload path if available
+        const blob = new Blob([''], { type: 'text/plain' });
+        const fake = new File([blob], prefix.split('/').pop(), { type: 'text/plain' });
+        // store with full path as name
+        const startName = prefix;
+        // Use b2 upload of empty keep file
+        if (typeof uploadOne === 'function') {
+          // direct path: upload keep file with full relative path
+          window.__cloudForceName = startName;
+        }
+        await uploadPlaceholderB2(prefix);
+      }
+      setStatus('Folder ready: ' + safe, true);
+      if (window.refreshCloudFiles) await window.refreshCloudFiles();
+    } catch (e) {
+      setStatus('Folder: ' + (e.message || e), false);
+    }
+  };
+
+  async function uploadPlaceholderB2(fullPath) {
+    await authorizeB2();
+    // Minimal single-shot upload of empty keep file under folder prefix
+    const urlRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_upload_url', {
+      method: 'POST',
+      headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bucketId: b2.bucketId })
+    });
+    const urlData = await urlRes.json().catch(() => ({}));
+    if (!urlRes.ok) throw new Error(urlData.message || 'upload url failed');
+    const body = new Uint8Array(0);
+    const sha = await sha1Hex(body.buffer || body);
+    const up = await fetch(urlData.uploadUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: urlData.authorizationToken,
+        'X-Bz-File-Name': encodeURIComponent(fullPath).replace(/%2F/g, '/'),
+        'Content-Type': 'text/plain',
+        'X-Bz-Content-Sha1': sha,
+        'Content-Length': '0'
+      },
+      body: body
+    });
+    if (!up.ok) {
+      const t = await up.text().catch(() => '');
+      throw new Error('B2 folder marker failed ' + up.status + ' ' + t.slice(0, 80));
+    }
+  }
+
   // Infini/WebDAV: CF Worker body limit ~100MB — chunk large files.
   // 8 MiB chunks stay under free Worker limits and give smooth progress.
-  const INFINI_CHUNK_SIZE = 8 * 1024 * 1024;
+  const INFINI_CHUNK_SIZE = 32 * 1024 * 1024; // larger chunks = fewer round-trips (still under ~100MB CF limit)
   const INFINI_MAX_RETRIES = 4;
 
   function sleepMs(ms) {
@@ -9876,7 +10167,9 @@ window.__dgxenInitVideoControls = function(vId) {
   async function uploadInfiniFile(file, safeName, progressCallback) {
     if (!infini.user || !infini.pass) throw new Error('Infini credentials missing');
     if (!file || !file.size) throw new Error('File is empty.');
-    const targetUrl = infiniBaseUrl() + encodeURIComponent(safeName);
+    // Prefix with current folder path
+    const relName = (safeName.indexOf('/') >= 0) ? safeName : cloudJoinPath(cloudCwd(), safeName);
+    const targetUrl = cloudPathUrl(relName);
     const ctype = file.type || 'application/octet-stream';
     const total = file.size;
 
@@ -9959,7 +10252,8 @@ window.__dgxenInitVideoControls = function(vId) {
   }
 
   async function deleteInfiniFile(fileName) {
-    const res = await infiniFetch(infiniBaseUrl() + encodeURIComponent(fileName), { method: 'DELETE' });
+    const rel = (String(fileName).indexOf('/') >= 0) ? fileName : cloudJoinPath(cloudCwd(), fileName);
+    const res = await infiniFetch(cloudPathUrl(rel), { method: 'DELETE' });
     if (!res.ok && res.status !== 404) {
       const t = await res.text().catch(() => '');
       throw new Error('Infini delete failed (' + res.status + ') ' + (t.slice(0, 80) || ''));
@@ -9978,7 +10272,8 @@ window.__dgxenInitVideoControls = function(vId) {
     // Yield a frame so the chip paints before network work
     await new Promise(function(r) { requestAnimationFrame(function() { requestAnimationFrame(r); }); });
 
-    const targetUrl = infiniBaseUrl() + encodeURIComponent(fileName);
+    const rel = (String(fileName).indexOf('/') >= 0) ? fileName : cloudJoinPath(cloudCwd(), fileName);
+    const targetUrl = cloudPathUrl(rel);
     const finalUrl = (typeof infiniProxyUrl === 'function')
       ? infiniProxyUrl(targetUrl)
       : (function() {
@@ -10046,10 +10341,34 @@ window.__dgxenInitVideoControls = function(vId) {
     if (typeof setCloudBgUpload === 'function') setCloudBgUpload(false);
   }
 
+  function guessMimeFromName(name) {
+    const ext = String(name || '').split('.').pop().toLowerCase();
+    const map = {
+      mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', mkv: 'video/x-matroska', m4v: 'video/x-m4v',
+      mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4',
+      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+      pdf: 'application/pdf', txt: 'text/plain', json: 'application/json', html: 'text/html', css: 'text/css', js: 'text/javascript'
+    };
+    return map[ext] || 'application/octet-stream';
+  }
+
   async function getInfiniPreviewUrl(fileName) {
-    const res = await infiniFetch(infiniBaseUrl() + encodeURIComponent(fileName), { method: 'GET' });
-    if (!res.ok) throw new Error('Preview fetch failed');
-    return URL.createObjectURL(await res.blob());
+    // Support paths inside folders
+    const rel = (fileName.indexOf('/') >= 0) ? fileName : cloudJoinPath(cloudCwd(), fileName);
+    const res = await infiniFetch(cloudPathUrl(rel), { method: 'GET' });
+    if (!res.ok) throw new Error('Preview fetch failed (' + res.status + ')');
+    const hdrCt = (res.headers.get('content-type') || '').split(';')[0].trim();
+    const buf = await res.arrayBuffer();
+    const type = (hdrCt && hdrCt !== 'application/octet-stream' && hdrCt !== 'text/plain')
+      ? hdrCt
+      : guessMimeFromName(fileName);
+    // Blob URL stays in this tab — "open in new tab" cannot use auth/blob safely
+    const blob = new Blob([buf], { type: type });
+    const url = URL.createObjectURL(blob);
+    // Keep a short-lived map so fallback can re-download instead of broken tab
+    window.__cloudBlobUrls = window.__cloudBlobUrls || {};
+    window.__cloudBlobUrls[url] = { name: fileName, type: type };
+    return url;
   }
 
   window.saveInfiniSettings = async function() {
@@ -10917,6 +11236,8 @@ function explainFetchError(e) {
 
     let start = null;
     const files = [];
+    const cwd = cloudCwd();
+    const prefix = cwd ? (cwd + '/') : '';
 
     do {
 
@@ -10925,7 +11246,9 @@ function explainFetchError(e) {
           b2.bucketId,
 
         maxFileCount:
-          1000
+          1000,
+        prefix: prefix,
+        delimiter: '/'
       };
 
       if (start)
@@ -10968,9 +11291,38 @@ function explainFetchError(e) {
 
       (data.files || [])
         .forEach(
-          f =>
-            files.push(f)
+          f => {
+            // Hide .keep markers used as empty folder placeholders
+            if (String(f.fileName || '').endsWith('/.keep')) return;
+            // Display name = relative to cwd
+            const full = String(f.fileName || '');
+            const disp = prefix && full.indexOf(prefix) === 0 ? full.slice(prefix.length) : full;
+            if (!disp || disp.indexOf('/') >= 0) return; // only current level files
+            files.push(Object.assign({}, f, {
+              fileName: disp,
+              _relPath: full,
+              _isFolder: false
+            }));
+          }
         );
+
+      // Virtual folders from B2 commonPrefixes
+      (data.commonPrefixes || []).forEach(function(pref) {
+        const pth = String(pref || '');
+        let name = pth;
+        if (prefix && name.indexOf(prefix) === 0) name = name.slice(prefix.length);
+        name = name.replace(/\/+$/, '');
+        if (!name || name.indexOf('/') >= 0) return;
+        files.push({
+          fileName: name,
+          fileId: 'folder:' + cloudJoinPath(cwd, name),
+          contentLength: 0,
+          uploadTimestamp: 0,
+          fileInfo: {},
+          _isFolder: true,
+          _relPath: cloudJoinPath(cwd, name)
+        });
+      });
 
       start =
         data.nextFileName ||
@@ -11076,13 +11428,23 @@ function explainFetchError(e) {
           used
         );
 
+        if (typeof paintCloudPathBar === 'function') paintCloudPathBar();
+
         if (!box)
           return;
+
+        // Folders first, then files
+        files.sort(function(a, b) {
+          const fa = a._isFolder ? 0 : 1;
+          const fb = b._isFolder ? 0 : 1;
+          if (fa !== fb) return fa - fb;
+          return 0;
+        });
 
         if (!files.length) {
 
           box.innerHTML =
-            '<div style="padding:14px;color:var(--text-dim);font-weight:700;">No files yet.</div>';
+            '<div style="padding:14px;color:var(--text-dim);font-weight:700;">Empty folder. Upload files or create a subfolder.</div>';
 
           return;
         }
@@ -11122,12 +11484,15 @@ function explainFetchError(e) {
 
                 // ---- File type detection ----
                 const ext = name.split('.').pop().toLowerCase();
-                const hasPreview = ['jpg','jpeg','png','gif','webp','svg','heic','heif','mp3','wav','ogg','m4a','mp4','webm','mov','mkv','m4v','pdf','txt','md','json','csv','log','html','js','css'].includes(ext);
+                const isFolder = !!f._isFolder;
+                const hasPreview = !isFolder && ['jpg','jpeg','png','gif','webp','svg','heic','heif','mp3','wav','ogg','m4a','mp4','webm','mov','mkv','m4v','pdf','txt','md','json','csv','log','html','js','css'].includes(ext);
+                const relPath = String(f._relPath || name).replace(/"/g, '&quot;');
 
                 return (
-                  '<div class="cloud-file-row">' +
+                  '<div class="cloud-file-row' + (isFolder ? ' is-folder' : '') + '">' +
 
-                  '<div class="name" data-name="' + name + '"' + (hasPreview ? ' data-exp-id="' + fid + '" data-exp-name="' + name + '" role="button" tabindex="0" aria-expanded="false" title="Tap to preview"' : '') + '>' +
+                  '<div class="name" data-name="' + name + '" data-rel="' + relPath + '"' + (isFolder ? ' data-folder="1" role="button" tabindex="0" title="Open folder"' : (hasPreview ? ' data-exp-id="' + fid + '" data-exp-name="' + name + '" role="button" tabindex="0" aria-expanded="false" title="Tap to preview"' : '')) + '>' +
+                  (isFolder ? '<span class="folder-ico">📁</span>' : '') +
                   name +
 
                   '<div class="meta">' +
@@ -11151,7 +11516,9 @@ function explainFetchError(e) {
 
                   '</div>' +
 
-                  '<button class="btn" type="button" style="background:rgba(92,200,255,.15);color:#5cc8ff;" data-dl-name="' +
+                  (isFolder
+                    ? '<button class="btn" type="button" style="background:rgba(92,200,255,.15);color:#5cc8ff;" data-open-folder="' + relPath + '">OPEN</button>'
+                    : ('<button class="btn" type="button" style="background:rgba(92,200,255,.15);color:#5cc8ff;" data-dl-name="' +
                   name +
                   '" data-dl-id="' +
                   fid +
@@ -11161,13 +11528,28 @@ function explainFetchError(e) {
                   name +
                   '" data-del-id="' +
                   fid +
-                  '">DEL</button>' +
+                  '">DEL</button>')) +
 
                   '</div>'
                 );
               }
             )
             .join('');
+
+        // ===== FOLDER OPEN =====
+        box.querySelectorAll('[data-open-folder]').forEach(function(btn) {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            window.__cloudCwd = btn.getAttribute('data-open-folder') || '';
+            refreshCloudFiles();
+          });
+        });
+        box.querySelectorAll('[data-folder]').forEach(function(el) {
+          el.addEventListener('click', function() {
+            window.__cloudCwd = el.getAttribute('data-rel') || el.getAttribute('data-name') || '';
+            refreshCloudFiles();
+          });
+        });
 
         // ===== DOWNLOAD BUTTONS =====
         box
@@ -11267,11 +11649,18 @@ function explainFetchError(e) {
               window.__cloudPreviewFallback = function(el, url, label){
                 const d = el.closest('.cloud-preview-drawer');
                 if (!d) return;
+                const nm = (el && el.getAttribute && (el.getAttribute('data-fname') || el.getAttribute('src') || '')) || '';
                 d.innerHTML = '<div style="color:var(--text-dim);font-size:12px;line-height:1.5;">' +
-                  '⚠ This browser can\'t preview this ' + label + ' inline (format/codec support varies by device).<br>' +
-                  '<a class="btn" href="' + url + '" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;padding:8px 14px;font-size:12px;">Open in new tab</a>' +
+                  '⚠ This browser can\'t preview this ' + label + ' inline (codec/device limit).<br>' +
+                  '<button type="button" class="btn" style="display:inline-block;margin-top:8px;padding:8px 14px;font-size:12px;" id="cloudPrevDlBtn">Download instead</button>' +
                   '</div>';
-              };
+                const b = d.querySelector('#cloudPrevDlBtn');
+                if (b) b.addEventListener('click', function() {
+                  const row = d.previousElementSibling;
+                  const n = row && row.querySelector('[data-name]') ? row.querySelector('[data-name]').getAttribute('data-name') : '';
+                  if (n && typeof downloadCloudFile === 'function') downloadCloudFile(n, '');
+                });
+              }
 
               if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) {
                 drawer.innerHTML = '<div class="media-wrap"><img src="' + fileUrl + '" alt="Preview" loading="lazy" onerror="window.__cloudPreviewFallback(this,\'' + fileUrl + '\',\'image\')"></div>';
@@ -11294,7 +11683,7 @@ function explainFetchError(e) {
                 drawer.innerHTML =
                   '<div class="media-wrap">' +
                   '<div class="dgxen-video-wrap" id="' + vId + '_wrap">' +
-                  '<video id="' + vId + '" playsinline webkit-playsinline preload="auto" src="' + fileUrl + '" onerror="window.__cloudPreviewFallback(this,\'' + fileUrl + '\',\'video\')"></video>' +
+                  '<video id="' + vId + '" playsinline webkit-playsinline preload="auto" src="' + fileUrl + '" type="' + (guessMimeFromName(fileName) || 'video/mp4') + '" onerror="window.__cloudPreviewFallback(this,\'' + fileUrl + '\',\'video\')"></video>' +
                   '<div class="dgxen-video-controls">' +
                   '<button type="button" id="' + vId + '_play" aria-label="Play/Pause">▶</button>' +
                   '<span class="dgxen-time" id="' + vId + '_time">0:00 / 0:00</span>' +
@@ -12197,7 +12586,9 @@ function explainFetchError(e) {
     // Never silently overwrite an existing file with the same name — get
     // the next free "name(1).ext" style name instead, same convention as
     // OS/browser download managers.
-    const safeName = await uniqueCloudFileName(rawSafeName, 'b2');
+    let safeName = await uniqueCloudFileName(rawSafeName, 'b2');
+    // Store under current folder prefix on B2
+    if (cloudCwd()) safeName = cloudJoinPath(cloudCwd(), safeName);
 
     // -------------------------------------------------------
     // <= 10 MiB:
@@ -12263,8 +12654,11 @@ function explainFetchError(e) {
 
       let completed = 0;
       window.__cloudUploading = true;
-      if (typeof setCloudBgUpload === 'function') {
-        setCloudBgUpload(true, tag + ': starting…', 0);
+      window.__cloudActiveProvider = provider;
+      if (typeof setCloudProviderProgress === 'function') {
+        setCloudProviderProgress(provider, true, tag + ': starting…', 0);
+      } else if (typeof setCloudBgUpload === 'function') {
+        setCloudBgUpload(true, tag + ': starting…', 0, provider);
       }
 
       for (
@@ -12301,7 +12695,8 @@ function explainFetchError(e) {
               const label = tag + ' ' + (i + 1) + '/' + files.length + ': ' + file.name + ' — ' + percent.toFixed(1) + '%';
               if (prog) prog.textContent = label;
               setStatus(label, null);
-              if (typeof setCloudBgUpload === 'function') setCloudBgUpload(true, label, percent);
+              if (typeof setCloudProviderProgress === 'function') setCloudProviderProgress(provider, true, label, percent);
+              else if (typeof setCloudBgUpload === 'function') setCloudBgUpload(true, label, percent, provider);
             },
             provider
           );
@@ -12344,7 +12739,13 @@ function explainFetchError(e) {
       if (prog) {
         prog.textContent = completed + '/' + files.length + ' file(s) uploaded (' + tag + ').';
       }
-      if (typeof setCloudBgUpload === 'function') {
+      if (typeof setCloudProviderProgress === 'function') {
+        if (completed > 0) setCloudProviderProgress(provider, true, tag + ': ' + completed + '/' + files.length + ' done', 100);
+        setTimeout(function() {
+          setCloudProviderProgress(provider, false);
+          if (!stillBusy) window.__cloudUploading = false;
+        }, stillBusy ? 400 : 1600);
+      } else if (typeof setCloudBgUpload === 'function') {
         if (stillBusy) {
           setCloudBgUpload(true, 'Other cloud still uploading…', null);
         } else {
