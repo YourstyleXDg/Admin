@@ -4197,7 +4197,7 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Apps Password</label>
                 <input type="text" id="infiniPass" placeholder="Paste apps password" style="width:100%;margin:4px 0 10px;" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" name="infini_app_pass_not_login">
                 <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Quota (GB)</label>
-                <input type="number" id="infiniQuotaGb" value="10" min="1" style="width:100%;margin:4px 0 10px;">
+                <input type="number" id="infiniQuotaGb" value="20" min="1" style="width:100%;margin:4px 0 10px;">
                 <label style="font-size:11px;font-weight:700;color:var(--text-dim);">CORS Proxy / Worker URL (usually required)</label>
                 <input type="text" id="infiniProxyUrl" placeholder="https://your-worker.workers.dev" style="width:100%;margin:4px 0 8px;" autocomplete="off">
                 <p style="font-size:11px;color:var(--text-dim);line-height:1.45;margin:0 0 10px;">Infini/Teracloud WebDAV needs CORS proxy in browser. Same Cloudflare Worker pattern as B2.</p>
@@ -9461,7 +9461,7 @@ window.__dgxenInitVideoControls = function(vId) {
     davUrl: 'https://aki.teracloud.jp/dav/',
     user: '',
     pass: '',
-    quotaGb: QUOTA_DEFAULT_GB,
+    quotaGb: 20, // Infini free tier default
     proxyUrl: ''
   };
 
@@ -9496,7 +9496,7 @@ window.__dgxenInitVideoControls = function(vId) {
     });
     const quota = document.getElementById('cloudQuotaLabel');
     if (quota) {
-      const gb = isInfini ? (infini.quotaGb || 10) : (b2.quotaGb || 10);
+      const gb = isInfini ? (infini.quotaGb || 20) : (b2.quotaGb || 10);
       quota.textContent = 'Quota: ' + gb + ' GB';
     }
   }
@@ -9693,7 +9693,7 @@ window.__dgxenInitVideoControls = function(vId) {
     infini.davUrl = (document.getElementById('infiniDavUrl')?.value || '').trim() || 'https://aki.teracloud.jp/dav/';
     infini.user = (document.getElementById('infiniUser')?.value || '').trim();
     infini.pass = (document.getElementById('infiniPass')?.value || '').trim();
-    infini.quotaGb = Number(document.getElementById('infiniQuotaGb')?.value) || QUOTA_DEFAULT_GB;
+    infini.quotaGb = Number(document.getElementById('infiniQuotaGb')?.value) || 20;
     infini.proxyUrl = (document.getElementById('infiniProxyUrl')?.value || '').trim();
     if (!infini.user || !infini.pass) {
       setInfiniStatus('Connection ID + Apps Password required.', false);
@@ -9757,7 +9757,7 @@ window.__dgxenInitVideoControls = function(vId) {
 
   function paintUsage(usedBytes) {
     const activeGb = getActiveCloudProvider() === 'infini'
-      ? (Number(infini.quotaGb) || QUOTA_DEFAULT_GB)
+      ? (Number(infini.quotaGb) || 20)
       : (Number(b2.quotaGb) || QUOTA_DEFAULT_GB);
     const quota =
       activeGb *
@@ -9816,8 +9816,7 @@ window.__dgxenInitVideoControls = function(vId) {
     if (qL)
       qL.textContent =
         'Quota: ' +
-        (Number(b2.quotaGb) ||
-          QUOTA_DEFAULT_GB) +
+        activeGb +
         ' GB';
   }
 
@@ -10295,7 +10294,7 @@ function explainFetchError(e) {
         if (v.davUrl) infini.davUrl = String(v.davUrl);
         if (v.user) infini.user = String(v.user);
         if (v.pass) infini.pass = String(v.pass);
-        if (v.quotaGb) infini.quotaGb = Number(v.quotaGb) || QUOTA_DEFAULT_GB;
+        if (v.quotaGb) infini.quotaGb = Number(v.quotaGb) || 20;
         if (v.proxyUrl) infini.proxyUrl = String(v.proxyUrl);
       }
     } catch (e) {}
@@ -10304,7 +10303,7 @@ function explainFetchError(e) {
       if (el('infiniDavUrl')) el('infiniDavUrl').value = infini.davUrl || '';
       if (el('infiniUser')) el('infiniUser').value = infini.user || '';
       if (el('infiniPass')) el('infiniPass').value = infini.pass || '';
-      if (el('infiniQuotaGb')) el('infiniQuotaGb').value = infini.quotaGb || QUOTA_DEFAULT_GB;
+      if (el('infiniQuotaGb')) el('infiniQuotaGb').value = infini.quotaGb || 20;
       if (el('infiniProxyUrl')) el('infiniProxyUrl').value = infini.proxyUrl || '';
     } catch (e) {}
     updateCloudProviderUI();
