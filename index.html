@@ -3893,11 +3893,12 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <h2 style="color: var(--accent); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
                     <span>Share/User Logs</span>
                     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                        <button id="notifPermBtn" class="btn" style="background:rgba(255,60,60,.18);color:#ff8080;padding:10px 16px;font-size:12px;display:none;" onclick="requestFastGenNotifPermission()">ENABLE PHONE NOTIFICATIONS</button>
                         <button class="btn" style="background:var(--accent);color:#000;padding:10px 18px;font-size:13px;" onclick="toggleUserSearchBox()">SEARCH USER</button>
                         <button class="btn" style="background:var(--error);color:white;padding:10px 20px;font-size:13px;" onclick="clearAllShareLogs()">CLEAR ALL LOGS</button>
                     </div>
                 </h2>
-                <p>Every key generation and every key share/re-use attempt (a bound key tried on a second device).</p>
+                <p>Two things only: key share/re-use attempts (a bound key tried on a second device), and fast-generation flags (name set and key generated under 1 minute apart).</p>
                 <div id="fastGenBanner" style="display:none;margin:0 0 16px;padding:14px 18px;border-radius:14px;background:rgba(255,40,40,.14);border:1.5px solid rgba(255,60,60,.55);animation:fastGenPulse 1.6s ease-in-out infinite;">
                     <div style="display:flex;align-items:center;gap:10px;font-weight:900;color:#ff5a5a;font-size:13px;letter-spacing:.03em;">
                         ⚠️ CRITICAL — FAST KEY GENERATION DETECTED
@@ -5558,11 +5559,27 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
 
         async function logAdminLogin(method, fpId) {
             try {
+                // Brave deliberately reports a plain Chrome UA string with
+                // no distinguishing token at all — by design, for privacy
+                // (confirmed: Brave has done this since 2016, nothing to
+                // parse for it). The only way to actually know a browser
+                // is Brave is to ask it directly, live, in that same
+                // browser — navigator.brave.isBrave() — which is exactly
+                // what's happening right here, since this code runs IN
+                // the browser that's logging in. This can never be
+                // reconstructed later from a stored UA string.
+                let isBrave = false;
+                try {
+                    if (navigator.brave && typeof navigator.brave.isBrave === 'function') {
+                        isBrave = await navigator.brave.isBrave();
+                    }
+                } catch (e) {}
                 await push(ref(db, 'settings/adminGate/loginHistory'), {
                     at: Date.now(),
                     method: method || 'unknown',
                     fpId: fpId || '',
-                    ua: (navigator.userAgent || '').slice(0, 300)
+                    ua: (navigator.userAgent || '').slice(0, 300),
+                    isBrave: isBrave
                 });
             } catch (e) {}
         }
@@ -5592,6 +5609,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 list.innerHTML = rows.map(r => {
                     const when = r.at ? new Date(r.at).toLocaleString() : '—';
                     const dm = parseDeviceOsAndModel(r.ua);
+                    if (r.isBrave === true) dm.os = 'Brave'; // live-detected at login time — overrides UA parsing, since Brave's UA never actually says "Brave"
                     const deviceLabel = (dm.os || dm.model) ? [dm.os, dm.model].filter(Boolean).join(' · ') : '';
                     return '<div class="mk-item" style="padding:16px 18px;"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;"><div style="font-size:15px;font-weight:800;">' + (r
                         .method || 'login') + '<div style="font-size:12px;color:var(--text-dim);margin-top:6px;">' +
@@ -7126,6 +7144,18 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         // re-rendering the same data (e.g. after an unrelated log delete)
         // never re-fires a notification for something already seen.
         const __seenFastGenIds = new Set();
+        // Records the moment THIS admin session started watching — any
+        // flagged entry timestamped after this moment is "new" and worth
+        // a notification; anything at or before it was already sitting in
+        // the database before this session opened and shouldn't re-alert
+        // every time the panel is simply reopened. This replaces an
+        // earlier "have we rendered at least once yet" flag, which had a
+        // real gap: if a fast-gen entry landed in Firebase in the instant
+        // between the panel opening and its very first render, that
+        // render would be treated as the "baseline" one and the
+        // notification for a genuinely brand-new entry would be silently
+        // skipped.
+        const __fastGenSessionStartedAt = Date.now();
         function updateFastGenAlert(fastGenLogs) {
             const banner = document.getElementById('fastGenBanner');
             const detail = document.getElementById('fastGenBannerDetail');
@@ -7146,12 +7176,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                         const nid = (log.generatorId || '') + '_' + (log.timestamp || '');
                         if (__seenFastGenIds.has(nid)) return;
                         __seenFastGenIds.add(nid);
-                        // Don't notify for entries that were already old the
-                        // first time this admin session ever saw them (e.g.
-                        // right after opening the panel with existing flagged
-                        // logs already in the database) — only for ones that
-                        // appear while the panel is actively open.
-                        if (!__fastGenAlertBaselineDone) return;
+                        if (!log.timestamp || Number(log.timestamp) <= __fastGenSessionStartedAt) return;
                         new Notification('DGXEN — Fast key generation', {
                             body: (log.generatorName || 'A user') + ' generated a key within 1 minute of registering.',
                             tag: nid
@@ -7159,12 +7184,21 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     });
                 }
             } catch (e) {}
-            if (!__fastGenAlertBaselineDone) {
-                __fastGenAlertBaselineDone = true;
-            }
         }
-        let __fastGenAlertBaselineDone = false;
-        try { if (Notification && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {}
+        window.requestFastGenNotifPermission = function() {
+            try {
+                Notification.requestPermission().then(refreshNotifPermButton);
+            } catch (e) {}
+        };
+        function refreshNotifPermButton() {
+            const btn = document.getElementById('notifPermBtn');
+            if (!btn) return;
+            try {
+                if (!('Notification' in window)) { btn.style.display = 'none'; return; }
+                btn.style.display = (Notification.permission === 'default') ? 'inline-flex' : 'none';
+            } catch (e) { btn.style.display = 'none'; }
+        }
+        refreshNotifPermButton();
 
         onValue(ref(db, 'settings/shareLogs'), (snap) => {
             window.__lastShareLogsSnap = snap;
