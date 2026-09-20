@@ -3040,6 +3040,26 @@ body.cat-world-active .cat-mode-bar{display:block}
             border-radius: 99px;
             transition: width .2s linear;
         }
+        #cloudBgUploadCancel {
+            flex: none;
+            border: 1px solid rgba(255,255,255,0.22);
+            background: rgba(255,80,80,0.18);
+            color: #ff8a8a;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            padding: 6px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            line-height: 1;
+        }
+        #cloudBgUploadCancel:hover { background: rgba(255,80,80,0.32); }
+        body.light-mode #cloudBgUploadCancel {
+            border-color: rgba(15,23,42,0.12);
+            background: rgba(255,59,48,0.1);
+            color: #d70015;
+        }
         /* Anchor delete popup near click */
         #cloudDelPop {
             position: fixed;
@@ -4234,6 +4254,7 @@ body.cat-world-active .cat-mode-bar{display:block}
         <div id="cloudBgUpload" aria-live="polite">
         <span id="cloudBgUploadText">Uploading…</span>
         <div class="bar"><i id="cloudBgUploadBar"></i></div>
+        <button type="button" id="cloudBgUploadCancel" title="Cancel" onclick="cancelCloudTransfer()">Cancel</button>
     </div>
     <div id="cloudDelPop" role="dialog">
         <p id="cloudDelPopMsg">Delete this file?</p>
@@ -9327,23 +9348,49 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   else bindDelBtns();
 
   window.__cloudUploading = false;
+  window.__cloudDownloading = false;
+  window.__cloudXhr = null;
+  window.__cloudAbort = null;
+
+  window.cancelCloudTransfer = function() {
+    try {
+      if (window.__cloudXhr) {
+        try { window.__cloudXhr.abort(); } catch (e) {}
+        window.__cloudXhr = null;
+      }
+      if (window.__cloudAbort) {
+        try { window.__cloudAbort.abort(); } catch (e) {}
+        window.__cloudAbort = null;
+      }
+    } catch (e) {}
+    window.__cloudUploading = false;
+    window.__cloudDownloading = false;
+    window.setCloudBgUpload(false);
+    try {
+      const el = document.getElementById('cloudConnStatus');
+      if (el) { el.textContent = 'Transfer cancelled.'; el.style.color = 'var(--text-dim)'; }
+    } catch (e) {}
+  };
+
   window.setCloudBgUpload = function(show, text, percent) {
     const el = document.getElementById('cloudBgUpload');
     const tx = document.getElementById('cloudBgUploadText');
     const bar = document.getElementById('cloudBgUploadBar');
     const inlineBar = document.getElementById('cloudUploadInlineBar');
     const inlineFill = document.getElementById('cloudUploadInlineBarFill');
+    const cancelBtn = document.getElementById('cloudBgUploadCancel');
     if (!el) return;
     if (show) {
-      window.__cloudUploading = true;
       el.classList.add('show');
       if (inlineBar) inlineBar.classList.add('show');
       if (tx && text) tx.textContent = text;
       const pct = percent != null ? Math.max(0, Math.min(100, Number(percent) || 0)) : null;
       if (bar && pct != null) bar.style.width = pct + '%';
       if (inlineFill && pct != null) inlineFill.style.width = pct + '%';
+      if (cancelBtn) cancelBtn.style.display = '';
     } else {
       window.__cloudUploading = false;
+      window.__cloudDownloading = false;
       el.classList.remove('show');
       if (inlineBar) inlineBar.classList.remove('show');
       if (bar) bar.style.width = '0%';
@@ -9834,15 +9881,79 @@ window.__dgxenInitVideoControls = function(vId) {
   }
 
   async function downloadInfiniFile(fileName) {
-    const res = await infiniFetch(infiniBaseUrl() + encodeURIComponent(fileName), { method: 'GET' });
-    if (!res.ok) throw new Error('Infini download failed (' + res.status + ')');
-    const blob = await res.blob();
+    // Immediate UI feedback — avoids 3–4s "frozen" feel while proxy connects
+    window.__cloudDownloading = true;
+    if (typeof setCloudBgUpload === 'function') {
+      setCloudBgUpload(true, 'Preparing download…', 0);
+    }
+    setStatus('Downloading…', null);
+    // Yield a frame so the chip paints before network work
+    await new Promise(function(r) { requestAnimationFrame(function() { requestAnimationFrame(r); }); });
+
+    const targetUrl = infiniBaseUrl() + encodeURIComponent(fileName);
+    const finalUrl = (typeof infiniProxyUrl === 'function')
+      ? infiniProxyUrl(targetUrl)
+      : (function() {
+          const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
+          if (!proxy) return targetUrl;
+          return proxy + (proxy.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(targetUrl);
+        })();
+
+    const blob = await new Promise(function(resolve, reject) {
+      const xhr = new XMLHttpRequest();
+      window.__cloudXhr = xhr;
+      xhr.open('GET', finalUrl, true);
+      xhr.responseType = 'blob';
+      try {
+        xhr.setRequestHeader('Authorization', infiniAuthHeader());
+      } catch (e) {}
+      xhr.timeout = 0;
+      xhr.onprogress = function(ev) {
+        if (!ev.lengthComputable) {
+          if (typeof setCloudBgUpload === 'function') {
+            setCloudBgUpload(true, 'Downloading…', null);
+          }
+          return;
+        }
+        const pct = Math.min(99.5, (ev.loaded / ev.total) * 100);
+        if (typeof setCloudBgUpload === 'function') {
+          setCloudBgUpload(true, 'Downloading ' + formatBytes(ev.loaded) + ' / ' + formatBytes(ev.total), pct);
+        }
+      };
+      xhr.onload = function() {
+        window.__cloudXhr = null;
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(xhr.response);
+        } else {
+          reject(new Error('Infini download failed (' + xhr.status + ')'));
+        }
+      };
+      xhr.onerror = function() {
+        window.__cloudXhr = null;
+        reject(new Error('Network error during download'));
+      };
+      xhr.onabort = function() {
+        window.__cloudXhr = null;
+        reject(new Error('cancelled'));
+      };
+      xhr.ontimeout = function() {
+        window.__cloudXhr = null;
+        reject(new Error('Download timed out'));
+      };
+      xhr.send();
+    });
+
+    if (typeof setCloudBgUpload === 'function') {
+      setCloudBgUpload(true, 'Saving file…', 100);
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = fileName.split('/').pop() || 'download';
     document.body.appendChild(a);
     a.click();
     setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    window.__cloudDownloading = false;
+    if (typeof setCloudBgUpload === 'function') setCloudBgUpload(false);
   }
 
   async function getInfiniPreviewUrl(fileName) {
@@ -11178,6 +11289,14 @@ function explainFetchError(e) {
         setStatus('Download complete.', true);
         return;
       }
+
+      window.__cloudDownloading = true;
+      if (typeof setCloudBgUpload === 'function') {
+        setCloudBgUpload(true, 'Preparing download…', 0);
+      }
+      setStatus('Downloading…', null);
+      await new Promise(function(r) { requestAnimationFrame(function() { requestAnimationFrame(r); }); });
+
       await authorizeB2();
 
       const authRes = await b2Fetch(
@@ -11204,14 +11323,34 @@ function explainFetchError(e) {
       const path = fileName.split('/').map(encodeURIComponent).join('/');
       const url = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path + '?Authorization=' + encodeURIComponent(authData.authorizationToken);
 
-      // --- DIRECT NATIVE FETCH FOR DOWNLOAD (Bypass Proxy) ---
-      const res = await fetch(url, { method: 'GET' });
+      // XHR for progress + cancel (same UX as Infini)
+      const blob = await new Promise(function(resolve, reject) {
+        const xhr = new XMLHttpRequest();
+        window.__cloudXhr = xhr;
+        xhr.open('GET', url, true);
+        xhr.responseType = 'blob';
+        xhr.timeout = 0;
+        xhr.onprogress = function(ev) {
+          if (!ev.lengthComputable) {
+            if (typeof setCloudBgUpload === 'function') setCloudBgUpload(true, 'Downloading…', null);
+            return;
+          }
+          const pct = Math.min(99.5, (ev.loaded / ev.total) * 100);
+          if (typeof setCloudBgUpload === 'function') {
+            setCloudBgUpload(true, 'Downloading ' + formatBytes(ev.loaded) + ' / ' + formatBytes(ev.total), pct);
+          }
+        };
+        xhr.onload = function() {
+          window.__cloudXhr = null;
+          if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
+          else reject(new Error('Download failed (' + xhr.status + ')'));
+        };
+        xhr.onerror = function() { window.__cloudXhr = null; reject(new Error('Network error during download')); };
+        xhr.onabort = function() { window.__cloudXhr = null; reject(new Error('cancelled')); };
+        xhr.send();
+      });
 
-      if (!res.ok) {
-        throw new Error('Download failed (' + res.status + ')');
-      }
-
-      const blob = await res.blob();
+      if (typeof setCloudBgUpload === 'function') setCloudBgUpload(true, 'Saving file…', 100);
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = fileName.split('/').pop() || 'download';
@@ -11222,8 +11361,9 @@ function explainFetchError(e) {
           a.remove();
       }, 2000);
 
-      // Original date is stored in Firebase + often inside photo EXIF.
-      // Browser/OS always sets file "modified" time to download moment — cannot override from web.
+      window.__cloudDownloading = false;
+      if (typeof setCloudBgUpload === 'function') setCloudBgUpload(false);
+
       try {
         const map = await loadFileMetaMap();
         const m = map[fileName];
@@ -11237,7 +11377,13 @@ function explainFetchError(e) {
       }
 
     } catch (e) {
-      setStatus('Download: ' + explainFetchError(e), false);
+      window.__cloudDownloading = false;
+      if (typeof setCloudBgUpload === 'function') setCloudBgUpload(false);
+      if (e && String(e.message || e).toLowerCase().indexOf('cancel') >= 0) {
+        setStatus('Download cancelled.', null);
+      } else {
+        setStatus('Download: ' + explainFetchError(e), false);
+      }
     }
   }
 
