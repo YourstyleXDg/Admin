@@ -9674,20 +9674,148 @@ window.__dgxenInitVideoControls = function(vId) {
     return parseWebDavPropfind(await res.text(), base);
   }
 
+  // Infini/WebDAV: CF Worker body limit ~100MB — chunk large files.
+  // 8 MiB chunks stay under free Worker limits and give smooth progress.
+  const INFINI_CHUNK_SIZE = 8 * 1024 * 1024;
+  const INFINI_MAX_RETRIES = 4;
+
+  function sleepMs(ms) {
+    return new Promise(function(r) { setTimeout(r, ms); });
+  }
+
+  // XHR PUT with upload progress + retries (works better than fetch for progress).
+  function xhrPutBlob(url, blob, headers, onProgress) {
+    return new Promise(function(resolve, reject) {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', url, true);
+      Object.keys(headers || {}).forEach(function(k) {
+        try { xhr.setRequestHeader(k, headers[k]); } catch (e) {}
+      });
+      xhr.upload.onprogress = function(ev) {
+        if (ev.lengthComputable && typeof onProgress === 'function') {
+          onProgress(ev.loaded, ev.total);
+        }
+      };
+      xhr.onload = function() {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve({ ok: true, status: xhr.status, responseText: xhr.responseText || '' });
+        } else {
+          const err = new Error('HTTP ' + xhr.status + ' ' + (xhr.responseText || '').slice(0, 160));
+          err.status = xhr.status;
+          reject(err);
+        }
+      };
+      xhr.onerror = function() { reject(new Error('Network error during upload')); };
+      xhr.ontimeout = function() { reject(new Error('Upload timed out')); };
+      // Large files: no short timeout
+      xhr.timeout = 0;
+      xhr.send(blob);
+    });
+  }
+
+  function infiniProxyUrl(targetUrl) {
+    const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
+    if (!proxy) return targetUrl;
+    return proxy + (proxy.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(targetUrl);
+  }
+
+  async function infiniPutWithRetry(targetUrl, blob, headers, onProgress) {
+    const finalUrl = infiniProxyUrl(targetUrl);
+    const hdrs = Object.assign({
+      'Authorization': infiniAuthHeader(),
+      'Content-Type': headers['Content-Type'] || 'application/octet-stream'
+    }, headers || {});
+    let lastErr = null;
+    for (let attempt = 1; attempt <= INFINI_MAX_RETRIES; attempt++) {
+      try {
+        return await xhrPutBlob(finalUrl, blob, hdrs, onProgress);
+      } catch (e) {
+        lastErr = e;
+        const st = e && e.status;
+        // Don't retry hard client errors except 408/429
+        if (st && st >= 400 && st < 500 && st !== 408 && st !== 429) throw e;
+        await sleepMs(Math.min(8000, 400 * Math.pow(2, attempt - 1)));
+      }
+    }
+    throw lastErr || new Error('Infini upload failed after retries');
+  }
+
   async function uploadInfiniFile(file, safeName, progressCallback) {
     if (!infini.user || !infini.pass) throw new Error('Infini credentials missing');
-    const url = infiniBaseUrl() + encodeURIComponent(safeName);
-    if (typeof progressCallback === 'function') progressCallback(5);
-    const res = await infiniFetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type || 'application/octet-stream' },
-      body: file
-    });
-    if (!res.ok) {
-      const t = await res.text().catch(() => '');
-      throw new Error('Infini upload failed (' + res.status + ') ' + (t.slice(0, 120) || ''));
+    if (!file || !file.size) throw new Error('File is empty.');
+    const targetUrl = infiniBaseUrl() + encodeURIComponent(safeName);
+    const ctype = file.type || 'application/octet-stream';
+    const total = file.size;
+
+    function report(done) {
+      if (typeof progressCallback === 'function') {
+        const pct = Math.min(99.9, (done / total) * 100);
+        progressCallback(pct);
+      }
     }
-    if (typeof progressCallback === 'function') progressCallback(100);
+
+    // Small file: single PUT with live progress
+    if (total <= INFINI_CHUNK_SIZE) {
+      await infiniPutWithRetry(
+        targetUrl,
+        file,
+        { 'Content-Type': ctype, 'Content-Length': String(total) },
+        function(loaded) { report(loaded); }
+      );
+      if (typeof progressCallback === 'function') progressCallback(100);
+    } else {
+      // Large file: sequential Content-Range chunks (robust through CORS proxy)
+      let offset = 0;
+      let chunkIndex = 0;
+      const totalChunks = Math.ceil(total / INFINI_CHUNK_SIZE);
+      while (offset < total) {
+        const end = Math.min(offset + INFINI_CHUNK_SIZE, total);
+        const blob = file.slice(offset, end);
+        const rangeHeader = 'bytes ' + offset + '-' + (end - 1) + '/' + total;
+        chunkIndex++;
+        console.log('[Infini] chunk', chunkIndex + '/' + totalChunks, rangeHeader);
+        try {
+          await infiniPutWithRetry(
+            targetUrl,
+            blob,
+            {
+              'Content-Type': ctype,
+              'Content-Range': rangeHeader,
+              'Content-Length': String(end - offset)
+            },
+            function(loaded) { report(offset + loaded); }
+          );
+        } catch (e) {
+          // If server rejects Content-Range on first chunk, fall back to single PUT
+          // only when file is under ~90MB (Worker-safe). Otherwise surface clear error.
+          if (chunkIndex === 1 && offset === 0) {
+            const st = e && e.status;
+            if (st === 400 || st === 501 || st === 405 || st === 501) {
+              if (total <= 90 * 1024 * 1024) {
+                console.warn('[Infini] Content-Range not supported — single PUT fallback');
+                await infiniPutWithRetry(
+                  targetUrl,
+                  file,
+                  { 'Content-Type': ctype },
+                  function(loaded) { report(loaded); }
+                );
+                offset = total;
+                break;
+              }
+              throw new Error(
+                'Infini/proxy rejected chunked upload and file is too large for single PUT (' +
+                formatBytes(total) + '). Use a Worker that supports streaming, or split the file.'
+              );
+            }
+          }
+          throw e;
+        }
+        offset = end;
+        report(offset);
+      }
+      if (typeof progressCallback === 'function') progressCallback(100);
+    }
+
     try {
       await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(safeName)), {
         name: safeName, size: file.size || 0, uploadedAt: Date.now(), src_date: null
@@ -11540,211 +11668,93 @@ function explainFetchError(e) {
     try {
 
       // =====================================================
-      // SEQUENTIAL PART UPLOAD
+      // PARALLEL PART UPLOAD (concurrency 3) + per-part retries
       // =====================================================
 
-      for (
-        let partNumber = 1;
-        partNumber <= totalParts;
-        partNumber++
-      ) {
+      const B2_PART_CONCURRENCY = 3;
+      const B2_PART_RETRIES = 4;
 
-        const start =
-          (
-            partNumber - 1
-          ) *
-          B2_PART_SIZE;
+      // Pre-size sha array so part numbers map correctly under concurrency
+      for (let i = 0; i < totalParts; i++) partSha1Array[i] = null;
 
-        const end =
-          Math.min(
-            start +
-              B2_PART_SIZE,
-            file.size
-          );
+      async function uploadOneB2Part(partNumber) {
+        const start = (partNumber - 1) * B2_PART_SIZE;
+        const end = Math.min(start + B2_PART_SIZE, file.size);
+        const chunk = file.slice(start, end);
+        const chunkBuf = await chunk.arrayBuffer();
+        const sha1 = await sha1Hex(chunkBuf);
+        partSha1Array[partNumber - 1] = sha1;
 
-        console.log(
-          '[B2] Part ' +
-          partNumber +
-          '/' +
-          totalParts +
-          ' preparing...'
-        );
-
-        // ---------------------------------------------------
-        // Only current part is read.
-        // ---------------------------------------------------
-
-        const chunk =
-          file.slice(
-            start,
-            end
-          );
-
-        const chunkBuf =
-          await chunk.arrayBuffer();
-
-        // ---------------------------------------------------
-        // SHA-1 of current part
-        // ---------------------------------------------------
-
-        const sha1 =
-          await sha1Hex(
-            chunkBuf
-          );
-
-        partSha1Array.push(
-          sha1
-        );
-
-        // ---------------------------------------------------
-        // Get upload-part URL
-        // ---------------------------------------------------
-
-        const urlRes =
-          await b2Fetch(
-            b2.apiUrl +
-            '/b2api/v2/b2_get_upload_part_url',
-            {
-              method: 'POST',
-
-              headers: {
-                Authorization:
-                  b2.authToken,
-
-                'Content-Type':
-                  'application/json'
-              },
-
-              body:
-                JSON.stringify({
-                  fileId:
-                    fileId
-                })
-            }
-          );
-
-        const urlData =
-          await urlRes.json()
-            .catch(
-              () => ({})
+        let lastErr = null;
+        for (let attempt = 1; attempt <= B2_PART_RETRIES; attempt++) {
+          try {
+            const urlRes = await b2Fetch(
+              b2.apiUrl + '/b2api/v2/b2_get_upload_part_url',
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: b2.authToken,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ fileId: fileId })
+              }
             );
-
-        if (!urlRes.ok) {
-
-          throw new Error(
-            urlData.message ||
-            (
-              'Failed to get part URL ' +
-              partNumber
-            )
-          );
-        }
-
-        if (
-          !urlData.uploadUrl ||
-          !urlData.authorizationToken
-        ) {
-
-          throw new Error(
-            'Invalid B2 part upload URL.'
-          );
-        }
-
-        // ===================================================
-        // DIRECT RAW BINARY PART UPLOAD
-        //
-        // NO b2Fetch()
-        // NO Base64
-        // NO proxy
-        // ===================================================
-
-        const uploadRes =
-          await fetch(
-            urlData.uploadUrl,
-            {
-              method: 'POST',
-
-              headers: {
-                Authorization:
-                  urlData.authorizationToken,
-
-                'X-Bz-Part-Number':
-                  String(
-                    partNumber
-                  ),
-
-                'X-Bz-Content-Sha1':
-                  sha1
-              },
-
-              // RAW BINARY
-              body:
-                chunkBuf
+            const urlData = await urlRes.json().catch(() => ({}));
+            if (!urlRes.ok) {
+              throw new Error(urlData.message || ('Failed to get part URL ' + partNumber));
             }
-          );
+            if (!urlData.uploadUrl || !urlData.authorizationToken) {
+              throw new Error('Invalid B2 part upload URL.');
+            }
 
-        if (!uploadRes.ok) {
+            // Direct to B2 (no proxy) — fastest path
+            const uploadRes = await fetch(urlData.uploadUrl, {
+              method: 'POST',
+              headers: {
+                Authorization: urlData.authorizationToken,
+                'X-Bz-Part-Number': String(partNumber),
+                'X-Bz-Content-Sha1': sha1
+              },
+              body: chunkBuf
+            });
 
-          const text =
-            await uploadRes.text()
-              .catch(
-                () => ''
+            if (!uploadRes.ok) {
+              const text = await uploadRes.text().catch(() => '');
+              throw new Error(
+                'Part ' + partNumber + ' upload failed: ' + uploadRes.status + ' ' + text.slice(0, 120)
               );
+            }
 
-          throw new Error(
-            'Part ' +
-            partNumber +
-            ' upload failed: ' +
-            uploadRes.status +
-            ' ' +
-            text
-          );
+            uploadedBytes += (end - start);
+            if (typeof progressCallback === 'function') {
+              progressCallback(Math.min(99.5, (uploadedBytes / file.size) * 100));
+            }
+            console.log('[B2] Part ' + partNumber + '/' + totalParts + ' done');
+            return;
+          } catch (e) {
+            lastErr = e;
+            console.warn('[B2] Part ' + partNumber + ' attempt ' + attempt, e && e.message);
+            await new Promise(function(r) {
+              setTimeout(r, Math.min(6000, 300 * Math.pow(2, attempt - 1)));
+            });
+          }
         }
-
-        // ---------------------------------------------------
-        // B2 confirms uploaded part.
-        // ---------------------------------------------------
-
-        await uploadRes.json()
-          .catch(
-            () => ({})
-          );
-
-        uploadedBytes =
-          end;
-
-        const percent =
-          Math.min(
-            100,
-            (
-              uploadedBytes /
-              file.size
-            ) * 100
-          );
-
-        if (progressCallback) {
-
-          progressCallback(
-            percent
-          );
-        }
-
-        console.log(
-          '[B2] Part ' +
-          partNumber +
-          '/' +
-          totalParts +
-          ' uploaded — ' +
-          percent.toFixed(1) +
-          '%'
-        );
-
-        // ---------------------------------------------------
-        // Give browser event loop / GC an opportunity.
-        // ---------------------------------------------------
-
-        /* yield removed for speed */
+        throw lastErr || new Error('Part ' + partNumber + ' failed');
       }
+
+      let nextPart = 1;
+      async function partWorker() {
+        while (true) {
+          const n = nextPart++;
+          if (n > totalParts) return;
+          await uploadOneB2Part(n);
+        }
+      }
+      const workers = [];
+      for (let w = 0; w < Math.min(B2_PART_CONCURRENCY, totalParts); w++) {
+        workers.push(partWorker());
+      }
+      await Promise.all(workers);
 
       // =====================================================
       // FINISH LARGE FILE
