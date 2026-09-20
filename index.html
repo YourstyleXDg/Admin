@@ -2503,6 +2503,90 @@
             font-size: 11px;
             border-radius: 10px;
         }
+        /* Cloud provider switch */
+        .cloud-provider-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            vertical-align: middle;
+        }
+        .cloud-provider-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            border: 1px solid rgba(92,200,255,0.35);
+            background: rgba(92,200,255,0.12);
+            color: #5cc8ff;
+            cursor: pointer;
+            transition: background .2s, transform .15s, border-color .2s;
+            padding: 0;
+            flex: none;
+        }
+        .cloud-provider-btn:hover {
+            background: rgba(92,200,255,0.22);
+            border-color: rgba(92,200,255,0.55);
+        }
+        .cloud-provider-btn:active { transform: scale(0.94); }
+        .cloud-provider-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+        .cloud-provider-btn.open { background: rgba(92,200,255,0.28); }
+        .cloud-provider-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            min-width: 200px;
+            z-index: 50;
+            padding: 8px;
+            border-radius: 14px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 16px 40px var(--shadow-color);
+        }
+        .cloud-provider-menu.open { display: block; }
+        .cloud-provider-opt {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 11px 12px;
+            border: none;
+            border-radius: 10px;
+            background: transparent;
+            color: var(--text-main);
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            text-align: left;
+            transition: background .15s;
+        }
+        .cloud-provider-opt:hover { background: rgba(var(--accent-rgb), 0.12); }
+        .cloud-provider-opt.active {
+            background: rgba(92,200,255,0.15);
+            color: #5cc8ff;
+        }
+        .cloud-provider-opt .dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--text-dim); flex: none;
+        }
+        .cloud-provider-opt.active .dot {
+            background: #5cc8ff;
+            box-shadow: 0 0 8px rgba(92,200,255,0.6);
+        }
+        .cloud-provider-label {
+            font-size: 12px;
+            font-weight: 800;
+            color: #5cc8ff;
+            letter-spacing: 0.3px;
+        }
+        #cloudSettingsB2, #cloudSettingsInfini { display: none; }
+        #cloudSettingsB2.show, #cloudSettingsInfini.show { display: block; }
+
         .cloud-upload-zone {
             border: 1.5px dashed rgba(92,200,255,.45);
             border-radius: 16px;
@@ -4049,8 +4133,24 @@ body.cat-world-active .cat-mode-bar{display:block}
     <div id="cloudPanelBackdrop" onclick="toggleCloudPanel(false)"></div>
     <div id="cloudPanel" class="glass-panel">
         <button type="button" class="sec-panel-close" onclick="toggleCloudPanel(false)" aria-label="Close">×</button>
-        <h2 style="color:#5cc8ff;font-size:24px;margin:0 0 8px;font-weight:900;">Cloud Storage</h2>
-        <p style="color:var(--text-dim);font-size:13px;margin:0 0 16px;line-height:1.5;">Backblaze B2 — upload / download files. Keys save in Firebase (not in this chat).</p>
+        <div style="display:flex;align-items:center;gap:10px;margin:0 0 8px;flex-wrap:wrap;">
+            <h2 style="color:#5cc8ff;font-size:24px;margin:0;font-weight:900;">Cloud Storage</h2>
+            <div class="cloud-provider-wrap" id="cloudProviderWrap">
+                <span class="cloud-provider-label" id="cloudProviderLabel">B2 Blaze</span>
+                <button type="button" class="cloud-provider-btn" id="cloudProviderBtn" title="Switch cloud provider" aria-haspopup="listbox" aria-expanded="false" onclick="toggleCloudProviderMenu(event)">
+                    <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="cloud-provider-menu" id="cloudProviderMenu" role="listbox">
+                    <button type="button" class="cloud-provider-opt active" data-provider="b2" onclick="selectCloudProvider('b2')">
+                        <span class="dot"></span> B2 Blaze
+                    </button>
+                    <button type="button" class="cloud-provider-opt" data-provider="infini" onclick="selectCloudProvider('infini')">
+                        <span class="dot"></span> Infini Cloud
+                    </button>
+                </div>
+            </div>
+        </div>
+        <p id="cloudProviderHint" style="color:var(--text-dim);font-size:13px;margin:0 0 16px;line-height:1.5;">Backblaze B2 — upload / download files. Keys save in Firebase (not in this chat).</p>
 
         <div style="padding:14px 16px;border-radius:16px;border:1px solid var(--glass-border);background:var(--panel-bg);margin-bottom:16px;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
@@ -4064,7 +4164,7 @@ body.cat-world-active .cat-mode-bar{display:block}
             </div>
         </div>
 
-        <details style="margin-bottom:14px;">
+        <details id="cloudSettingsB2" class="show" style="margin-bottom:14px;">
             <summary style="cursor:pointer;font-weight:800;font-size:13px;color:var(--text-main);">B2 connection settings</summary>
             <div style="margin-top:12px;">
                 <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Key ID</label>
@@ -4079,11 +4179,32 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <input type="number" id="b2QuotaGb" value="10" min="1" style="width:100%;margin:4px 0 10px;">
                 <label style="font-size:11px;font-weight:700;color:var(--text-dim);">CORS Proxy / Worker URL (required for browser)</label>
                 <input type="text" id="b2ProxyUrl" placeholder="https://your-worker.workers.dev" style="width:100%;margin:4px 0 8px;" autocomplete="off">
-                <p style="font-size:11px;color:var(--text-dim);line-height:1.45;margin:0 0 10px;">B2 blocks direct browser login (CORS). Free Cloudflare Worker fix — see <b>i</b> guide or message below.</p>
+                <p style="font-size:11px;color:var(--text-dim);line-height:1.45;margin:0 0 10px;">B2 blocks direct browser login (CORS). Free Cloudflare Worker fix — see <b>i</b> guide.</p>
                 <div class="input-group" style="margin:0;">
                     <button class="btn" type="button" style="background:#5cc8ff;color:#000;width:100%;" onclick="saveB2Settings()">SAVE & CONNECT</button>
                 </div>
                 <p id="cloudConnStatus" style="font-size:12px;font-weight:700;color:var(--text-dim);margin-top:8px;min-height:18px;"></p>
+            </div>
+        </details>
+
+        <details id="cloudSettingsInfini" style="margin-bottom:14px;">
+            <summary style="cursor:pointer;font-weight:800;font-size:13px;color:var(--text-main);">Infini Cloud (WebDAV) settings</summary>
+            <div style="margin-top:12px;">
+                <label style="font-size:11px;font-weight:700;color:var(--text-dim);">WebDAV URL</label>
+                <input type="text" id="infiniDavUrl" placeholder="https://aki.teracloud.jp/dav/" style="width:100%;margin:4px 0 10px;" autocomplete="off">
+                <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Connection ID</label>
+                <input type="text" id="infiniUser" placeholder="your connection id" style="width:100%;margin:4px 0 10px;" autocomplete="off">
+                <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Apps Password</label>
+                <input type="text" id="infiniPass" placeholder="Paste apps password" style="width:100%;margin:4px 0 10px;" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-form-type="other" name="infini_app_pass_not_login">
+                <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Quota (GB)</label>
+                <input type="number" id="infiniQuotaGb" value="10" min="1" style="width:100%;margin:4px 0 10px;">
+                <label style="font-size:11px;font-weight:700;color:var(--text-dim);">CORS Proxy / Worker URL (usually required)</label>
+                <input type="text" id="infiniProxyUrl" placeholder="https://your-worker.workers.dev" style="width:100%;margin:4px 0 8px;" autocomplete="off">
+                <p style="font-size:11px;color:var(--text-dim);line-height:1.45;margin:0 0 10px;">Infini/Teracloud WebDAV needs CORS proxy in browser. Same Cloudflare Worker pattern as B2.</p>
+                <div class="input-group" style="margin:0;">
+                    <button class="btn" type="button" style="background:#5cc8ff;color:#000;width:100%;" onclick="saveInfiniSettings()">SAVE & CONNECT</button>
+                </div>
+                <p id="cloudInfiniStatus" style="font-size:12px;font-weight:700;color:var(--text-dim);margin-top:8px;min-height:18px;"></p>
             </div>
         </details>
 
@@ -9335,6 +9456,266 @@ window.__dgxenInitVideoControls = function(vId) {
     authAt: 0
   };
 
+  let cloudProvider = 'b2';
+  let infini = {
+    davUrl: 'https://aki.teracloud.jp/dav/',
+    user: '',
+    pass: '',
+    quotaGb: QUOTA_DEFAULT_GB,
+    proxyUrl: ''
+  };
+
+  function getActiveCloudProvider() {
+    return cloudProvider === 'infini' ? 'infini' : 'b2';
+  }
+
+  function setInfiniStatus(msg, ok) {
+    const el = document.getElementById('cloudInfiniStatus');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.style.color = ok === false ? 'var(--error)' : (ok ? 'var(--accent)' : 'var(--text-dim)');
+  }
+
+  function updateCloudProviderUI() {
+    const isInfini = getActiveCloudProvider() === 'infini';
+    const label = document.getElementById('cloudProviderLabel');
+    const hint = document.getElementById('cloudProviderHint');
+    const b2Box = document.getElementById('cloudSettingsB2');
+    const inBox = document.getElementById('cloudSettingsInfini');
+    if (label) label.textContent = isInfini ? 'Infini Cloud' : 'B2 Blaze';
+    if (hint) {
+      hint.textContent = isInfini
+        ? 'Infini Cloud (WebDAV) — upload / download files. Credentials save in Firebase.'
+        : 'Backblaze B2 — upload / download files. Keys save in Firebase (not in this chat).';
+    }
+    if (b2Box) b2Box.classList.toggle('show', !isInfini);
+    if (inBox) inBox.classList.toggle('show', isInfini);
+    document.querySelectorAll('.cloud-provider-opt').forEach(function(btn) {
+      const on = btn.getAttribute('data-provider') === getActiveCloudProvider();
+      btn.classList.toggle('active', on);
+    });
+    const quota = document.getElementById('cloudQuotaLabel');
+    if (quota) {
+      const gb = isInfini ? (infini.quotaGb || 10) : (b2.quotaGb || 10);
+      quota.textContent = 'Quota: ' + gb + ' GB';
+    }
+  }
+
+  window.toggleCloudProviderMenu = function(ev) {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    const menu = document.getElementById('cloudProviderMenu');
+    const btn = document.getElementById('cloudProviderBtn');
+    if (!menu) return;
+    const open = !menu.classList.contains('open');
+    menu.classList.toggle('open', open);
+    if (btn) {
+      btn.classList.toggle('open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+  };
+
+  document.addEventListener('click', function(e) {
+    const wrap = document.getElementById('cloudProviderWrap');
+    const menu = document.getElementById('cloudProviderMenu');
+    if (!wrap || !menu || !menu.classList.contains('open')) return;
+    if (!wrap.contains(e.target)) {
+      menu.classList.remove('open');
+      const btn = document.getElementById('cloudProviderBtn');
+      if (btn) { btn.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+    }
+  });
+
+  window.selectCloudProvider = async function(id) {
+    cloudProvider = (id === 'infini') ? 'infini' : 'b2';
+    try { await set(ref(db, 'settings/cloudProvider'), cloudProvider); } catch (e) { console.warn('cloudProvider save', e); }
+    try { localStorage.setItem('dgxen_cloud_provider', cloudProvider); } catch (e) {}
+    updateCloudProviderUI();
+    const menu = document.getElementById('cloudProviderMenu');
+    const btn = document.getElementById('cloudProviderBtn');
+    if (menu) menu.classList.remove('open');
+    if (btn) { btn.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+    const box = document.getElementById('cloudFileList');
+    if (box) box.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-weight:700;">Switching provider…</div>';
+    try {
+      if (window.refreshCloudFiles) await window.refreshCloudFiles();
+    } catch (e) {
+      if (box) box.innerHTML = '<div style="padding:14px;color:var(--error);font-weight:700;">' + (e.message || e) + '</div>';
+    }
+  };
+
+  function infiniAuthHeader() {
+    return 'Basic ' + btoa(unescape(encodeURIComponent((infini.user || '') + ':' + (infini.pass || ''))));
+  }
+
+  function infiniBaseUrl() {
+    let u = (infini.davUrl || '').trim();
+    if (!u) throw new Error('Infini WebDAV URL missing');
+    if (!u.endsWith('/')) u += '/';
+    return u;
+  }
+
+  async function infiniFetch(url, opts) {
+    opts = opts || {};
+    const headers = Object.assign({}, opts.headers || {});
+    headers['Authorization'] = infiniAuthHeader();
+    let finalUrl = url;
+    const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
+    if (proxy) {
+      finalUrl = proxy + (proxy.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(url);
+    }
+    return await fetch(finalUrl, Object.assign({}, opts, { headers }));
+  }
+
+  function parseWebDavPropfind(xmlText, baseUrl) {
+    const files = [];
+    try {
+      const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+      let arr = doc.getElementsByTagNameNS('DAV:', 'response');
+      if (!arr.length) arr = doc.getElementsByTagName('d:response');
+      if (!arr.length) arr = doc.getElementsByTagName('response');
+      let basePath = '';
+      try { basePath = new URL(baseUrl).pathname.replace(/\/$/, ''); } catch (e) {}
+      for (let i = 0; i < arr.length; i++) {
+        const node = arr[i];
+        const hrefEl = node.getElementsByTagNameNS('DAV:', 'href')[0]
+          || node.getElementsByTagName('d:href')[0]
+          || node.getElementsByTagName('href')[0];
+        if (!hrefEl) continue;
+        let href = decodeURIComponent((hrefEl.textContent || '').trim());
+        let pathOnly = href;
+        try { pathOnly = new URL(href, baseUrl).pathname; } catch (e) {}
+        const normalized = pathOnly.replace(/\/$/, '');
+        if (!normalized || normalized === basePath) continue;
+        const resType = node.getElementsByTagNameNS('DAV:', 'resourcetype')[0]
+          || node.getElementsByTagName('d:resourcetype')[0]
+          || node.getElementsByTagName('resourcetype')[0];
+        if (resType && (resType.getElementsByTagNameNS('DAV:', 'collection').length
+            || resType.getElementsByTagName('d:collection').length
+            || resType.getElementsByTagName('collection').length)) {
+          continue;
+        }
+        const name = normalized.split('/').filter(Boolean).pop() || '';
+        if (!name) continue;
+        const lenEl = node.getElementsByTagNameNS('DAV:', 'getcontentlength')[0]
+          || node.getElementsByTagName('d:getcontentlength')[0]
+          || node.getElementsByTagName('getcontentlength')[0];
+        const modEl = node.getElementsByTagNameNS('DAV:', 'getlastmodified')[0]
+          || node.getElementsByTagName('d:getlastmodified')[0]
+          || node.getElementsByTagName('getlastmodified')[0];
+        const size = lenEl ? Number(lenEl.textContent) || 0 : 0;
+        let ts = Date.now();
+        if (modEl && modEl.textContent) {
+          const d = Date.parse(modEl.textContent);
+          if (!isNaN(d)) ts = d;
+        }
+        files.push({
+          fileName: name,
+          fileId: 'infini:' + name,
+          contentLength: size,
+          uploadTimestamp: ts,
+          fileInfo: {},
+          _provider: 'infini',
+          _href: href
+        });
+      }
+    } catch (e) { console.warn('WebDAV parse', e); }
+    return files;
+  }
+
+  async function listInfiniFiles() {
+    if (!infini.user || !infini.pass) throw new Error('Add Infini Connection ID + Apps Password, then SAVE & CONNECT');
+    const base = infiniBaseUrl();
+    const res = await infiniFetch(base, {
+      method: 'PROPFIND',
+      headers: {
+        'Depth': '1',
+        'Content-Type': 'application/xml; charset=utf-8'
+      },
+      body: '<?xml version="1.0" encoding="utf-8" ?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/><d:getcontentlength/><d:getlastmodified/><d:resourcetype/></d:prop></d:propfind>'
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      throw new Error('Infini list failed (' + res.status + ') ' + (t.slice(0, 120) || ''));
+    }
+    return parseWebDavPropfind(await res.text(), base);
+  }
+
+  async function uploadInfiniFile(file, safeName, progressCallback) {
+    if (!infini.user || !infini.pass) throw new Error('Infini credentials missing');
+    const url = infiniBaseUrl() + encodeURIComponent(safeName);
+    if (typeof progressCallback === 'function') progressCallback(5);
+    const res = await infiniFetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      body: file
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      throw new Error('Infini upload failed (' + res.status + ') ' + (t.slice(0, 120) || ''));
+    }
+    if (typeof progressCallback === 'function') progressCallback(100);
+    try {
+      await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(safeName)), {
+        name: safeName, size: file.size || 0, uploadedAt: Date.now(), src_date: null
+      });
+    } catch (e) {}
+    return { fileName: safeName };
+  }
+
+  async function deleteInfiniFile(fileName) {
+    const res = await infiniFetch(infiniBaseUrl() + encodeURIComponent(fileName), { method: 'DELETE' });
+    if (!res.ok && res.status !== 404) {
+      const t = await res.text().catch(() => '');
+      throw new Error('Infini delete failed (' + res.status + ') ' + (t.slice(0, 80) || ''));
+    }
+    try { await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(fileName)), null); } catch (e) {}
+  }
+
+  async function downloadInfiniFile(fileName) {
+    const res = await infiniFetch(infiniBaseUrl() + encodeURIComponent(fileName), { method: 'GET' });
+    if (!res.ok) throw new Error('Infini download failed (' + res.status + ')');
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName.split('/').pop() || 'download';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  }
+
+  async function getInfiniPreviewUrl(fileName) {
+    const res = await infiniFetch(infiniBaseUrl() + encodeURIComponent(fileName), { method: 'GET' });
+    if (!res.ok) throw new Error('Preview fetch failed');
+    return URL.createObjectURL(await res.blob());
+  }
+
+  window.saveInfiniSettings = async function() {
+    infini.davUrl = (document.getElementById('infiniDavUrl')?.value || '').trim() || 'https://aki.teracloud.jp/dav/';
+    infini.user = (document.getElementById('infiniUser')?.value || '').trim();
+    infini.pass = (document.getElementById('infiniPass')?.value || '').trim();
+    infini.quotaGb = Number(document.getElementById('infiniQuotaGb')?.value) || QUOTA_DEFAULT_GB;
+    infini.proxyUrl = (document.getElementById('infiniProxyUrl')?.value || '').trim();
+    if (!infini.user || !infini.pass) {
+      setInfiniStatus('Connection ID + Apps Password required.', false);
+      return;
+    }
+    try {
+      await set(ref(db, 'settings/infini'), {
+        davUrl: infini.davUrl, user: infini.user, pass: infini.pass,
+        quotaGb: infini.quotaGb, proxyUrl: infini.proxyUrl, updatedAt: Date.now()
+      });
+    } catch (e) {
+      setInfiniStatus('Firebase save failed — still trying…', false);
+    }
+    try {
+      await listInfiniFiles();
+      setInfiniStatus('Connected to Infini Cloud.', true);
+      if (window.refreshCloudFiles) await window.refreshCloudFiles();
+    } catch (e) {
+      setInfiniStatus(explainFetchError(e), false);
+    }
+  };
+
   // =========================================================
   // STATUS
   // =========================================================
@@ -9375,8 +9756,11 @@ window.__dgxenInitVideoControls = function(vId) {
   // =========================================================
 
   function paintUsage(usedBytes) {
+    const activeGb = getActiveCloudProvider() === 'infini'
+      ? (Number(infini.quotaGb) || QUOTA_DEFAULT_GB)
+      : (Number(b2.quotaGb) || QUOTA_DEFAULT_GB);
     const quota =
-      (Number(b2.quotaGb) || QUOTA_DEFAULT_GB) *
+      activeGb *
       1073741824;
 
     const used =
@@ -9891,6 +10275,39 @@ function explainFetchError(e) {
           b2.proxyUrl || '';
 
     } catch (e) {}
+
+    try {
+      const ps = await get(ref(db, 'settings/cloudProvider'));
+      if (ps.exists()) {
+        const pv = ps.val();
+        cloudProvider = (pv === 'infini') ? 'infini' : 'b2';
+      } else {
+        try {
+          const lp = localStorage.getItem('dgxen_cloud_provider');
+          if (lp === 'infini' || lp === 'b2') cloudProvider = lp;
+        } catch (e2) {}
+      }
+    } catch (e) {}
+    try {
+      const is = await get(ref(db, 'settings/infini'));
+      if (is.exists()) {
+        const v = is.val() || {};
+        if (v.davUrl) infini.davUrl = String(v.davUrl);
+        if (v.user) infini.user = String(v.user);
+        if (v.pass) infini.pass = String(v.pass);
+        if (v.quotaGb) infini.quotaGb = Number(v.quotaGb) || QUOTA_DEFAULT_GB;
+        if (v.proxyUrl) infini.proxyUrl = String(v.proxyUrl);
+      }
+    } catch (e) {}
+    try {
+      const el = (id) => document.getElementById(id);
+      if (el('infiniDavUrl')) el('infiniDavUrl').value = infini.davUrl || '';
+      if (el('infiniUser')) el('infiniUser').value = infini.user || '';
+      if (el('infiniPass')) el('infiniPass').value = infini.pass || '';
+      if (el('infiniQuotaGb')) el('infiniQuotaGb').value = infini.quotaGb || QUOTA_DEFAULT_GB;
+      if (el('infiniProxyUrl')) el('infiniProxyUrl').value = infini.proxyUrl || '';
+    } catch (e) {}
+    updateCloudProviderUI();
   }
 
   // =========================================================
@@ -10127,6 +10544,9 @@ function explainFetchError(e) {
   // =========================================================
 
   async function listAllFiles() {
+    if (getActiveCloudProvider() === 'infini') {
+      return await listInfiniFiles();
+    }
 
     await authorizeB2();
 
@@ -10249,7 +10669,15 @@ function explainFetchError(e) {
 
         await loadSettingsFromFirebase();
 
-        if (
+        if (getActiveCloudProvider() === 'infini') {
+          if (!infini.user || !infini.pass) {
+            if (box) {
+              box.innerHTML =
+                '<div style="padding:14px;color:var(--text-dim);font-weight:700;">Add Infini credentials + SAVE & CONNECT</div>';
+            }
+            return;
+          }
+        } else if (
           !b2.keyId ||
           !b2.appKey
         ) {
@@ -10451,6 +10879,10 @@ function explainFetchError(e) {
             row.after(drawer);
             
             try {
+              let fileUrl;
+              if (getActiveCloudProvider() === 'infini') {
+                fileUrl = await getInfiniPreviewUrl(fileName);
+              } else {
               await authorizeB2();
               const authRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_download_authorization', {
                 method: 'POST',
@@ -10460,7 +10892,8 @@ function explainFetchError(e) {
               const authData = await authRes.json().catch(() => ({}));
               if (!authRes.ok) throw new Error(authData.message || 'Auth failed');
               const path = fileName.split('/').map(encodeURIComponent).join('/');
-              const fileUrl = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path + '?Authorization=' + encodeURIComponent(authData.authorizationToken);
+              fileUrl = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path + '?Authorization=' + encodeURIComponent(authData.authorizationToken);
+              }
               const ext = fileName.split('.').pop().toLowerCase();
               // Shown when the browser itself can't decode a format we do have a preview
               // slot for (HEIC/HEIF stills, or HEVC-coded video inside mp4/mov/mkv/m4v) —
@@ -10579,6 +11012,11 @@ function explainFetchError(e) {
   ) {
 
     try {
+      if (getActiveCloudProvider() === 'infini') {
+        await downloadInfiniFile(String(fileName || '').trim());
+        setStatus('Download complete.', true);
+        return;
+      }
       await authorizeB2();
 
       const authRes = await b2Fetch(
@@ -10748,12 +11186,22 @@ function explainFetchError(e) {
 
     fileName = String(fileName || '').trim();
     fileId = String(fileId || '').trim();
-    if (!fileId) {
-      setStatus('Delete: missing file id', false);
-      return;
-    }
     if (!fileName) {
       setStatus('Delete: missing file name', false);
+      return;
+    }
+    if (getActiveCloudProvider() === 'infini') {
+      try {
+        await deleteInfiniFile(fileName);
+        setStatus('Deleted.', true);
+        if (window.refreshCloudFiles) await window.refreshCloudFiles();
+      } catch (e) {
+        setStatus('Delete: ' + (e.message || e), false);
+      }
+      return;
+    }
+    if (!fileId) {
+      setStatus('Delete: missing file id', false);
       return;
     }
 
@@ -11432,14 +11880,22 @@ function explainFetchError(e) {
       );
     }
 
-    await authorizeB2();
-
-    const rawSafeName =
+    const rawSafeName0 =
       file.name
         .replace(
           /[\\]/g,
           '_'
         );
+
+    if (getActiveCloudProvider() === 'infini') {
+      const safeName = await uniqueCloudFileName(rawSafeName0);
+      return await uploadInfiniFile(file, safeName, progressCallback);
+    }
+
+    await authorizeB2();
+
+    const rawSafeName =
+      rawSafeName0;
 
     // Never silently overwrite an existing file with the same name — get
     // the next free "name(1).ext" style name instead, same convention as
@@ -11612,16 +12068,19 @@ function explainFetchError(e) {
         loadSettingsFromFirebase()
           .then(
             () => {
-
-              if (
+              updateCloudProviderUI();
+              if (getActiveCloudProvider() === 'infini') {
+                if (infini.user && infini.pass) {
+                  refreshCloudFiles();
+                } else {
+                  setInfiniStatus('Add Infini credentials → SAVE & CONNECT', null);
+                }
+              } else if (
                 b2.keyId &&
                 b2.appKey
               ) {
-
                 refreshCloudFiles();
-
               } else {
-
                 setStatus(
                   'Paste Application Key → SAVE & CONNECT',
                   null
