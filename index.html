@@ -2507,6 +2507,11 @@
 
 
         .cloud-file-row .name {
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .cloud-file-row .name {
             flex: 1;
             font-weight: 700;
             word-break: break-all;
@@ -6388,7 +6393,65 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     }
                     content = smali;
                 } else if (fileId === 'hook_smali') {
-                    content = 'invoke-static {p0}, Lcom/dgxen/Auth;->show(Landroid/app/Activity;)V\n';
+                    content =
+                        '# ============================================================\n' +
+                        '# DGXEN UNIVERSAL HOOK + ACTION-LOCK\n' +
+                        '# ============================================================\n' +
+                        '# STEP A — onCreate (launcher Activity), RIGHT AFTER invoke-super:\n' +
+                        '#\n' +
+                        '    invoke-static {p0}, Ldg/auth/dgauthupdate;->start(Landroid/content/Context;)V\n' +
+                        '\n' +
+                        '    invoke-static {p0}, Lcom/dgxen/Auth;->show(Landroid/app/Activity;)V\n' +
+                        '#\n' +
+                        '# STEP B — CORE ACTION method (startVpn / onClick / apply…)\n' +
+                        '# Put this at the VERY TOP of that method. Set .registers high enough.\n' +
+                        '#\n' +
+                        '    # --- DGXEN ACTION LOCK (UNIVERSAL) ---\n' +
+                        '    sget-boolean v0, Lcom/dgxen/Auth;->unlocked:Z\n' +
+                        '    if-nez v0, :cond_dgxen_action_allowed\n' +
+                        '\n' +
+                        '    new-instance v0, Landroid/widget/TextView;\n' +
+                        '    invoke-direct {v0, p0}, Landroid/widget/TextView;-><init>(Landroid/content/Context;)V\n' +
+                        '\n' +
+                        '    const-string v1, "Security Lock Active\\n\\nSession Invalid or Bypassed.\\nPlease CLEAR APP DATA and Restart the App."\n' +
+                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V\n' +
+                        '\n' +
+                        '    const-string v1, "#000000"\n' +
+                        '    invoke-static {v1}, Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I\n' +
+                        '    move-result v1\n' +
+                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setBackgroundColor(I)V\n' +
+                        '\n' +
+                        '    const-string v1, "#CF6679"\n' +
+                        '    invoke-static {v1}, Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I\n' +
+                        '    move-result v1\n' +
+                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setTextColor(I)V\n' +
+                        '\n' +
+                        '    const/16 v1, 0x11\n' +
+                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setGravity(I)V\n' +
+                        '\n' +
+                        '    const/high16 v1, 0x41800000    # 16.0f\n' +
+                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setTextSize(F)V\n' +
+                        '\n' +
+                        '    const/4 v1, 0x1\n' +
+                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setClickable(Z)V\n' +
+                        '\n' +
+                        '    const/high16 v1, 0x42c80000    # 100.0f\n' +
+                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setElevation(F)V\n' +
+                        '\n' +
+                        '    new-instance v1, Landroid/view/ViewGroup$LayoutParams;\n' +
+                        '    const/4 v2, -0x1\n' +
+                        '    invoke-direct {v1, v2, v2}, Landroid/view/ViewGroup$LayoutParams;-><init>(II)V\n' +
+                        '\n' +
+                        '    const v2, 0x1020002\n' +
+                        '    invoke-virtual {p0, v2}, Landroid/app/Activity;->findViewById(I)Landroid/view/View;\n' +
+                        '    move-result-object v2\n' +
+                        '    check-cast v2, Landroid/view/ViewGroup;\n' +
+                        '    invoke-virtual {v2, v0, v1}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V\n' +
+                        '\n' +
+                        '    return-void\n' +
+                        '\n' +
+                        '    :cond_dgxen_action_allowed\n' +
+                        '    # --- original method code continues below ---\n';
                     finalName = 'Hook.smali';
                 } else if (fileId === 'gen_index') {
                     const urls = [
@@ -9538,45 +9601,20 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   window.softDeleteCloudFile = async function(fileName, fileId, relPath) {
     const name = String(fileName || '').trim();
     const rel = String(relPath || name).trim();
+    // Infini: hard DELETE first (Worker already allows DELETE). MOVE/trash needs MKCOL+MOVE on Worker.
     try {
-      if (getActiveCloudProvider() === 'infini' && rel && !String(rel).startsWith('.trash/')) {
-        try {
-          await infiniFetch(cloudPathUrl('.trash') + '/', { method: 'MKCOL' }).catch(function(){});
-        } catch (e) {}
-        const fromUrl = cloudPathUrl(rel);
-        const toRel = cloudJoinPath('.trash', rel.split('/').pop());
-        const toUrl = cloudPathUrl(toRel);
-        const res = await infiniFetch(fromUrl, {
-          method: 'MOVE',
-          headers: { Destination: toUrl, Overwrite: 'T' }
-        });
-        if (res.ok) {
-          setStatus('Moved to Trash: ' + name, true);
-          if (window.refreshCloudFiles) await window.refreshCloudFiles();
-          return;
-        }
-        // MOVE failed (proxy may block) → hard delete
-        console.warn('[Infini] MOVE trash failed', res.status);
+      if (getActiveCloudProvider() === 'infini') {
+        const path = (rel.indexOf('/') >= 0) ? rel : cloudJoinPath(cloudCwd(), name);
+        await deleteInfiniFile(path, false);
+        setStatus('Deleted: ' + name, true);
+        if (window.refreshCloudFiles) await window.refreshCloudFiles();
+        return;
       }
       if (window.deleteCloudFile) await window.deleteCloudFile(name, fileId);
-      else {
-        setStatus('Delete unavailable', false);
-      }
+      else setStatus('Delete unavailable', false);
     } catch (e) {
-      // Last resort hard delete
-      try {
-        if (getActiveCloudProvider() === 'infini') {
-          await deleteInfiniFile(rel || name, false);
-          setStatus('Deleted: ' + name, true);
-          if (window.refreshCloudFiles) await window.refreshCloudFiles();
-        } else if (window.deleteCloudFile) {
-          await window.deleteCloudFile(name, fileId);
-        } else {
-          setStatus('Trash: ' + (e.message || e), false);
-        }
-      } catch (e2) {
-        setStatus('Delete failed: ' + (e2.message || e2), false);
-      }
+      setStatus('Delete failed: ' + (e.message || e), false);
+      try { if (window.refreshCloudFiles) await window.refreshCloudFiles(); } catch (e2) {}
     }
   };
 
@@ -10048,38 +10086,8 @@ window.__dgxenInitVideoControls = function(vId) {
     const name = String(fileName || '').trim();
     const rel = String(relPath || name).trim();
     if (!name && !rel) return;
-    try {
-      if (getActiveCloudProvider() === 'infini') {
-        const fromRel = (rel.indexOf('/') >= 0) ? rel : cloudJoinPath(cloudCwd(), name);
-        try { await infiniFetch(cloudPathUrl('.trash') + '/', { method: 'MKCOL' }); } catch (e) {}
-        try {
-          await infiniFetch(cloudPathUrl('.trash/.keep'), {
-            method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: ' '
-          });
-        } catch (e) {}
-        const toRel = '.trash/' + (name || fromRel.split('/').pop());
-        let moved = false;
-        try {
-          const res = await infiniFetch(cloudPathUrl(fromRel), {
-            method: 'MOVE',
-            headers: { Destination: cloudPathUrl(toRel), Overwrite: 'T' }
-          });
-          if (res.ok) moved = true;
-        } catch (e) {}
-        if (!moved) {
-          await deleteInfiniFile(fromRel, false);
-          setStatus('Deleted: ' + name, true);
-        } else {
-          setStatus('Moved to Trash: ' + name, true);
-        }
-        if (window.refreshCloudFiles) await window.refreshCloudFiles();
-      } else {
-        await deleteCloudFile(name, fileId);
-      }
-    } catch (e) {
-      setStatus('Trash: ' + (e.message || e), false);
-      try { if (window.refreshCloudFiles) await window.refreshCloudFiles(); } catch (e2) {}
-    }
+    // Same as soft delete — reliable DELETE path (Worker allows DELETE today)
+    await window.softDeleteCloudFile(name, fileId, rel);
   };
 
   window.permanentlyDeleteCloudItem = function(fileName, fileId, relPath) {
@@ -10587,7 +10595,29 @@ window.__dgxenInitVideoControls = function(vId) {
       throw new Error('Infini list network error — check CORS proxy + WebDAV URL. ' + (netErr && netErr.message ? netErr.message : ''));
     }
     if (!res.ok) {
-      throw new Error('Infini list failed: ' + explainInfiniHttp(res.status, text));
+      // Trash / deep folder 404 → bounce to root once
+      if (res.status === 404 && cloudCwd()) {
+        console.warn('[Infini] path 404, resetting cwd from', cloudCwd());
+        window.__cloudCwd = '';
+        window.__cloudTrashView = false;
+        const tbtn = document.getElementById('cloudTrashBtn');
+        if (tbtn) tbtn.textContent = 'TRASH';
+        // Retry root
+        base = infiniBaseUrl();
+        if (!base.endsWith('/')) base += '/';
+        res = await infiniFetch(base, {
+          method: 'PROPFIND',
+          headers: {
+            'Depth': '1',
+            'Content-Type': 'application/xml; charset=utf-8'
+          },
+          body: '<?xml version="1.0" encoding="utf-8" ?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/><d:getcontentlength/><d:getlastmodified/><d:resourcetype/></d:prop></d:propfind>'
+        });
+        text = await res.text().catch(() => '');
+      }
+      if (!res.ok) {
+        throw new Error('Infini list failed: ' + explainInfiniHttp(res.status, text));
+      }
     }
     const parsed = parseWebDavPropfind(text, base);
     console.log('[Infini] listed', parsed.length, 'items from', base);
@@ -12582,6 +12612,29 @@ function explainFetchError(e) {
   // download authorization above.
   async function copyCloudFileLink(fileName) {
     try {
+      const name = String(fileName || '').trim();
+      if (!name) { setStatus('Nothing to copy', false); return; }
+      let url = '';
+      if (getActiveCloudProvider() === 'infini') {
+        // Infini: share the direct WebDAV path (proxy URL so it opens in browser)
+        const rel = (name.indexOf('/') >= 0) ? name : cloudJoinPath(cloudCwd(), name);
+        const target = cloudPathUrl(rel);
+        const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
+        if (proxy) {
+          url = proxy + (proxy.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(target);
+        } else {
+          url = target;
+        }
+        // Note: needs Auth header to download — also copy path for reference
+        const text = url + '\n# Infini path: ' + rel;
+        try {
+          await navigator.clipboard.writeText(text);
+          setStatus('Infini link copied (open via proxy; auth required for private files).', true);
+        } catch (clipErr) {
+          window.prompt('Copy Infini link:', text);
+        }
+        return;
+      }
       await authorizeB2();
       const authRes = await b2Fetch(
           b2.apiUrl + '/b2api/v2/b2_get_download_authorization',
@@ -12593,23 +12646,19 @@ function explainFetchError(e) {
             },
             body: JSON.stringify({
                 bucketId: b2.bucketId,
-                fileNamePrefix: fileName,
+                fileNamePrefix: name,
                 validDurationInSeconds: 3600
             })
           }
       );
       const authData = await authRes.json().catch(() => ({}));
       if (!authRes.ok) throw new Error(authData.message || 'Link auth failed');
-
-      const path = fileName.split('/').map(encodeURIComponent).join('/');
-      const url = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path + '?Authorization=' + encodeURIComponent(authData.authorizationToken);
-
+      const path = name.split('/').map(encodeURIComponent).join('/');
+      url = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path + '?Authorization=' + encodeURIComponent(authData.authorizationToken);
       try {
         await navigator.clipboard.writeText(url);
-        setStatus('Link copied (valid 1 hour).', true);
+        setStatus('B2 link copied (valid 1 hour).', true);
       } catch (clipErr) {
-        // Clipboard API can be blocked in some WebViews — fall back to a
-        // manual-select prompt so the link is still obtainable.
         window.prompt('Copy link (valid 1 hour):', url);
       }
     } catch (e) {
