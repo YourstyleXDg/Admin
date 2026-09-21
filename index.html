@@ -5053,6 +5053,41 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         }
 
         let adminUnlocked = sessionStorage.getItem('dgxen_admin_unlocked') === '1';
+        let __webauthnBusy = false;
+        let __webauthnAbort = null;
+        function isEnrollUiOpen() {
+            try {
+                const steps = ['enrollStepRequest', 'enrollStepOtp', 'enrollStepRegister'];
+                for (let i = 0; i < steps.length; i++) {
+                    const el = document.getElementById(steps[i]);
+                    if (el && el.style && el.style.display && el.style.display !== 'none') return true;
+                }
+            } catch (e) {}
+            return !!__enrollOtpVerified;
+        }
+        async function withWebAuthnExclusive(fn) {
+            if (__webauthnBusy) {
+                const err = new Error('A request is already pending. Close any fingerprint dialog, wait 2 seconds, then try again.');
+                err.name = 'InvalidStateError';
+                throw err;
+            }
+            __webauthnBusy = true;
+            try {
+                if (__webauthnAbort) {
+                    try { __webauthnAbort.abort(); } catch (e) {}
+                    __webauthnAbort = null;
+                    await new Promise(function(r) { setTimeout(r, 450); });
+                }
+                if (typeof AbortController !== 'undefined') {
+                    __webauthnAbort = new AbortController();
+                }
+                return await fn(__webauthnAbort ? __webauthnAbort.signal : undefined);
+            } finally {
+                __webauthnBusy = false;
+                __webauthnAbort = null;
+            }
+        }
+
         // Rehydrate primary flag from session
         window.__adminIsPrimary = sessionStorage.getItem('dgxen_admin_is_primary') === '1';
         window.__adminSessionFpId = sessionStorage.getItem('dgxen_admin_fp_id') || '';
@@ -5448,8 +5483,14 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 }
                 await set(ref(db, 'settings/adminOtp'), null);
                 __enrollOtpVerified = true;
+                try { window.__enrollOtpVerified = true; } catch (e) {}
                 showEnrollStep('enrollStepRegister');
                 setGateStatus('OTP verified. Register fingerprint now.', true);
+                // Cancel any auto-login WebAuthn still pending so REGISTER can start cleanly
+                try {
+                    if (__webauthnAbort) { __webauthnAbort.abort(); __webauthnAbort = null; }
+                    __webauthnBusy = false;
+                } catch (e) {}
             } catch (e) {
                 setGateStatus('Verify failed: ' + (e.message || e), false);
             }
@@ -5464,74 +5505,65 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 setGateStatus('WebAuthn not supported on this browser.', false);
                 return;
             }
-            // Keep Chrome in foreground. Do NOT switch apps during the prompt.
-            // If a sheet appears: choose "This device" (not USB / another device).
+            if (__webauthnBusy) {
+                setGateStatus('Fingerprint dialog already open — finish or cancel it, wait 2s, then tap REGISTER again.', false);
+                return;
+            }
+            const regBtn = document.getElementById('gateRegisterFpBtn');
+            if (regBtn) { regBtn.disabled = true; regBtn.textContent = 'WAITING…'; }
             setGateStatus('Tap “This device” if asked, then use fingerprint / PIN…', true);
-
-            const rpId = (location.hostname || '').replace(/^www\./, '') || 'localhost';
-            const userId = crypto.getRandomValues(new Uint8Array(16));
-            const challenge = crypto.getRandomValues(new Uint8Array(32));
-            const base = {
-                challenge: challenge,
-                rp: { name: 'DGXEN Admin', id: rpId },
-                user: {
-                    id: userId,
-                    name: 'admin@' + rpId,
-                    displayName: 'DGXEN Admin'
-                },
-                pubKeyCredParams: [
-                    { type: 'public-key', alg: -7 },
-                    { type: 'public-key', alg: -257 }
-                ],
-                timeout: 120000
-            };
-
-            // Platform only. preferred = phone FP OR phone PIN/pattern (NOT Google/site password).
-            const attempts = [
-                {
-                    authenticatorSelection: {
-                        authenticatorAttachment: 'platform',
-                        userVerification: 'preferred',
-                        residentKey: 'discouraged',
-                        requireResidentKey: false
-                    },
-                    attestation: 'none',
-                    hints: ['client-device']
-                },
-                {
-                    authenticatorSelection: {
-                        authenticatorAttachment: 'platform',
-                        userVerification: 'discouraged',
-                        residentKey: 'discouraged'
-                    },
-                    attestation: 'none'
-                }
-            ];
 
             let cred = null;
             let lastErr = null;
-            for (let i = 0; i < attempts.length; i++) {
-                try {
-                    const opts = Object.assign({}, base, attempts[i]);
-                    cred = await navigator.credentials.create({ publicKey: opts });
-                    if (cred) break;
-                } catch (e) {
-                    lastErr = e;
-                    const name = (e && e.name) || '';
-                    if (name === 'NotAllowedError' || name === 'AbortError') break;
-                }
+            try {
+                cred = await withWebAuthnExclusive(async function(signal) {
+                    const rpId = (location.hostname || '').replace(/^www\./, '') || 'localhost';
+                    const userId = crypto.getRandomValues(new Uint8Array(16));
+                    const challenge = crypto.getRandomValues(new Uint8Array(32));
+                    // Single create call only — sequential retries caused "already pending"
+                    const publicKey = {
+                        challenge: challenge,
+                        rp: { name: 'DGXEN Admin', id: rpId },
+                        user: {
+                            id: userId,
+                            name: 'admin@' + rpId,
+                            displayName: 'DGXEN Admin'
+                        },
+                        pubKeyCredParams: [
+                            { type: 'public-key', alg: -7 },
+                            { type: 'public-key', alg: -257 }
+                        ],
+                        timeout: 120000,
+                        authenticatorSelection: {
+                            authenticatorAttachment: 'platform',
+                            userVerification: 'preferred',
+                            residentKey: 'discouraged',
+                            requireResidentKey: false
+                        },
+                        attestation: 'none'
+                    };
+                    const createOpts = { publicKey: publicKey };
+                    if (signal) createOpts.signal = signal;
+                    return await navigator.credentials.create(createOpts);
+                });
+            } catch (e) {
+                lastErr = e;
+            } finally {
+                if (regBtn) { regBtn.disabled = false; regBtn.textContent = 'REGISTER FINGERPRINT'; }
             }
 
             if (!cred) {
                 const name = (lastErr && lastErr.name) || '';
                 const msg = String((lastErr && lastErr.message) || lastErr || 'cancelled');
-                if (name === 'NotAllowedError' || name === 'AbortError' || /not allowed|timed out|Abort|verify/i.test(msg)) {
+                if (/already pending/i.test(msg)) {
+                    setGateStatus('Previous fingerprint dialog still open. Wait 2–3 seconds (or close it), then tap REGISTER once.', false);
+                } else if (name === 'NotAllowedError' || name === 'AbortError' || /not allowed|timed out|Abort|verify/i.test(msg)) {
                     setGateStatus(
-                        'Screen-lock failed. Use the SAME fingerprint/PIN that unlocks THIS phone (not Google password). Unlock phone once, stay in Chrome, tap REGISTER again. OTP still valid.',
+                        'Screen-lock failed. Use the SAME fingerprint/PIN that unlocks THIS phone. Stay in Chrome, wait 2s, tap REGISTER once. OTP still valid.',
                         false
                     );
                 } else if (name === 'InvalidStateError') {
-                    setGateStatus('Passkey may already exist. Try FINGERPRINT, or Chrome site settings → Clear data for this site, then OTP again.', false);
+                    setGateStatus('Passkey conflict or pending request. Wait 3s and tap REGISTER once. Or clear site data for this host and OTP again.', false);
                 } else if (name === 'NotSupportedError') {
                     setGateStatus('No platform authenticator. Use Chrome + phone with screen lock + fingerprint.', false);
                 } else {
@@ -5540,7 +5572,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 return;
             }
 
-            try {
+                        try {
                 const id = bufferToBase64(cred.rawId);
                 const safe = String(id).split('').map(function(ch) {
                     return ('.$[]#/'.indexOf(ch) >= 0) ? '_' : ch;
@@ -5863,13 +5895,17 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     try { allow.push({ type: 'public-key', id: base64ToBuffer(ids[i]) }); } catch (e) {}
                 }
                 if (!allow.length) { setGateStatus('Invalid fingerprint data in Firebase.'); return; }
-                const assertion = await navigator.credentials.get({
-                    publicKey: {
-                        challenge: crypto.getRandomValues(new Uint8Array(32)),
-                        timeout: 60000,
-                        userVerification: 'required',
-                        allowCredentials: allow
-                    }
+                const assertion = await withWebAuthnExclusive(async function(signal) {
+                    const getOpts = {
+                        publicKey: {
+                            challenge: crypto.getRandomValues(new Uint8Array(32)),
+                            timeout: 60000,
+                            userVerification: 'required',
+                            allowCredentials: allow
+                        }
+                    };
+                    if (signal) getOpts.signal = signal;
+                    return await navigator.credentials.get(getOpts);
                 });
                 if (!assertion) { setGateStatus('Fingerprint failed.'); return; }
                 let usedId = '';
@@ -5883,8 +5919,9 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 unlockAdmin('fingerprint', usedId);
             } catch (e) {
                 const msg = String((e && e.message) || e || '');
-                // Typical when this browser/device has no passkey for the site
-                if (/not allowed|no authenticator|no credentials|credential|abort|NotAllowed/i.test(msg) || (e && e.name === 'NotAllowedError')) {
+                if (/already pending/i.test(msg)) {
+                    setGateStatus('Fingerprint dialog already open. Wait 2s then try again.', false);
+                } else if (/not allowed|no authenticator|no credentials|credential|abort|NotAllowed/i.test(msg) || (e && e.name === 'NotAllowedError')) {
                     setGateStatus('No passkey on this device for this site.');
                     await offerEnrollmentIfAllowed();
                 } else {
@@ -6223,17 +6260,19 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         function autoTriggerFingerprintIfRegistered() {
             getFirebaseFpIds().then(ids => {
                 if (adminUnlocked) return;
+                // Never start credentials.get while new-admin enrollment is in progress
+                // (causes "A request is already pending" on REGISTER FINGERPRINT)
+                if (typeof isEnrollUiOpen === 'function' && isEnrollUiOpen()) {
+                    return;
+                }
                 if (ids && ids.length) {
                     setGateStatus('🔐 Fingerprint found — opening scanner…', true);
-                    // The gate UI is already visible by the time we get here
-                    // (this only runs after DOMContentLoaded + the Firebase
-                    // round-trip), so WebAuthn's "page must be visible"
-                    // requirement is already satisfied — this just needs to
-                    // be enough for the status text above to actually paint
-                    // before the OS fingerprint dialog takes over the screen.
                     setTimeout(function() {
-                        if (!adminUnlocked) tryFingerprintLogin();
-                    }, 150);
+                        if (adminUnlocked) return;
+                        if (typeof isEnrollUiOpen === 'function' && isEnrollUiOpen()) return;
+                        if (__webauthnBusy) return;
+                        tryFingerprintLogin();
+                    }, 200);
                 } else {
                     offerEnrollmentIfAllowed();
                 }
