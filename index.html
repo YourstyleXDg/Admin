@@ -9610,7 +9610,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         if (window.refreshCloudFiles) await window.refreshCloudFiles();
         return;
       }
-      if (window.deleteCloudFile) await window.deleteCloudFile(name, fileId);
+      if (window.deleteCloudFile) await window.deleteCloudFile(name, fileId, rel);
       else setStatus('Delete unavailable', false);
     } catch (e) {
       setStatus('Delete failed: ' + (e.message || e), false);
@@ -9989,6 +9989,9 @@ window.__dgxenInitVideoControls = function(vId) {
   // Stored in Firebase (settings/cloudStarred), keyed by relative path —
   // provider-agnostic, since it's just a marker, not a file operation.
   window.__cloudStarredSet = new Set();
+  function cloudStarKey(relPath) {
+    return String(relPath || '').replace(/[.#$\[\]]/g, '_');
+  }
   async function loadCloudStarred() {
     try {
       const snap = await get(ref(db, 'settings/cloudStarred'));
@@ -9996,12 +9999,13 @@ window.__dgxenInitVideoControls = function(vId) {
     } catch (e) { window.__cloudStarredSet = new Set(); }
   }
   window.toggleCloudStar = async function(relPath) {
-    const key = String(relPath || '').replace(/[.#$\[\]]/g, '_');
+    const key = cloudStarKey(relPath);
     if (!key) return;
-    const starred = window.__cloudStarredSet.has(relPath);
+    const starred = window.__cloudStarredSet.has(key);
     try {
       await set(ref(db, 'settings/cloudStarred/' + key), starred ? null : true);
-      if (starred) window.__cloudStarredSet.delete(relPath); else window.__cloudStarredSet.add(relPath);
+      if (starred) window.__cloudStarredSet.delete(key); else window.__cloudStarredSet.add(key);
+      setStatus(starred ? 'Unstarred' : 'Starred', true);
       if (window.refreshCloudFiles) await window.refreshCloudFiles();
     } catch (e) { setStatus('Star: ' + (e.message || e), false); }
   };
@@ -10092,7 +10096,7 @@ window.__dgxenInitVideoControls = function(vId) {
 
   window.permanentlyDeleteCloudItem = function(fileName, fileId, relPath) {
     showConfirm('Delete permanently?', '"' + fileName + '" will be permanently deleted and cannot be restored. Continue?', async () => {
-      await deleteCloudFile(fileName, fileId);
+      await deleteCloudFile(fileName, fileId, relPath);
     });
   };
 
@@ -10198,7 +10202,7 @@ window.__dgxenInitVideoControls = function(vId) {
     const items = [];
     if (inTrash) {
       items.push(['↩️ Restore', () => window.restoreCloudItem(rel)]);
-      items.push(['🗑️ Delete permanently', () => window.permanentlyDeleteCloudItem(name, btn.closest('.cloud-file-row').querySelector('[data-dl-id]') ? btn.closest('.cloud-file-row').querySelector('[data-dl-id]').getAttribute('data-dl-id') : '', rel)]);
+      items.push(['🗑️ Delete permanently', () => window.permanentlyDeleteCloudItem(name, (btn.closest('.cloud-file-row') && btn.closest('.cloud-file-row').querySelector('[data-dl-id]')) ? btn.closest('.cloud-file-row').querySelector('[data-dl-id]').getAttribute('data-dl-id') : '', rel)]);
     } else {
       items.push([isStarred ? '⭐ Unstar' : '☆ Star', () => window.toggleCloudStar(rel)]);
       items.push(['✏️ Rename', () => window.promptRenameCloudItem(rel, name, isFolder)]);
@@ -10353,7 +10357,8 @@ window.__dgxenInitVideoControls = function(vId) {
   function infiniBaseUrl() {
     let u = (infini.davUrl || '').trim();
     if (!u) throw new Error('Infini WebDAV URL missing');
-    if (!u.endsWith('/')) u += '/';
+    // Normalize: ensure trailing slash, strip accidental double paths
+    u = u.replace(/\/+$/, '') + '/';
     return u;
   }
 
@@ -11997,54 +12002,59 @@ function explainFetchError(e) {
           'List failed'
         );
 
-      (data.files || [])
-        .forEach(
-          f => {
-            const full = String(f.fileName || '');
-            // .keep markers → virtual folder at parent
-            if (full.endsWith('/.keep') || full.endsWith('.keep')) {
-              let folderFull = full.replace(/\/?\.keep$/, '');
-              let dispF = prefix && folderFull.indexOf(prefix) === 0 ? folderFull.slice(prefix.length) : folderFull;
-              dispF = dispF.replace(/\/+$/, '');
-              if (dispF && dispF.indexOf('/') < 0) {
-                files.push({
-                  fileName: dispF,
-                  fileId: 'folder:' + folderFull,
-                  contentLength: 0,
-                  uploadTimestamp: 0,
-                  fileInfo: {},
-                  _isFolder: true,
-                  _relPath: folderFull
-                });
-              }
-              return;
-            }
-            const disp = prefix && full.indexOf(prefix) === 0 ? full.slice(prefix.length) : full;
-            if (!disp || disp.indexOf('/') >= 0) return;
-            files.push(Object.assign({}, f, {
-              fileName: disp,
-              _relPath: full,
-              _isFolder: false
-            }));
-          }
-        );
+      const folderSeen = {};
+      function addFolder(name, fullPath) {
+        if (!name || name.indexOf('/') >= 0 || folderSeen[name]) return;
+        folderSeen[name] = 1;
+        files.push({
+          fileName: name,
+          fileId: 'folder:' + fullPath,
+          contentLength: 0,
+          uploadTimestamp: 0,
+          fileInfo: {},
+          _isFolder: true,
+          _relPath: fullPath
+        });
+      }
+      (data.files || []).forEach(function(f) {
+        const full = String(f.fileName || '');
+        // Empty folder markers: Folder/.keep or Folder/ or Folder/.bzEmpty
+        if (/\/\.keep$/i.test(full) || /\/\.bzEmpty$/i.test(full) || /\/$/.test(full)) {
+          let folderFull = full.replace(/\/\.keep$/i, '').replace(/\/\.bzEmpty$/i, '').replace(/\/$/, '');
+          let dispF = prefix && folderFull.indexOf(prefix) === 0 ? folderFull.slice(prefix.length) : folderFull;
+          dispF = dispF.replace(/\/+$/, '');
+          if (dispF && dispF.indexOf('/') < 0) addFolder(dispF, folderFull);
+          return;
+        }
+        if (full.endsWith('.keep')) {
+          let folderFull = full.replace(/\/?\.keep$/i, '');
+          let dispF = prefix && folderFull.indexOf(prefix) === 0 ? folderFull.slice(prefix.length) : folderFull;
+          dispF = dispF.replace(/\/+$/, '');
+          if (dispF && dispF.indexOf('/') < 0) addFolder(dispF, folderFull);
+          return;
+        }
+        const disp = prefix && full.indexOf(prefix) === 0 ? full.slice(prefix.length) : full;
+        if (!disp) return;
+        // Nested path → first segment is a folder
+        if (disp.indexOf('/') >= 0) {
+          const seg = disp.split('/')[0];
+          addFolder(seg, cloudJoinPath(cwd, seg));
+          return;
+        }
+        files.push(Object.assign({}, f, {
+          fileName: disp,
+          _relPath: full,
+          _isFolder: false
+        }));
+      });
 
-      // Virtual folders from B2 commonPrefixes
       (data.commonPrefixes || []).forEach(function(pref) {
         const pth = String(pref || '');
         let name = pth;
         if (prefix && name.indexOf(prefix) === 0) name = name.slice(prefix.length);
         name = name.replace(/\/+$/, '');
         if (!name || name.indexOf('/') >= 0) return;
-        files.push({
-          fileName: name,
-          fileId: 'folder:' + cloudJoinPath(cwd, name),
-          contentLength: 0,
-          uploadTimestamp: 0,
-          fileInfo: {},
-          _isFolder: true,
-          _relPath: cloudJoinPath(cwd, name)
-        });
+        addFolder(name, cloudJoinPath(cwd, name));
       });
 
       start =
@@ -12177,7 +12187,7 @@ function explainFetchError(e) {
         }) : files;
 
         const finalFiles = window.__cloudStarredFilterOn
-          ? visibleFiles.filter(f => f._isFolder || window.__cloudStarredSet.has(f._relPath || f.fileName))
+          ? visibleFiles.filter(f => f._isFolder || window.__cloudStarredSet.has(cloudStarKey(f._relPath || f.fileName)))
           : visibleFiles;
 
         if (!finalFiles.length) {
@@ -12226,7 +12236,7 @@ function explainFetchError(e) {
                 const isFolder = !!f._isFolder;
                 const hasPreview = !isFolder && ['jpg','jpeg','png','gif','webp','svg','heic','heif','mp3','wav','ogg','m4a','mp4','webm','mov','mkv','m4v','pdf','txt','md','json','csv','log','html','js','css'].includes(ext);
                 const relPath = String(f._relPath || name).replace(/"/g, '&quot;');
-                const isStarred = !!(window.__cloudStarredSet && window.__cloudStarredSet.has(f._relPath || name));
+                const isStarred = !!(window.__cloudStarredSet && window.__cloudStarredSet.has(cloudStarKey(f._relPath || name)));
 
                 return (
                   '<div class="cloud-file-row' + (isFolder ? ' is-folder' : '') + '" data-search-name="' + name.toLowerCase().replace(/"/g,'&quot;') + '">' +
@@ -12751,9 +12761,12 @@ function explainFetchError(e) {
         dragGhost.textContent = (dragInfo.isFolder ? '📁 ' : '') + (dragInfo.name || 'file');
         document.body.appendChild(dragGhost);
       }
-      if (dragging && dragGhost) {
-        dragGhost.style.left = x + 'px';
-        dragGhost.style.top = y + 'px';
+      if (dragging) {
+        try { e.preventDefault(); } catch (err) {}
+        if (dragGhost) {
+          dragGhost.style.left = x + 'px';
+          dragGhost.style.top = y + 'px';
+        }
         const tbtn = document.getElementById('cloudTrashBtn');
         const sbtn = document.getElementById('cloudStarredFilterBtn');
         if (tbtn) tbtn.classList.toggle('drop-hot', pointOverTrash(x, y));
@@ -12814,9 +12827,10 @@ function explainFetchError(e) {
       const nameEl = e.target.closest('.cloud-file-row .name');
       if (!nameEl) return;
       if (e.target.closest('button')) return;
+      e.stopPropagation();
       try { nameEl.setPointerCapture && nameEl.setPointerCapture(e.pointerId); } catch (err) {}
       startHold(nameEl, e);
-    });
+    }, { passive: true });
 
     box.addEventListener('click', function(e) {
       if (longPressed) {
@@ -12832,20 +12846,18 @@ function explainFetchError(e) {
   // DELETE
   // =========================================================
 
-  window.deleteCloudFile = async function deleteCloudFile(
-    fileName,
-    fileId
-  ) {
-
+  window.deleteCloudFile = async function deleteCloudFile(fileName, fileId, relPath) {
     fileName = String(fileName || '').trim();
     fileId = String(fileId || '').trim();
-    if (!fileName) {
+    const fullName = String(relPath || fileName || '').trim();
+    if (!fileName && !fullName) {
       setStatus('Delete: missing file name', false);
       return;
     }
     if (getActiveCloudProvider() === 'infini') {
       try {
-        const path = (String(fileName).indexOf('/') >= 0) ? fileName : cloudJoinPath(cloudCwd(), fileName);
+        const path = (fullName.indexOf('/') >= 0) ? fullName : cloudJoinPath(cloudCwd(), fileName);
+        setStatus('Deleting…', null);
         await deleteInfiniFile(path, false);
         setStatus('Deleted: ' + fileName, true);
       } catch (e) {
@@ -12854,63 +12866,46 @@ function explainFetchError(e) {
       try { if (window.refreshCloudFiles) await window.refreshCloudFiles(); } catch (e) {}
       return;
     }
-    if (!fileId) {
-      setStatus('Delete: missing file id', false);
-      return;
-    }
-
+    // B2: need fileId. If missing, try resolve by list
     try {
-
       await authorizeB2();
-
-      const res =
-        await b2Fetch(
-          b2.apiUrl +
-          '/b2api/v2/b2_delete_file_version',
-          {
-            method: 'POST',
-
-            headers: {
-              Authorization:
-                b2.authToken,
-
-              'Content-Type':
-                'application/json'
-            },
-
-            body:
-              JSON.stringify({
-                fileName:
-                  fileName,
-
-                fileId:
-                  fileId
-              })
-          }
-        );
-
-      const data =
-        await res.json()
-          .catch(
-            () => ({})
-          );
-
-      if (!res.ok) {
-
-        throw new Error(
-          data.message ||
-          'Delete failed'
-        );
+      let delName = fullName || fileName;
+      let delId = fileId;
+      if (!delId || delId.indexOf('folder:') === 0) {
+        // Resolve latest version id
+        const listRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_list_file_names', {
+          method: 'POST',
+          headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bucketId: b2.bucketId, prefix: delName, maxFileCount: 10 })
+        });
+        const listData = await listRes.json().catch(() => ({}));
+        const match = (listData.files || []).find(function(f) {
+          return f.fileName === delName || f.fileName === delName + '/.keep' || f.fileName === fileName;
+        });
+        if (match) {
+          delName = match.fileName;
+          delId = match.fileId;
+        }
       }
-
+      if (!delId) {
+        setStatus('Delete: missing file id — refresh list and try again', false);
+        return;
+      }
+      setStatus('Deleting…', null);
+      const res = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_delete_file_version', {
+        method: 'POST',
+        headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: delName, fileId: delId })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || ('Delete failed HTTP ' + res.status));
+      // If folder marker, also try delete Folder/.keep variants already handled by resolve
+      setStatus('Deleted: ' + fileName, true);
       await refreshCloudFiles();
-
     } catch (e) {
-
       const msg = 'Delete: ' + explainFetchError(e);
       setStatus(msg, false);
       console.error('[B2] delete', e);
-      alert(msg);
     }
   };
 
