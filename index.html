@@ -9601,21 +9601,22 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   window.softDeleteCloudFile = async function(fileName, fileId, relPath) {
     const name = String(fileName || '').trim();
     const rel = String(relPath || name).trim();
-    // Infini: hard DELETE first (Worker already allows DELETE). MOVE/trash needs MKCOL+MOVE on Worker.
+    setStatus('Deleting: ' + name + '…', null);
     try {
       if (getActiveCloudProvider() === 'infini') {
-        const path = (rel.indexOf('/') >= 0) ? rel : cloudJoinPath(cloudCwd(), name);
+        const path = (rel && rel.indexOf('/') >= 0) ? rel : cloudJoinPath(cloudCwd(), name || rel);
         await deleteInfiniFile(path, false);
-        setStatus('Deleted: ' + name, true);
-        if (window.refreshCloudFiles) await window.refreshCloudFiles();
-        return;
+        setStatus('Deleted: ' + (name || path), true);
+      } else if (window.deleteCloudFile) {
+        await window.deleteCloudFile(name, fileId, rel);
+      } else {
+        setStatus('Delete unavailable', false);
       }
-      if (window.deleteCloudFile) await window.deleteCloudFile(name, fileId, rel);
-      else setStatus('Delete unavailable', false);
     } catch (e) {
       setStatus('Delete failed: ' + (e.message || e), false);
-      try { if (window.refreshCloudFiles) await window.refreshCloudFiles(); } catch (e2) {}
+      console.error('[Cloud] delete', e);
     }
+    try { if (window.refreshCloudFiles) await window.refreshCloudFiles(); } catch (e2) {}
   };
 
   (function bindCancelBtn() {
@@ -10787,7 +10788,7 @@ window.__dgxenInitVideoControls = function(vId) {
 
   // Infini/WebDAV: CF Worker body limit ~100MB — chunk large files.
   // 8 MiB chunks stay under free Worker limits and give smooth progress.
-  const INFINI_CHUNK_SIZE = 32 * 1024 * 1024; // larger chunks = fewer round-trips (still under ~100MB CF limit)
+  const INFINI_CHUNK_SIZE = 16 * 1024 * 1024; // 16MB — better progress + less Worker memory stall
   const INFINI_MAX_RETRIES = 4;
 
   function sleepMs(ms) {
@@ -10846,21 +10847,36 @@ window.__dgxenInitVideoControls = function(vId) {
   }
 
   async function infiniPutWithRetry(targetUrl, blob, headers, onProgress) {
-    const finalUrl = infiniProxyUrl(targetUrl);
+    // Strip Content-Length — browser sets it; manual value can stall some proxies
     const hdrs = Object.assign({
       'Authorization': infiniAuthHeader(),
-      'Content-Type': headers['Content-Type'] || 'application/octet-stream'
+      'Content-Type': (headers && headers['Content-Type']) || 'application/octet-stream'
     }, headers || {});
+    delete hdrs['Content-Length'];
+    delete hdrs['content-length'];
+
     let lastErr = null;
+    // 1) Direct to Teracloud (fastest when CORS allows)
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        return await xhrPutBlob(targetUrl, blob, hdrs, onProgress);
+      } catch (e) {
+        lastErr = e;
+        const st = e && e.status;
+        if (st && st >= 400 && st < 500 && st !== 408 && st !== 429) break; // fall to proxy
+        await sleepMs(200 * attempt);
+      }
+    }
+    // 2) Via CORS Worker proxy
+    const finalUrl = infiniProxyUrl(targetUrl);
     for (let attempt = 1; attempt <= INFINI_MAX_RETRIES; attempt++) {
       try {
         return await xhrPutBlob(finalUrl, blob, hdrs, onProgress);
       } catch (e) {
         lastErr = e;
         const st = e && e.status;
-        // Don't retry hard client errors except 408/429
         if (st && st >= 400 && st < 500 && st !== 408 && st !== 429) throw e;
-        await sleepMs(Math.min(8000, 400 * Math.pow(2, attempt - 1)));
+        await sleepMs(Math.min(3000, 250 * Math.pow(2, attempt - 1)));
       }
     }
     throw lastErr || new Error('Infini upload failed after retries');
@@ -10955,44 +10971,56 @@ window.__dgxenInitVideoControls = function(vId) {
 
   async function deleteInfiniFile(fileName, isFolder) {
     const rel = (String(fileName).indexOf('/') >= 0) ? fileName : cloudJoinPath(cloudCwd(), fileName);
-    let url = cloudPathUrl(rel);
-    if (isFolder && !url.endsWith('/')) url += '/';
-    console.log('[Infini] DELETE', url);
-    let lastStatus = 0, lastBody = '';
-    // 1) XHR DELETE (often more reliable through CF Worker than fetch)
-    try {
-      const xr = await infiniXhr('DELETE', url, {}, null);
-      lastStatus = xr.status;
-      lastBody = xr.responseText || '';
-      console.log('[Infini] DELETE xhr', xr.status);
-      if (xr.ok || xr.status === 204 || xr.status === 404) {
-        try { await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(fileName)), null); } catch (e) {}
-        return;
-      }
-    } catch (e) {
-      console.warn('[Infini] DELETE xhr err', e);
+    const candidates = [];
+    const base = cloudPathUrl(rel);
+    candidates.push(base);
+    if (!base.endsWith('/')) candidates.push(base + '/');
+    else candidates.push(base.replace(/\/$/, ''));
+    // Also try raw name only under root if path looks wrong
+    if (rel.indexOf('/') >= 0) {
+      const only = cloudPathUrl(rel.split('/').pop());
+      candidates.push(only);
     }
-    // 2) fetch DELETE
-    try {
-      let res = await infiniFetch(url, { method: 'DELETE' });
-      lastStatus = res.status;
-      lastBody = await res.text().catch(() => '');
-      console.log('[Infini] DELETE fetch', res.status);
-      if (res.ok || res.status === 204 || res.status === 404) {
+    console.log('[Infini] DELETE candidates', candidates);
+    let lastStatus = 0, lastBody = '';
+
+    async function tryDelete(url) {
+      // Direct first (fast path when CORS allows DELETE)
+      try {
+        const xr0 = await new Promise(function(resolve, reject) {
+          const xhr = new XMLHttpRequest();
+          xhr.open('DELETE', url, true);
+          try { xhr.setRequestHeader('Authorization', infiniAuthHeader()); } catch (e) {}
+          xhr.onload = function() { resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, responseText: xhr.responseText || '' }); };
+          xhr.onerror = function() { reject(new Error('direct network')); };
+          xhr.send(null);
+        });
+        lastStatus = xr0.status; lastBody = xr0.responseText || '';
+        if (xr0.ok || xr0.status === 204 || xr0.status === 404) return true;
+      } catch (e) {}
+      // Proxy XHR
+      try {
+        const xr = await infiniXhr('DELETE', url, {}, null);
+        lastStatus = xr.status; lastBody = xr.responseText || '';
+        console.log('[Infini] DELETE xhr', url, xr.status);
+        if (xr.ok || xr.status === 204 || xr.status === 404) return true;
+      } catch (e) { console.warn('[Infini] DELETE xhr err', e); }
+      // Proxy fetch
+      try {
+        const res = await infiniFetch(url, { method: 'DELETE' });
+        lastStatus = res.status;
+        lastBody = await res.text().catch(() => '');
+        console.log('[Infini] DELETE fetch', url, res.status);
+        if (res.ok || res.status === 204 || res.status === 404) return true;
+      } catch (e) { console.warn('[Infini] DELETE fetch err', e); }
+      return false;
+    }
+
+    for (let i = 0; i < candidates.length; i++) {
+      if (await tryDelete(candidates[i])) {
         try { await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(fileName)), null); } catch (e) {}
         return;
       }
-      // try without trailing slash
-      if (url.endsWith('/')) {
-        res = await infiniFetch(url.replace(/\/$/, ''), { method: 'DELETE' });
-        lastStatus = res.status;
-        if (res.ok || res.status === 204 || res.status === 404) {
-          try { await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(fileName)), null); } catch (e) {}
-          return;
-        }
-      }
-    } catch (e) {
-      console.warn('[Infini] DELETE fetch err', e);
     }
     throw new Error('Infini delete failed: ' + explainInfiniHttp(lastStatus, lastBody));
   }
@@ -13015,25 +13043,44 @@ function explainFetchError(e) {
     // Browser controls forbidden request headers.
     // -------------------------------------------------------
 
-    // NOTE: Do NOT send X-Bz-Info-* from browser — CORS preflight blocks unknown headers
-    // and upload fails with network/CORS error. Metadata saved to Firebase after success.
-    const res = await fetch(up.uploadUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: up.authorizationToken,
-        'X-Bz-File-Name': encodeB2FileName(safeName),
-        'Content-Type': (file.type && file.type.length) ? file.type : 'b2/x-auto',
-        'X-Bz-Content-Sha1': sha1
-      },
-      body: buf
+    // Live progress via XHR (fetch has no upload progress events)
+    // Do NOT send X-Bz-Info-* — CORS preflight blocks unknown headers.
+    if (typeof progressCallback === 'function') progressCallback(1);
+    const result = await new Promise(function(resolve, reject) {
+      const xhr = new XMLHttpRequest();
+      if (window.__cloudRegisterXhr) window.__cloudRegisterXhr(xhr);
+      xhr.open('POST', up.uploadUrl, true);
+      try {
+        xhr.setRequestHeader('Authorization', up.authorizationToken);
+        xhr.setRequestHeader('X-Bz-File-Name', encodeB2FileName(safeName));
+        xhr.setRequestHeader('Content-Type', (file.type && file.type.length) ? file.type : 'b2/x-auto');
+        xhr.setRequestHeader('X-Bz-Content-Sha1', sha1);
+      } catch (e) {}
+      xhr.upload.onprogress = function(ev) {
+        if (!ev.lengthComputable) return;
+        const pct = Math.min(99.5, (ev.loaded / ev.total) * 100);
+        if (typeof progressCallback === 'function') progressCallback(pct);
+      };
+      xhr.onload = function() {
+        if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try { resolve(JSON.parse(xhr.responseText || '{}')); }
+          catch (e) { resolve({}); }
+        } else {
+          reject(new Error('B2 upload failed: ' + xhr.status + ' ' + String(xhr.responseText || '').slice(0, 120)));
+        }
+      };
+      xhr.onerror = function() {
+        if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+        reject(new Error('B2 network error during upload'));
+      };
+      xhr.onabort = function() {
+        if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+        reject(new Error('cancelled'));
+      };
+      xhr.timeout = 0;
+      xhr.send(buf);
     });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error('B2 upload failed: ' + res.status + ' ' + text);
-    }
-
-    const result = await res.json().catch(() => ({}));
 
     try {
       await saveFileMeta(result.fileName || safeName, result.fileId, file);
@@ -13042,7 +13089,6 @@ function explainFetchError(e) {
     }
 
     if (progressCallback) progressCallback(100);
-
     console.log('[B2] Small upload complete:', result.fileName);
     return result;
   }
@@ -13200,29 +13246,43 @@ function explainFetchError(e) {
               throw new Error('Invalid B2 part upload URL.');
             }
 
-            // Direct to B2 (no proxy) — fastest path
-            const ac = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-            if (ac && window.__cloudRegisterAbort) window.__cloudRegisterAbort(ac);
-            const uploadRes = await fetch(urlData.uploadUrl, {
-              method: 'POST',
-              headers: {
-                Authorization: urlData.authorizationToken,
-                'X-Bz-Part-Number': String(partNumber),
-                'X-Bz-Content-Sha1': sha1
-              },
-              body: chunkBuf,
-              signal: ac ? ac.signal : undefined
+            // Direct to B2 with live XHR progress
+            const partSize = end - start;
+            const baseDone = uploadedBytes;
+            await new Promise(function(resolve, reject) {
+              const xhr = new XMLHttpRequest();
+              if (window.__cloudRegisterXhr) window.__cloudRegisterXhr(xhr);
+              xhr.open('POST', urlData.uploadUrl, true);
+              try {
+                xhr.setRequestHeader('Authorization', urlData.authorizationToken);
+                xhr.setRequestHeader('X-Bz-Part-Number', String(partNumber));
+                xhr.setRequestHeader('X-Bz-Content-Sha1', sha1);
+              } catch (e) {}
+              xhr.upload.onprogress = function(ev) {
+                if (!ev.lengthComputable) return;
+                const done = baseDone + ev.loaded;
+                if (typeof progressCallback === 'function') {
+                  progressCallback(Math.min(99.5, (done / file.size) * 100));
+                }
+              };
+              xhr.onload = function() {
+                if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+                if (xhr.status >= 200 && xhr.status < 300) resolve();
+                else reject(new Error('Part ' + partNumber + ' upload failed: ' + xhr.status + ' ' + String(xhr.responseText || '').slice(0, 120)));
+              };
+              xhr.onerror = function() {
+                if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+                reject(new Error('Part ' + partNumber + ' network error'));
+              };
+              xhr.onabort = function() {
+                if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+                reject(new Error('cancelled'));
+              };
+              xhr.timeout = 0;
+              xhr.send(chunkBuf);
             });
-            if (ac && window.__cloudUnregisterAbort) window.__cloudUnregisterAbort(ac);
 
-            if (!uploadRes.ok) {
-              const text = await uploadRes.text().catch(() => '');
-              throw new Error(
-                'Part ' + partNumber + ' upload failed: ' + uploadRes.status + ' ' + text.slice(0, 120)
-              );
-            }
-
-            uploadedBytes += (end - start);
+            uploadedBytes += partSize;
             if (typeof progressCallback === 'function') {
               progressCallback(Math.min(99.5, (uploadedBytes / file.size) * 100));
             }
