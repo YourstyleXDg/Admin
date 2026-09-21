@@ -901,166 +901,6 @@
             border-color: rgba(255, 205, 60, 0.5) !important;
             background: linear-gradient(135deg, rgba(255, 205, 60, 0.07), transparent);
         }
-
-        /* ============================================================
-           STREAK ELITE — card, badges, flow-chart popup, settings modal
-           ============================================================ */
-        .streak-stat-card {
-            position: relative;
-            padding: 26px 24px 24px;
-            border-radius: 22px;
-            overflow: hidden;
-        }
-        .streak-stat-top-bar {
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 4px;
-        }
-        .streak-stat-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 14px;
-        }
-        .streak-stat-label {
-            font-size: 12px;
-            font-weight: 800;
-            letter-spacing: .05em;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            margin-bottom: 6px;
-        }
-        .streak-stat-num {
-            font-size: 42px;
-            font-weight: 900;
-            line-height: 1.05;
-        }
-        .streak-card {
-            padding: 32px 22px 22px;
-            border-radius: 22px;
-            border-color: rgba(255, 160, 40, 0.28) !important;
-            background: linear-gradient(150deg, rgba(255, 160, 40, 0.07), transparent 60%);
-        }
-        .streak-card.streak-master {
-            border-color: rgba(91, 157, 255, 0.35) !important;
-            background: linear-gradient(150deg, rgba(91, 157, 255, 0.08), transparent 60%);
-        }
-        .streak-day-badge {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 15px 8px 12px;
-            border-radius: 999px;
-            background: linear-gradient(135deg, #ffd23c, #ff7a1a);
-            box-shadow: 0 8px 22px rgba(255, 130, 20, 0.4);
-            font-size: 17px;
-            font-weight: 900;
-            color: #1a0f00;
-            letter-spacing: .01em;
-            z-index: 3;
-            animation: streakBadgeGlow 2.4s ease-in-out infinite;
-        }
-        @keyframes streakBadgeGlow {
-            0%, 100% { box-shadow: 0 8px 22px rgba(255, 130, 20, 0.4); }
-            50% { box-shadow: 0 8px 30px rgba(255, 160, 40, 0.7); }
-        }
-        .streak-day-badge svg { width: 16px; height: 16px; flex: none; }
-        .streak-master-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 11.5px;
-            font-weight: 900;
-            letter-spacing: .04em;
-            color: #5b9dff;
-            background: rgba(91, 157, 255, 0.14);
-            border: 1px solid rgba(91, 157, 255, 0.3);
-            padding: 5px 11px;
-            border-radius: 8px;
-            text-transform: uppercase;
-            margin: 0 0 10px;
-        }
-        .user-card.streak-card .user-name {
-            font-size: 18px;
-            padding-right: 64px;
-        }
-        .user-card.streak-card .user-id {
-            font-size: 11.5px;
-            margin-bottom: 4px;
-        }
-        .streak-bonus-line {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--text-dim);
-            margin: 6px 0 16px;
-            padding: 8px 12px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--glass-border);
-        }
-        .streak-bonus-line b { color: var(--accent); font-weight: 900; font-size: 13.5px; }
-        .streak-card-actions { display: flex; gap: 10px; margin-top: auto; }
-        .streak-card-actions .btn { flex: 1; padding: 13px 10px; font-size: 12.5px; font-weight: 800; border-radius: 12px; }
-
-        /* --- Per-user flow-chart / biodata modal --- */
-        .modal.streak-modal { max-width: 560px; text-align: left; padding: 40px; }
-        .streak-flow-table { width: 100%; border-collapse: separate; border-spacing: 0 6px; margin-top: 18px; }
-        .streak-flow-table th {
-            font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
-            color: var(--text-dim); text-align: left; padding: 0 12px 6px;
-        }
-        .streak-flow-table td {
-            font-size: 13.5px; font-weight: 700; color: var(--text-main);
-            background: rgba(150,150,150,.06); padding: 10px 12px;
-        }
-        .streak-flow-table tr td:first-child { border-radius: 10px 0 0 10px; }
-        .streak-flow-table tr td:last-child { border-radius: 0 10px 10px 0; }
-        .streak-flow-table tr.streak-row-done td { background: rgba(0,255,136,.08); color: var(--accent); }
-        .streak-flow-table tr.streak-row-current td {
-            background: linear-gradient(135deg, rgba(255,160,40,.22), rgba(255,120,20,.1));
-            color: #ffd23c; box-shadow: 0 0 0 1.5px rgba(255,160,40,.5) inset;
-        }
-        .streak-flow-table tr.streak-row-pending td { opacity: .55; }
-        .streak-flow-phase-label {
-            font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
-            color: var(--text-dim); margin: 16px 0 4px; padding-left: 2px;
-        }
-        .streak-biodata-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-top: 16px; }
-        .streak-biodata-item { font-size: 12.5px; }
-        .streak-biodata-item .label { color: var(--text-dim); font-weight: 700; display: block; margin-bottom: 2px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; }
-        .streak-biodata-item .value { color: var(--text-main); font-weight: 800; word-break: break-all; }
-
-        /* --- Mini horizontal cycle strip (used inside the biodata view) --- */
-        .streak-mini-strip { display: flex; gap: 4px; margin-top: 14px; overflow-x: auto; padding-bottom: 4px; }
-        .streak-mini-pip {
-            flex: none; min-width: 46px; padding: 6px 4px; border-radius: 10px; text-align: center;
-            background: rgba(150,150,150,.08); font-size: 10px; font-weight: 800; color: var(--text-dim);
-        }
-        .streak-mini-pip .n { font-size: 13px; font-weight: 900; color: var(--text-main); display: block; }
-        .streak-mini-pip.current { background: linear-gradient(135deg, rgba(255,160,40,.3), rgba(255,120,20,.15)); box-shadow: 0 0 0 1.5px rgba(255,160,40,.6) inset; }
-        .streak-mini-pip.current .n { color: #ffd23c; }
-        .streak-mini-pip.done .n { color: var(--accent); }
-
-        /* --- Streak Settings modal: per-day bonus-minute editor --- */
-        .streak-day-editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; margin: 16px 0; }
-        .streak-day-editor .day-slot {
-            background: rgba(150,150,150,.07); border: 1px solid var(--glass-border); border-radius: 14px;
-            padding: 10px 8px; text-align: center;
-        }
-        .streak-day-editor .day-slot .day-lab { font-size: 10px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
-        .streak-day-editor .day-slot input {
-            width: 100%; text-align: center; padding: 8px 4px; font-size: 13px; font-weight: 800;
-            background: rgba(0,0,0,.25); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main);
-        }
         .trial-toggle-wrap {
             display: inline-flex;
             align-items: center;
@@ -2550,6 +2390,52 @@
             border-bottom: 1px solid var(--glass-border);
             font-size: 12px;
             min-height: 44px;
+            position: relative;
+        }
+        .cloud-star-badge {
+            flex-shrink: 0;
+            font-size: 13px;
+        }
+        .cloud-more-btn {
+            flex-shrink: 0;
+            padding: 8px 10px !important;
+            font-size: 15px !important;
+            line-height: 1;
+            background: rgba(255,255,255,.05) !important;
+            color: var(--text-dim) !important;
+        }
+        #cloudStarredFilterBtn.active {
+            background: rgba(255,205,60,.18) !important;
+            box-shadow: 0 0 0 1px rgba(255,205,60,.5) inset;
+        }
+        .cloud-more-menu {
+            min-width: 180px;
+            background: rgba(20,20,26,.98);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            box-shadow: 0 12px 32px rgba(0,0,0,.5);
+            backdrop-filter: blur(14px);
+            padding: 6px;
+            z-index: 90000;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .cloud-more-menu-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: none;
+            border: none;
+            color: var(--text-main);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .cloud-more-menu-item:hover, .cloud-more-menu-item:active {
+            background: rgba(255,255,255,.08);
         }
 
         .cloud-preview-drawer {
@@ -2651,6 +2537,43 @@
         .cloud-file-row .name.name-hold-flash {
             background: rgba(92,200,255,.4) !important;
             transition: background .1s ease;
+        }
+        .cloud-file-row.cloud-dragging {
+            opacity: 0.45;
+        }
+        #cloudDragGhost {
+            position: fixed;
+            z-index: 10060;
+            pointer-events: none;
+            padding: 8px 14px;
+            border-radius: 12px;
+            background: rgba(12,18,28,0.92);
+            border: 1px solid rgba(92,200,255,0.4);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+            max-width: 220px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transform: translate(-50%, -120%);
+        }
+        body.light-mode #cloudDragGhost {
+            background: rgba(255,255,255,0.95);
+            color: #0f172a;
+            border-color: rgba(0,180,255,0.35);
+        }
+        #cloudTrashBtn.drop-hot {
+            background: rgba(255,59,48,0.25) !important;
+            color: var(--error) !important;
+            box-shadow: 0 0 0 2px var(--error);
+            transform: scale(1.06);
+        }
+        #cloudStarredFilterBtn.drop-hot {
+            background: rgba(255, 200, 0, 0.28) !important;
+            box-shadow: 0 0 0 2px #ffc800;
+            transform: scale(1.08);
         }
         .cloud-file-row .meta {
             color: var(--text-dim);
@@ -3838,10 +3761,6 @@ body.cat-world-active .cat-mode-bar{display:block}
             <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>
             Banned Users
         </div>
-        <div class="nav-link" onclick="switchTab('streak-elite', this)" id="nav-streak-elite">
-            <svg viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-            Streak Elite
-        </div>
         <div class="nav-link" onclick="switchTab('share-logs', this)" id="nav-share-logs">
             <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             Share/User Logs
@@ -4138,70 +4057,6 @@ body.cat-world-active .cat-mode-bar{display:block}
             <div class="section-box" style="padding: 0; background: transparent; border: none; box-shadow: none;">
                 <h2 style="color: var(--error); margin-bottom: 30px; font-size: 28px;">Banned Devices Database</h2>
                 <div class="user-grid" id="bannedUserList"></div>
-            </div>
-        </div>
-
-        <div id="streak-elite" class="tab-section">
-            <div class="section-box" style="padding: 0; background: transparent; border: none; box-shadow: none;">
-                <h2 style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:26px;">
-                    <span style="display:flex;align-items:center;gap:14px;font-size:32px;">
-                        <span style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,rgba(255,210,60,.18),rgba(255,122,26,.1));box-shadow:0 0 24px rgba(255,150,30,.25);">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="url(#streakFlameGrad)" stroke="none"><defs><linearGradient id="streakFlameGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffd23c"/><stop offset="100%" stop-color="#ff7a1a"/></linearGradient></defs><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-                        </span>
-                        Streak Elite
-                    </span>
-                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                        <span id="streakSystemStateBadge" style="font-size:12px;font-weight:900;letter-spacing:.04em;padding:8px 14px;border-radius:11px;background:rgba(150,150,150,.12);color:var(--text-dim);">LOADING…</span>
-                        <button class="btn" style="background:rgba(0,255,136,.12);color:var(--accent);padding:13px 20px;font-size:13px;font-weight:800;border-radius:12px;border:1px solid rgba(0,255,136,.3);" onclick="openStreakSettingsModal()">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                            STREAK SETTINGS
-                        </button>
-                    </div>
-                </h2>
-
-                <!-- Legend strip: quick-glance stats for the whole streak
-                     population, in the same visual language as the
-                     top-of-dashboard stat cards elsewhere in this panel. -->
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:18px;margin-bottom:30px;">
-                    <div class="glass-panel float-anim streak-stat-card" style="border-color:rgba(255,180,60,.3);">
-                        <div class="streak-stat-top-bar" style="background:linear-gradient(90deg,#ffd23c,#ff7a1a);"></div>
-                        <div class="streak-stat-icon" style="background:linear-gradient(135deg,rgba(255,210,60,.18),rgba(255,122,26,.1));">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="url(#streakFlameGrad)" stroke="none"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-                        </div>
-                        <div class="streak-stat-label">Active Streakers</div>
-                        <div id="streakStatActive" class="streak-stat-num" style="background:linear-gradient(135deg,#ffd23c,#ff7a1a);-webkit-background-clip:text;background-clip:text;color:transparent;">0</div>
-                    </div>
-                    <div class="glass-panel float-anim streak-stat-card" style="border-color:rgba(0,255,136,.3);">
-                        <div class="streak-stat-top-bar" style="background:linear-gradient(90deg,var(--accent),rgba(0,255,136,.4));"></div>
-                        <div class="streak-stat-icon" style="background:rgba(0,255,136,.14);">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 5H4a2 2 0 0 0 0 4h1M17 5h3a2 2 0 0 1 0 4h-1"/></svg>
-                        </div>
-                        <div class="streak-stat-label">Longest Streak</div>
-                        <div id="streakStatLongest" class="streak-stat-num" style="color:var(--accent);">0</div>
-                    </div>
-                    <div class="glass-panel float-anim streak-stat-card" style="border-color:rgba(91,157,255,.32);">
-                        <div class="streak-stat-top-bar" style="background:linear-gradient(90deg,#5b9dff,rgba(91,157,255,.4));"></div>
-                        <div class="streak-stat-icon" style="background:rgba(91,157,255,.14);">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5b9dff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 5-4-7-4 7-6-5zM4.5 19h15"/></svg>
-                        </div>
-                        <div class="streak-stat-label">Master Streakers</div>
-                        <div id="streakStatMaster" class="streak-stat-num" style="color:#5b9dff;">0</div>
-                    </div>
-                    <div class="glass-panel float-anim streak-stat-card" style="border-color:rgba(255,80,80,.25);">
-                        <div class="streak-stat-top-bar" style="background:linear-gradient(90deg,var(--error),rgba(255,80,80,.4));"></div>
-                        <div class="streak-stat-icon" style="background:rgba(255,80,80,.12);">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
-                        </div>
-                        <div class="streak-stat-label">Reset Time</div>
-                        <div id="streakStatResetHour" class="streak-stat-num" style="color:var(--text-main);">4<span style="font-size:19px;font-weight:700;color:var(--text-dim);">:00</span></div>
-                    </div>
-                </div>
-
-                <div id="streakOffNotice" style="display:none;margin-bottom:22px;padding:16px 20px;border-radius:16px;background:rgba(150,150,150,.08);border:1px dashed var(--glass-border);color:var(--text-dim);font-size:13px;font-weight:600;text-align:center;">
-                    Streak system is currently <b style="color:var(--error);">OFF</b> — no streaks are being tracked and no reminders are sent. Turn it on from STREAK SETTINGS above.
-                </div>
-
-                <div class="user-grid" id="streakEliteList"></div>
             </div>
         </div>
 
@@ -4543,9 +4398,17 @@ body.cat-world-active .cat-mode-bar{display:block}
                     <option value="name_asc">Name A–Z</option>
                     <option value="size_desc">Largest first</option>
                 </select>
+                <button class="btn" type="button" id="cloudStarredFilterBtn" style="padding:8px 12px;font-size:11px;" onclick="toggleCloudStarredFilter()" title="⭐ filter / All files · hold-drag file here to star">⭐</button>
+                <button class="btn" type="button" style="padding:8px 12px;font-size:11px;" onclick="toggleCloudStorageBreakdown()" title="Storage breakdown by file type">📊</button>
+                <button class="btn" type="button" style="padding:8px 14px;font-size:11px;" onclick="toggleCloudTrash()" id="cloudTrashBtn">TRASH</button>
                 <button class="btn" type="button" style="padding:8px 14px;font-size:11px;" onclick="refreshCloudFiles()">REFRESH</button>
             </div>
         </div>
+        <div style="position:relative;margin:0 0 10px;">
+            <input type="text" id="cloudSearchInput" placeholder="Search files and folders…" autocomplete="off" oninput="filterCloudFiles(this.value)" style="width:100%;padding:10px 36px 10px 14px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;font-size:13px;">
+            <button type="button" id="cloudSearchClearBtn" onclick="document.getElementById('cloudSearchInput').value='';filterCloudFiles('');" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer;padding:4px 6px;">✕</button>
+        </div>
+        <div id="cloudStorageBreakdown" style="display:none;margin:0 0 12px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid var(--glass-border);"></div>
         <div id="cloudPathBar" aria-label="Current folder"></div>
         <div id="cloudFileList" class="mk-list" style="overflow:auto;min-height:42vh;flex:1;"></div>
     </div>
@@ -5073,84 +4936,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         </div>
     </div>
 
-    <!-- Streak Elite: tapping a streaker's card opens this — a flow
-         chart of their progress through the cycle (how many days
-         completed vs. how many remain before the next bonus tier), plus
-         a "View Biodata" button that swaps this same modal into a full
-         detail view (device/key/master info) without needing a second
-         popup. Only one of the two inner views is visible at a time,
-         toggled by streakModalShowBiodata() below. -->
-    <div class="modal-overlay" id="streakUserModal">
-        <div class="modal streak-modal">
-            <div id="streakModalFlowView">
-                <h2 style="color:#ffd23c;display:flex;align-items:center;gap:10px;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="url(#streakFlameGrad)" stroke="none"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-                    <span id="streakModalUserName">—</span>
-                </h2>
-                <p style="margin:4px 0 0;color:var(--text-dim);font-size:13px;">Cycle progress — completed days, current tier, and what's still ahead before the streak resets.</p>
-                <div class="streak-flow-phase-label">Progress</div>
-                <table class="streak-flow-table" id="streakModalFlowTable"><tbody></tbody></table>
-                <div class="modal-btns" style="margin-top:24px;">
-                    <button class="btn-confirm" style="background:#5b9dff;" onclick="streakModalShowBiodata()">VIEW BIODATA</button>
-                    <button class="btn-cancel" onclick="closeModals()">CLOSE</button>
-                </div>
-            </div>
-            <div id="streakModalBiodataView" style="display:none;">
-                <h2 style="color:#5b9dff;">Streaker Biodata</h2>
-                <p style="margin:4px 0 0;color:var(--text-dim);font-size:13px;">Full record for this device's streak history.</p>
-                <div class="streak-biodata-grid" id="streakModalBiodataGrid"></div>
-                <div class="streak-flow-phase-label">Cycle at a glance</div>
-                <div class="streak-mini-strip" id="streakModalMiniStrip"></div>
-                <div class="modal-btns" style="margin-top:24px;">
-                    <button class="btn-confirm" style="background:#ffd23c;color:#1a0f00;" onclick="streakModalShowFlow()">BACK TO CHART</button>
-                    <button class="btn-cancel" onclick="closeModals()">CLOSE</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Streak Elite: global settings — on/off, reset hour, master-key
-         inclusion, reminder lead time, and the per-day bonus-minutes
-         table (matching the chart: days 1-7, minutes on top of the
-         4-hour base, reused for both the climb and the cooldown side
-         of the cycle — see the schema note in streakGetBonusMinutes()
-         below for why one table covers both directions). -->
-    <div class="modal-overlay" id="streakSettingsModal">
-        <div class="modal streak-modal">
-            <h2 style="color:var(--accent);">Streak Settings</h2>
-            <p style="margin:4px 0 0;color:var(--text-dim);font-size:13px;">Changes apply the next time a device checks in — no redeploy needed.</p>
-
-            <div class="ios-row" style="margin-top:22px;">
-                <label>Streak System <span style="display:block;font-size:11px;font-weight:600;color:var(--text-dim);margin-top:2px;">Master switch — off means no tracking and no reminders at all.</span></label>
-                <label class="ios-toggle"><input type="checkbox" id="streakSysEnabledToggle"><span></span></label>
-            </div>
-
-            <div class="ios-row">
-                <label>Include Master-Key Logins <span style="display:block;font-size:11px;font-weight:600;color:var(--text-dim);margin-top:2px;">Off = a master-key login never builds or continues a streak on that device.</span></label>
-                <label class="ios-toggle"><input type="checkbox" id="streakSysMasterToggle"><span></span></label>
-            </div>
-
-            <div style="display:flex;gap:14px;margin-top:18px;flex-wrap:wrap;">
-                <div style="flex:1;min-width:140px;">
-                    <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Reset Time <span style="text-transform:none;font-weight:600;color:var(--text-dim);opacity:.8;">(exact hour &amp; minute)</span></div>
-                    <input type="time" id="streakSysResetTime" step="60" style="width:100%;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.25);border:1px solid var(--glass-border);color:var(--text-main);font-weight:800;color-scheme:dark;">
-                </div>
-                <div style="flex:1;min-width:140px;">
-                    <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Reminder — Hours Before Reset</div>
-                    <input type="number" id="streakSysReminderHours" min="0" max="12" step="1" style="width:100%;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.25);border:1px solid var(--glass-border);color:var(--text-main);font-weight:800;">
-                </div>
-            </div>
-
-            <div class="streak-flow-phase-label" style="margin-top:22px;">Bonus Minutes Per Day (added on top of the 4hr base key)</div>
-            <div class="streak-day-editor" id="streakBonusDayEditor"></div>
-
-            <div class="modal-btns" style="margin-top:10px;">
-                <button class="btn-confirm" onclick="saveStreakSettings()">SAVE SETTINGS</button>
-                <button class="btn-cancel" onclick="closeModals()">CANCEL</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Suggested once, right when Factory Reset is tapped — a chance to
          grab a full backup before anything is wiped. -->
     <div class="modal-overlay" id="backupSuggestModal">
@@ -5161,6 +4946,21 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 <button class="btn-confirm" style="background:#8ea0ff;color:#0a0a14;" onclick="backupSuggestDownloadAndContinue()">DOWNLOAD BACKUP, THEN CONTINUE</button>
                 <button class="btn-cancel" style="background:rgba(150,150,150,.2);" onclick="backupSuggestSkip()">SKIP — CONTINUE WITHOUT BACKUP</button>
                 <button class="btn-cancel" onclick="closeModals()">CANCEL RESET</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="newFolderModal">
+        <div class="modal">
+            <h2 style="color:var(--accent);display:flex;align-items:center;gap:10px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span id="newFolderModalTitle">New Folder</span>
+            </h2>
+            <input type="text" id="newFolderNameInput" placeholder="Folder name" autocomplete="off" style="width:100%;margin:4px 0 4px;" maxlength="120">
+            <p id="newFolderModalHint" style="font-size:12px;color:var(--text-dim);margin:0 0 4px;min-height:16px;"></p>
+            <div class="modal-btns">
+                <button class="btn-confirm" id="newFolderConfirmBtn" onclick="confirmCreateCloudFolder()">CREATE</button>
+                <button class="btn-cancel" onclick="closeModals()">CANCEL</button>
             </div>
         </div>
     </div>
@@ -6571,7 +6371,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 } else if (fileId === 'auth_online' || fileId === 'auth_offline' || fileId === 'auth_smali') {
                     // Single embedded Auth.smali template (~15KB). Online vs Offline = only loadUrl line.
                     // Download karke tum files me freely lines edit kar sakte ho.
-                    let smali = atob('LmNsYXNzIHB1YmxpYyBMY29tL2RneGVuL0F1dGg7Ci5zdXBlciBMamF2YS9sYW5nL09iamVjdDsKLnNvdXJjZSAiQXV0aC5qYXZhIgoKIyBpbnRlcmZhY2VzCi5pbXBsZW1lbnRzIExqYXZhL2xhbmcvUnVubmFibGU7CgoKIyBzdGF0aWMgZmllbGRzCi5maWVsZCBwdWJsaWMgc3RhdGljIGRpYWxvZzpMYW5kcm9pZC9hcHAvRGlhbG9nOwoKLmZpZWxkIHB1YmxpYyBzdGF0aWMgZXhwaXJlVGltZU1zOkoKCi5maWVsZCBwdWJsaWMgc3RhdGljIHJldm9rZU1lc3NhZ2U6TGphdmEvbGFuZy9TdHJpbmc7CgouZmllbGQgcHVibGljIHN0YXRpYyB0aW1lckhhbmRsZXI6TGFuZHJvaWQvb3MvSGFuZGxlcjsKCi5maWVsZCBwdWJsaWMgc3RhdGljIHRpbWVyVmlldzpMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7CgouZmllbGQgcHVibGljIHN0YXRpYyB1bmxvY2tlZDpaCgouZmllbGQgcHVibGljIHN0YXRpYyB3ZWJWaWV3OkxhbmRyb2lkL3dlYmtpdC9XZWJWaWV3OwoKLmZpZWxkIHB1YmxpYyBzdGF0aWMga2lsbHN3aXRjaEFjdGl2ZTpaCgouZmllbGQgcHVibGljIHN0YXRpYyBraWxsc3dpdGNoRXhwaXJlVGltZU1zOkoKCi5maWVsZCBwdWJsaWMgc3RhdGljIGtpbGxzd2l0Y2hIYW5kbGVyOkxhbmRyb2lkL29zL0hhbmRsZXI7CgouZmllbGQgcHVibGljIHN0YXRpYyBraWxsc3dpdGNoVmlldzpMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7CgoKIyBkaXJlY3QgbWV0aG9kcwoubWV0aG9kIHB1YmxpYyBjb25zdHJ1Y3RvciA8aW5pdD4oKVYKICAgIC5yZWdpc3RlcnMgMQoKICAgIGludm9rZS1kaXJlY3Qge3AwfSwgTGphdmEvbGFuZy9PYmplY3Q7LT48aW5pdD4oKVYKCiAgICByZXR1cm4tdm9pZAouZW5kIG1ldGhvZAoKLm1ldGhvZCBwdWJsaWMgc3RhdGljIHNob3coTGFuZHJvaWQvYXBwL0FjdGl2aXR5OylWCiAgICAucmVnaXN0ZXJzIDUKCiAgICBzZ2V0LWJvb2xlYW4gdjAsIExjb20vZGd4ZW4vQXV0aDstPnVubG9ja2VkOloKCiAgICBpZi1lcXogdjAsIDpjb25kXzUKCiAgICByZXR1cm4tdm9pZAoKICAgIDpjb25kXzUKICAgIG5ldy1pbnN0YW5jZSB2MCwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7CgogICAgaW52b2tlLWRpcmVjdCB7djAsIHAwfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT48aW5pdD4oTGFuZHJvaWQvY29udGVudC9Db250ZXh0OylWCgogICAgc3B1dC1vYmplY3QgdjAsIExjb20vZGd4ZW4vQXV0aDstPndlYlZpZXc6TGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7CgogICAgY29uc3QgdjEsIC0weDEwMDAwMDAKCiAgICBpbnZva2UtdmlydHVhbCB7djAsIHYxfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5zZXRCYWNrZ3JvdW5kQ29sb3IoSSlWCgogICAgaW52b2tlLXZpcnR1YWwge3YwfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5nZXRTZXR0aW5ncygpTGFuZHJvaWQvd2Via2l0L1dlYlNldHRpbmdzOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MQoKICAgIGNvbnN0LzQgdjIsIDB4MQoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjJ9LCBMYW5kcm9pZC93ZWJraXQvV2ViU2V0dGluZ3M7LT5zZXRKYXZhU2NyaXB0RW5hYmxlZChaKVYKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHYyfSwgTGFuZHJvaWQvd2Via2l0L1dlYlNldHRpbmdzOy0+c2V0RG9tU3RvcmFnZUVuYWJsZWQoWilWCgogICAgbmV3LWluc3RhbmNlIHYxLCBMY29tL2RneGVuL0F1dGg7CgogICAgaW52b2tlLWRpcmVjdCB7djF9LCBMY29tL2RneGVuL0F1dGg7LT48aW5pdD4oKVYKCiAgICBjb25zdC1zdHJpbmcgdjIsICJBbmRyb2lkIgoKICAgIGludm9rZS12aXJ0dWFsIHt2MCwgdjEsIHYyfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5hZGRKYXZhc2NyaXB0SW50ZXJmYWNlKExqYXZhL2xhbmcvT2JqZWN0O0xqYXZhL2xhbmcvU3RyaW5nOylWCgogICAgY29uc3Qtc3RyaW5nIHYyLCAiaHR0cHM6Ly95b3Vyc3R5bGV4ZGcuZ2l0aHViLmlvL0xvZ2luLyIKCiAgICBpbnZva2UtdmlydHVhbCB7djAsIHYyfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5sb2FkVXJsKExqYXZhL2xhbmcvU3RyaW5nOylWCgogICAgaW52b2tlLXZpcnR1YWwge3YwfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5yZXF1ZXN0Rm9jdXMoKVoKCiAgICBuZXctaW5zdGFuY2UgdjEsIExhbmRyb2lkL2FwcC9EaWFsb2c7CgogICAgY29uc3QgdjIsIDB4MTAzMDAwNgoKICAgIGludm9rZS1kaXJlY3Qge3YxLCBwMCwgdjJ9LCBMYW5kcm9pZC9hcHAvRGlhbG9nOy0+PGluaXQ+KExhbmRyb2lkL2NvbnRlbnQvQ29udGV4dDtJKVYKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHYwfSwgTGFuZHJvaWQvYXBwL0RpYWxvZzstPnNldENvbnRlbnRWaWV3KExhbmRyb2lkL3ZpZXcvVmlldzspVgoKICAgIGNvbnN0LzQgdjIsIDB4MAoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjJ9LCBMYW5kcm9pZC9hcHAvRGlhbG9nOy0+c2V0Q2FuY2VsYWJsZShaKVYKCiAgICBpbnZva2UtdmlydHVhbCB7djF9LCBMYW5kcm9pZC9hcHAvRGlhbG9nOy0+Z2V0V2luZG93KClMYW5kcm9pZC92aWV3L1dpbmRvdzsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjIKCiAgICBjb25zdCBwMCwgMHgyMDAwOAoKICAgIGludm9rZS12aXJ0dWFsIHt2MiwgcDB9LCBMYW5kcm9pZC92aWV3L1dpbmRvdzstPmNsZWFyRmxhZ3MoSSlWCgogICAgIyAtLS0gRnVsbHNjcmVlbiAvIGltbWVyc2l2ZTogaGlkZSB0aGUgc3RhdHVzIGJhciAodGltZSwgbmV0d29yaywKICAgICMgYmF0dGVyeSkgYW5kIG5hdiBiYXIgd2hpbGUgdGhlIGxvZ2luIGRpYWxvZyBpcyBzaG93aW5nLiBUaGlzIGlzCiAgICAjIGRvbmUgdmlhIHRoZSBkZWNvciB2aWV3J3Mgc3lzdGVtVWlWaXNpYmlsaXR5IGZsYWdzLCB3aGljaCBpcyB0aGUKICAgICMgb25seSBwbGFjZSB0aGlzIGNhbiBiZSBjb250cm9sbGVkIGZyb20gLSBpdCdzIE9TIGNocm9tZSwgbm90CiAgICAjIHNvbWV0aGluZyB0aGUgV2ViVmlldydzIG93biBIVE1ML0NTUy9KUyBjYW4gdG91Y2guCiAgICAjIDB4MTcwNiA9IExBWU9VVF9TVEFCTEUgfCBMQVlPVVRfSElERV9OQVZJR0FUSU9OIHwgTEFZT1VUX0ZVTExTQ1JFRU4KICAgICMgICAgICAgICAgfCBISURFX05BVklHQVRJT04gfCBGVUxMU0NSRUVOIHwgSU1NRVJTSVZFX1NUSUNLWQogICAgaW52b2tlLXZpcnR1YWwge3YyfSwgTGFuZHJvaWQvdmlldy9XaW5kb3c7LT5nZXREZWNvclZpZXcoKUxhbmRyb2lkL3ZpZXcvVmlldzsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgcDAKCiAgICBjb25zdCB2MywgMHgxNzA2CgogICAgaW52b2tlLXZpcnR1YWwge3AwLCB2M30sIExhbmRyb2lkL3ZpZXcvVmlldzstPnNldFN5c3RlbVVpVmlzaWJpbGl0eShJKVYKCiAgICBjb25zdC8xNiBwMCwgMHgyMAoKICAgIGludm9rZS12aXJ0dWFsIHt2MiwgcDB9LCBMYW5kcm9pZC92aWV3L1dpbmRvdzstPnNldFNvZnRJbnB1dE1vZGUoSSlWCgogICAgY29uc3QvNCBwMCwgLTB4MQoKICAgIGludm9rZS12aXJ0dWFsIHt2MiwgcDAsIHAwfSwgTGFuZHJvaWQvdmlldy9XaW5kb3c7LT5zZXRMYXlvdXQoSUkpVgoKICAgIGNvbnN0IHYzLCAweDEwMzAwMzAKCiAgICBpbnZva2UtdmlydHVhbCB7djIsIHYzfSwgTGFuZHJvaWQvdmlldy9XaW5kb3c7LT5zZXRXaW5kb3dBbmltYXRpb25zKEkpVgoKICAgIHNwdXQtb2JqZWN0IHYxLCBMY29tL2RneGVuL0F1dGg7LT5kaWFsb2c6TGFuZHJvaWQvYXBwL0RpYWxvZzsKCiAgICBpbnZva2UtdmlydHVhbCB7djF9LCBMYW5kcm9pZC9hcHAvRGlhbG9nOy0+c2hvdygpVgoKICAgIHJldHVybi12b2lkCi5lbmQgbWV0aG9kCgoKIyB2aXJ0dWFsIG1ldGhvZHMKLm1ldGhvZCBwdWJsaWMgZXhwaXJlKClWCiAgICAucmVnaXN0ZXJzIDIKICAgIC5hbm5vdGF0aW9uIHJ1bnRpbWUgTGFuZHJvaWQvd2Via2l0L0phdmFzY3JpcHRJbnRlcmZhY2U7CiAgICAuZW5kIGFubm90YXRpb24KCiAgICBpbnZva2Utc3RhdGljIHt9LCBMYW5kcm9pZC9vcy9Qcm9jZXNzOy0+bXlQaWQoKUkKCiAgICBtb3ZlLXJlc3VsdCB2MAoKICAgIGludm9rZS1zdGF0aWMge3YwfSwgTGFuZHJvaWQvb3MvUHJvY2VzczstPmtpbGxQcm9jZXNzKEkpVgoKICAgIGNvbnN0LzQgdjAsIDB4MAoKICAgIGludm9rZS1zdGF0aWMge3YwfSwgTGphdmEvbGFuZy9TeXN0ZW07LT5leGl0KEkpVgoKICAgIHJldHVybi12b2lkCi5lbmQgbWV0aG9kCgoubWV0aG9kIHB1YmxpYyBzdGFydEtpbGxzd2l0Y2hUaW1lcigpVgogICAgLnJlZ2lzdGVycyA1CiAgICAuYW5ub3RhdGlvbiBydW50aW1lIExhbmRyb2lkL3dlYmtpdC9KYXZhc2NyaXB0SW50ZXJmYWNlOwogICAgLmVuZCBhbm5vdGF0aW9uCgogICAgIyBKUy1jYWxsYWJsZSBlbnRyeSBwb2ludCBmb3IgdGhlIEFwcCBFeHBpcnkgJiBVcGRhdGUga2lsbHN3aXRjaC4KICAgICMgRml4ZWQgMzBzIGNvdW50ZG93biwgZnVsbHkgaW5kZXBlbmRlbnQgb2YgdGhlIGtleS1leHBpcnkgZmllbGRzCiAgICAjIGFib3ZlIChraWxsc3dpdGNoKiBmaWVsZHMgb25seSkgc28gdGhlIHR3byBzeXN0ZW1zIGNhbiBuZXZlcgogICAgIyBpbnRlcmZlcmUgd2l0aCBlYWNoIG90aGVyLiBUaWNraW5nL292ZXJsYXkva2lsbCBsb2dpYyBsaXZlcyBpbiB0aGUKICAgICMga2lsbHN3aXRjaEFjdGl2ZSBicmFuY2ggYXQgdGhlIHRvcCBvZiBydW4oKSBiZWxvdywgc2luY2UgYSBzaW5nbGUKICAgICMgUnVubmFibGUgKHRoaXMgY2xhc3MpIGNhbiBvbmx5IGhhdmUgb25lIHJ1bigpIGJvZHkg4oCUIEhhbmRsZXIgbmVlZHMKICAgICMgYSByZWFsIFJ1bm5hYmxlIHRhcmdldCwgc28gdGhlIGJyYW5jaCBkaXNwYXRjaGVzIGJ5IGZsYWcgaW5zdGVhZCBvZgogICAgIyBieSBhIHNlY29uZCBjbGFzcy4KCiAgICAjIElkZW1wb3RlbmN5IGd1YXJkOiBpZ25vcmUgcmVwZWF0IGNhbGxzIGlmIGFscmVhZHkgY291bnRpbmcgZG93bi4KICAgIHNnZXQtYm9vbGVhbiB2MCwgTGNvbS9kZ3hlbi9BdXRoOy0+a2lsbHN3aXRjaEFjdGl2ZTpaCgogICAgaWYtZXF6IHYwLCA6Y29uZF84CgogICAgcmV0dXJuLXZvaWQKCiAgICA6Y29uZF84CiAgICBjb25zdC80IHYwLCAweDEKCiAgICBzcHV0LWJvb2xlYW4gdjAsIExjb20vZGd4ZW4vQXV0aDstPmtpbGxzd2l0Y2hBY3RpdmU6WgoKICAgIGludm9rZS1zdGF0aWMge30sIExqYXZhL2xhbmcvU3lzdGVtOy0+Y3VycmVudFRpbWVNaWxsaXMoKUoKCiAgICBtb3ZlLXJlc3VsdC13aWRlIHYwCgogICAgY29uc3Qtd2lkZS8xNiB2MiwgMHg3NTMwCgogICAgYWRkLWxvbmcvMmFkZHIgdjAsIHYyCgogICAgc3B1dC13aWRlIHYwLCBMY29tL2RneGVuL0F1dGg7LT5raWxsc3dpdGNoRXhwaXJlVGltZU1zOkoKCiAgICBuZXctaW5zdGFuY2UgdjAsIExhbmRyb2lkL29zL0hhbmRsZXI7CgogICAgaW52b2tlLXN0YXRpYyB7fSwgTGFuZHJvaWQvb3MvTG9vcGVyOy0+Z2V0TWFpbkxvb3BlcigpTGFuZHJvaWQvb3MvTG9vcGVyOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MQoKICAgIGludm9rZS1kaXJlY3Qge3YwLCB2MX0sIExhbmRyb2lkL29zL0hhbmRsZXI7LT48aW5pdD4oTGFuZHJvaWQvb3MvTG9vcGVyOylWCgogICAgc3B1dC1vYmplY3QgdjAsIExjb20vZGd4ZW4vQXV0aDstPmtpbGxzd2l0Y2hIYW5kbGVyOkxhbmRyb2lkL29zL0hhbmRsZXI7CgogICAgaW52b2tlLXZpcnR1YWwge3YwLCBwMH0sIExhbmRyb2lkL29zL0hhbmRsZXI7LT5wb3N0KExqYXZhL2xhbmcvUnVubmFibGU7KVoKCiAgICByZXR1cm4tdm9pZAouZW5kIG1ldGhvZAoKLm1ldGhvZCBwdWJsaWMgZ2V0RGV2aWNlSWQoKUxqYXZhL2xhbmcvU3RyaW5nOwogICAgLnJlZ2lzdGVycyAzCiAgICAuYW5ub3RhdGlvbiBydW50aW1lIExhbmRyb2lkL3dlYmtpdC9KYXZhc2NyaXB0SW50ZXJmYWNlOwogICAgLmVuZCBhbm5vdGF0aW9uCgogICAgOnRyeV9zdGFydF8wCiAgICBzZ2V0LW9iamVjdCB2MCwgTGNvbS9kZ3hlbi9BdXRoOy0+d2ViVmlldzpMYW5kcm9pZC93ZWJraXQvV2ViVmlldzsKCiAgICBpbnZva2UtdmlydHVhbCB7djB9LCBMYW5kcm9pZC93ZWJraXQvV2ViVmlldzstPmdldENvbnRleHQoKUxhbmRyb2lkL2NvbnRlbnQvQ29udGV4dDsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjAKCiAgICBpbnZva2UtdmlydHVhbCB7djB9LCBMYW5kcm9pZC9jb250ZW50L0NvbnRleHQ7LT5nZXRDb250ZW50UmVzb2x2ZXIoKUxhbmRyb2lkL2NvbnRlbnQvQ29udGVudFJlc29sdmVyOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MAoKICAgIGNvbnN0LXN0cmluZyB2MSwgImFuZHJvaWRfaWQiCgogICAgaW52b2tlLXN0YXRpYyB7djAsIHYxfSwgTGFuZHJvaWQvcHJvdmlkZXIvU2V0dGluZ3MkU2VjdXJlOy0+Z2V0U3RyaW5nKExhbmRyb2lkL2NvbnRlbnQvQ29udGVudFJlc29sdmVyO0xqYXZhL2xhbmcvU3RyaW5nOylMamF2YS9sYW5nL1N0cmluZzsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjAKICAgIDp0cnlfZW5kXzEwCiAgICAuY2F0Y2ggTGphdmEvbGFuZy9FeGNlcHRpb247IHs6dHJ5X3N0YXJ0XzAgLi4gOnRyeV9lbmRfMTB9IDpjYXRjaF8xMQoKICAgIHJldHVybi1vYmplY3QgdjAKCiAgICA6Y2F0Y2hfMTEKICAgIG1vdmUtZXhjZXB0aW9uIHYwCgogICAgY29uc3Qtc3RyaW5nIHYwLCAiIgoKICAgIHJldHVybi1vYmplY3QgdjAKLmVuZCBtZXRob2QKCi5tZXRob2QgcHVibGljIGdldEFwcFZlcnNpb25Db2RlKClMamF2YS9sYW5nL1N0cmluZzsKICAgIC5yZWdpc3RlcnMgNAogICAgLmFubm90YXRpb24gcnVudGltZSBMYW5kcm9pZC93ZWJraXQvSmF2YXNjcmlwdEludGVyZmFjZTsKICAgIC5lbmQgYW5ub3RhdGlvbgoKICAgICMgUmV0dXJucyB0aGUgUkVBTCBpbnN0YWxsZWQgYXBwIHZlcnNpb25Db2RlIChmcm9tIFBhY2thZ2VNYW5hZ2VyLAogICAgIyB0aGUgYWN0dWFsIEFQSyB0aGUgT1MgaGFzIGluc3RhbGxlZCkgYXMgYSBTdHJpbmcsIHNvIEpTL0ZpcmViYXNlCiAgICAjIGNvbXBhcmlzb25zIGNhbid0IGJlIHNwb29mZWQgYnkgYSBzZWxmLXJlcG9ydGVkIHZhbHVlLiBNaXJyb3JzCiAgICAjIGdldERldmljZUlkKCkncyB0cnkvY2F0Y2gtcmV0dXJuLXNhZmUtZGVmYXVsdCBwYXR0ZXJuOyByZXR1cm5zCiAgICAjICIwIiBvbiBhbnkgZmFpbHVyZSBzbyBjYWxsZXJzIGNhbiB0cmVhdCB0aGF0IGFzICJ1bmtub3duIi4KCiAgICA6dHJ5X3N0YXJ0XzAKICAgIHNnZXQtb2JqZWN0IHYwLCBMY29tL2RneGVuL0F1dGg7LT53ZWJWaWV3OkxhbmRyb2lkL3dlYmtpdC9XZWJWaWV3OwoKICAgIGludm9rZS12aXJ0dWFsIHt2MH0sIExhbmRyb2lkL3dlYmtpdC9XZWJWaWV3Oy0+Z2V0Q29udGV4dCgpTGFuZHJvaWQvY29udGVudC9Db250ZXh0OwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MAoKICAgIGludm9rZS12aXJ0dWFsIHt2MH0sIExhbmRyb2lkL2NvbnRlbnQvQ29udGV4dDstPmdldFBhY2thZ2VNYW5hZ2VyKClMYW5kcm9pZC9jb250ZW50L3BtL1BhY2thZ2VNYW5hZ2VyOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MQoKICAgIGludm9rZS12aXJ0dWFsIHt2MH0sIExhbmRyb2lkL2NvbnRlbnQvQ29udGV4dDstPmdldFBhY2thZ2VOYW1lKClMamF2YS9sYW5nL1N0cmluZzsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjAKCiAgICBjb25zdC80IHYyLCAweDAKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHYwLCB2Mn0sIExhbmRyb2lkL2NvbnRlbnQvcG0vUGFja2FnZU1hbmFnZXI7LT5nZXRQYWNrYWdlSW5mbyhMamF2YS9sYW5nL1N0cmluZztJKUxhbmRyb2lkL2NvbnRlbnQvcG0vUGFja2FnZUluZm87CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHYwCgogICAgaWdldCB2MCwgdjAsIExhbmRyb2lkL2NvbnRlbnQvcG0vUGFja2FnZUluZm87LT52ZXJzaW9uQ29kZTpJCgogICAgaW52b2tlLXN0YXRpYyB7djB9LCBMamF2YS9sYW5nL0ludGVnZXI7LT50b1N0cmluZyhJKUxqYXZhL2xhbmcvU3RyaW5nOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MAogICAgOnRyeV9lbmRfMmMKICAgIC5jYXRjaCBMamF2YS9sYW5nL0V4Y2VwdGlvbjsgezp0cnlfc3RhcnRfMCAuLiA6dHJ5X2VuZF8yY30gOmNhdGNoXzJkCgogICAgcmV0dXJuLW9iamVjdCB2MAoKICAgIDpjYXRjaF8yZAogICAgbW92ZS1leGNlcHRpb24gdjAKCiAgICBjb25zdC1zdHJpbmcgdjAsICIwIgoKICAgIHJldHVybi1vYmplY3QgdjAKLmVuZCBtZXRob2QKCi5tZXRob2QgcHVibGljIHJ1bigpVgogICAgLnJlZ2lzdGVycyAxNAoKICAgIHNnZXQtYm9vbGVhbiB2MCwgTGNvbS9kZ3hlbi9BdXRoOy0+a2lsbHN3aXRjaEFjdGl2ZTpaCgogICAgaWYtZXF6IHYwLCA6Y29uZF9rZXlleHAKCiAgICBnb3RvLzE2IDpnb3RvX2tpbGxzd2l0Y2gKCiAgICA6Y29uZF9rZXlleHAKICAgIGludm9rZS1zdGF0aWMge30sIExqYXZhL2xhbmcvU3lzdGVtOy0+Y3VycmVudFRpbWVNaWxsaXMoKUoKCiAgICBtb3ZlLXJlc3VsdC13aWRlIHYwCgogICAgc2dldC13aWRlIHYyLCBMY29tL2RneGVuL0F1dGg7LT5leHBpcmVUaW1lTXM6SgoKICAgIHN1Yi1sb25nLzJhZGRyIHYyLCB2MAoKICAgIGNvbnN0LXdpZGUvMTYgdjQsIDB4MAoKICAgIGNtcC1sb25nIHY2LCB2MiwgdjQKCiAgICBpZi1ndHogdjYsIDpjb25kXzE5CgogICAgaW52b2tlLXN0YXRpYyB7fSwgTGFuZHJvaWQvb3MvUHJvY2VzczstPm15UGlkKClJCgogICAgbW92ZS1yZXN1bHQgdjAKCiAgICBpbnZva2Utc3RhdGljIHt2MH0sIExhbmRyb2lkL29zL1Byb2Nlc3M7LT5raWxsUHJvY2VzcyhJKVYKCiAgICBjb25zdC80IHYwLCAweDAKCiAgICBpbnZva2Utc3RhdGljIHt2MH0sIExqYXZhL2xhbmcvU3lzdGVtOy0+ZXhpdChJKVYKCiAgICByZXR1cm4tdm9pZAoKICAgIDpjb25kXzE5CiAgICBjb25zdC13aWRlLzMyIHY0LCAweDFkNGMwCgogICAgY21wLWxvbmcgdjYsIHYyLCB2NAoKICAgIGlmLWxleiB2NiwgOmNvbmRfMjIKCiAgICBnb3RvLzE2IDpnb3RvXzEyZQoKICAgIDpjb25kXzIyCiAgICBjb25zdC13aWRlLzE2IHY0LCAweDNlOAoKICAgIGRpdi1sb25nIHY0LCB2MiwgdjQKCiAgICBjb25zdC13aWRlLzE2IHY4LCAweDZlCgogICAgY21wLWxvbmcgdjEwLCB2NCwgdjgKCiAgICBpZi1sZXogdjEwLCA6Y29uZF8yZgoKICAgIGNvbnN0LXN0cmluZyB2MCwgIkV4cGlyeSBpbjogJTAyZDolMDJkIgoKICAgIGdvdG8gOmdvdG9fMzEKCiAgICA6Y29uZF8yZgogICAgY29uc3Qtc3RyaW5nIHYwLCAiJTAyZDolMDJkIgoKICAgIDpnb3RvXzMxCiAgICBzZ2V0LW9iamVjdCB2OCwgTGNvbS9kZ3hlbi9BdXRoOy0+cmV2b2tlTWVzc2FnZTpMamF2YS9sYW5nL1N0cmluZzsKCiAgICBpZi1lcXogdjgsIDpjb25kXzRmCgogICAgaW52b2tlLXZpcnR1YWwge3Y4fSwgTGphdmEvbGFuZy9TdHJpbmc7LT5sZW5ndGgoKUkKCiAgICBtb3ZlLXJlc3VsdCB2OQoKICAgIGlmLWxleiB2OSwgOmNvbmRfNGYKCiAgICBuZXctaW5zdGFuY2UgdjksIExqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjsKCiAgICBpbnZva2UtZGlyZWN0IHt2OX0sIExqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjstPjxpbml0PigpVgoKICAgIGludm9rZS12aXJ0dWFsIHt2OSwgdjh9LCBMamF2YS9sYW5nL1N0cmluZ0J1aWxkZXI7LT5hcHBlbmQoTGphdmEvbGFuZy9TdHJpbmc7KUxqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjsKCiAgICBjb25zdC1zdHJpbmcgdjgsICJcbiIKCiAgICBpbnZva2UtdmlydHVhbCB7djksIHY4fSwgTGphdmEvbGFuZy9TdHJpbmdCdWlsZGVyOy0+YXBwZW5kKExqYXZhL2xhbmcvU3RyaW5nOylMamF2YS9sYW5nL1N0cmluZ0J1aWxkZXI7CgogICAgaW52b2tlLXZpcnR1YWwge3Y5LCB2MH0sIExqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjstPmFwcGVuZChMamF2YS9sYW5nL1N0cmluZzspTGphdmEvbGFuZy9TdHJpbmdCdWlsZGVyOwoKICAgIGludm9rZS12aXJ0dWFsIHt2OX0sIExqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjstPnRvU3RyaW5nKClMamF2YS9sYW5nL1N0cmluZzsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjAKCiAgICA6Y29uZF80ZgogICAgY29uc3Qtd2lkZS8xNiB2OCwgMHgzYwoKICAgIGRpdi1sb25nIHY2LCB2NCwgdjgKCiAgICByZW0tbG9uZyB2OCwgdjQsIHY4CgogICAgY29uc3QvNCB2MSwgMHgyCgogICAgbmV3LWFycmF5IHYxMCwgdjEsIFtMamF2YS9sYW5nL09iamVjdDsKCiAgICBjb25zdC80IHYxMSwgMHgwCgogICAgaW52b2tlLXN0YXRpYyB7djYsIHY3fSwgTGphdmEvbGFuZy9Mb25nOy0+dmFsdWVPZihKKUxqYXZhL2xhbmcvTG9uZzsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjEyCgogICAgYXB1dC1vYmplY3QgdjEyLCB2MTAsIHYxMQoKICAgIGNvbnN0LzQgdjExLCAweDEKCiAgICBpbnZva2Utc3RhdGljIHt2OCwgdjl9LCBMamF2YS9sYW5nL0xvbmc7LT52YWx1ZU9mKEopTGphdmEvbGFuZy9Mb25nOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MTIKCiAgICBhcHV0LW9iamVjdCB2MTIsIHYxMCwgdjExCgogICAgaW52b2tlLXN0YXRpYyB7djAsIHYxMH0sIExqYXZhL2xhbmcvU3RyaW5nOy0+Zm9ybWF0KExqYXZhL2xhbmcvU3RyaW5nO1tMamF2YS9sYW5nL09iamVjdDspTGphdmEvbGFuZy9TdHJpbmc7CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHYwCgogICAgc2dldC1vYmplY3QgdjEsIExjb20vZGd4ZW4vQXV0aDstPnRpbWVyVmlldzpMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7CgogICAgaWYtbmV6IHYxLCA6Y29uZF8xMGQKCiAgICBuZXctaW5zdGFuY2UgdjEsIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzsKCiAgICBzZ2V0LW9iamVjdCB2NCwgTGNvbS9kZ3hlbi9BdXRoOy0+d2ViVmlldzpMYW5kcm9pZC93ZWJraXQvV2ViVmlldzsKCiAgICBpbnZva2UtdmlydHVhbCB7djR9LCBMYW5kcm9pZC93ZWJraXQvV2ViVmlldzstPmdldENvbnRleHQoKUxhbmRyb2lkL2NvbnRlbnQvQ29udGV4dDsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjQKCiAgICBpbnZva2UtZGlyZWN0IHt2MSwgdjR9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT48aW5pdD4oTGFuZHJvaWQvY29udGVudC9Db250ZXh0OylWCgogICAgc3B1dC1vYmplY3QgdjEsIExjb20vZGd4ZW4vQXV0aDstPnRpbWVyVmlldzpMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7CgogICAgY29uc3QgdjQsIC0weDEKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHY0fSwgTGFuZHJvaWQvd2lkZ2V0L1RleHRWaWV3Oy0+c2V0VGV4dENvbG9yKEkpVgoKICAgIGNvbnN0L2hpZ2gxNiB2NCwgMHg0MTgwMDAwMCAgIyAxNi4wZgoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjR9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRUZXh0U2l6ZShGKVYKCiAgICBzZ2V0LW9iamVjdCB2NCwgTGFuZHJvaWQvZ3JhcGhpY3MvVHlwZWZhY2U7LT5ERUZBVUxUX0JPTEQ6TGFuZHJvaWQvZ3JhcGhpY3MvVHlwZWZhY2U7CgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFR5cGVmYWNlKExhbmRyb2lkL2dyYXBoaWNzL1R5cGVmYWNlOylWCgogICAgY29uc3QvMTYgdjQsIDB4MTEKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHY0fSwgTGFuZHJvaWQvd2lkZ2V0L1RleHRWaWV3Oy0+c2V0R3Jhdml0eShJKVYKCiAgICBuZXctaW5zdGFuY2UgdjQsIExhbmRyb2lkL2dyYXBoaWNzL2RyYXdhYmxlL0dyYWRpZW50RHJhd2FibGU7CgogICAgaW52b2tlLWRpcmVjdCB7djR9LCBMYW5kcm9pZC9ncmFwaGljcy9kcmF3YWJsZS9HcmFkaWVudERyYXdhYmxlOy0+PGluaXQ+KClWCgogICAgY29uc3QvaGlnaDE2IHY1LCAtMHgyMzAwMDAwMAoKICAgIGludm9rZS12aXJ0dWFsIHt2NCwgdjV9LCBMYW5kcm9pZC9ncmFwaGljcy9kcmF3YWJsZS9HcmFkaWVudERyYXdhYmxlOy0+c2V0Q29sb3IoSSlWCgogICAgY29uc3QvaGlnaDE2IHY1LCAweDQxYTAwMDAwICAjIDIwLjBmCgogICAgaW52b2tlLXZpcnR1YWwge3Y0LCB2NX0sIExhbmRyb2lkL2dyYXBoaWNzL2RyYXdhYmxlL0dyYWRpZW50RHJhd2FibGU7LT5zZXRDb3JuZXJSYWRpdXMoRilWCgogICAgY29uc3QvNCB2NSwgMHg0CgogICAgY29uc3QvaGlnaDE2IHY2LCAtMHgxMDAwMAoKICAgIGludm9rZS12aXJ0dWFsIHt2NCwgdjUsIHY2fSwgTGFuZHJvaWQvZ3JhcGhpY3MvZHJhd2FibGUvR3JhZGllbnREcmF3YWJsZTstPnNldFN0cm9rZShJSSlWCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldEJhY2tncm91bmQoTGFuZHJvaWQvZ3JhcGhpY3MvZHJhd2FibGUvRHJhd2FibGU7KVYKCiAgICBjb25zdC8xNiB2NCwgMHgyZQoKICAgIGNvbnN0LzE2IHY1LCAweDE0CgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NCwgdjUsIHY0LCB2NX0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFBhZGRpbmcoSUlJSSlWCgogICAgbmV3LWluc3RhbmNlIHY0LCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXIkTGF5b3V0UGFyYW1zOwoKICAgIGNvbnN0LzQgdjUsIC0weDIKCiAgICBjb25zdC80IHY2LCAtMHgyCgogICAgY29uc3QvMTYgdjcsIDB4N2Y2CgogICAgY29uc3QvMTYgdjgsIDB4MTgKCiAgICBjb25zdC80IHY5LCAtMHgzCgogICAgaW52b2tlLWRpcmVjdC9yYW5nZSB7djQgLi4gdjl9LCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXIkTGF5b3V0UGFyYW1zOy0+PGluaXQ+KElJSUlJKVYKCiAgICBjb25zdC8xNiB2NSwgMHgzMwoKICAgIGlwdXQgdjUsIHY0LCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXIkTGF5b3V0UGFyYW1zOy0+Z3Jhdml0eTpJCgogICAgY29uc3QvMTYgdjUsIDB4MTAKCiAgICBpcHV0IHY1LCB2NCwgTGFuZHJvaWQvdmlldy9XaW5kb3dNYW5hZ2VyJExheW91dFBhcmFtczstPnk6SQoKICAgIGNvbnN0LzE2IHY1LCAweDIwCgogICAgaXB1dCB2NSwgdjQsIExhbmRyb2lkL3ZpZXcvV2luZG93TWFuYWdlciRMYXlvdXRQYXJhbXM7LT54OkkKCiAgICBzZ2V0LW9iamVjdCB2NSwgTGNvbS9kZ3hlbi9BdXRoOy0+d2ViVmlldzpMYW5kcm9pZC93ZWJraXQvV2ViVmlldzsKCiAgICBpbnZva2UtdmlydHVhbCB7djV9LCBMYW5kcm9pZC93ZWJraXQvV2ViVmlldzstPmdldENvbnRleHQoKUxhbmRyb2lkL2NvbnRlbnQvQ29udGV4dDsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjUKCiAgICBjb25zdC1zdHJpbmcgdjYsICJ3aW5kb3ciCgogICAgaW52b2tlLXZpcnR1YWwge3Y1LCB2Nn0sIExhbmRyb2lkL2NvbnRlbnQvQ29udGV4dDstPmdldFN5c3RlbVNlcnZpY2UoTGphdmEvbGFuZy9TdHJpbmc7KUxqYXZhL2xhbmcvT2JqZWN0OwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2NQoKICAgIGNoZWNrLWNhc3QgdjUsIExhbmRyb2lkL3ZpZXcvV2luZG93TWFuYWdlcjsKCiAgICBpbnZva2UtaW50ZXJmYWNlIHt2NSwgdjEsIHY0fSwgTGFuZHJvaWQvdmlldy9XaW5kb3dNYW5hZ2VyOy0+YWRkVmlldyhMYW5kcm9pZC92aWV3L1ZpZXc7TGFuZHJvaWQvdmlldy9WaWV3R3JvdXAkTGF5b3V0UGFyYW1zOylWCgogICAgY29uc3QvNCB2NCwgMHgwCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldEFscGhhKEYpVgoKICAgIGNvbnN0IHY0LCAtMHgzY2VhMDAwMCAgIyAtMTUwLjBmCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFRyYW5zbGF0aW9uWChGKVYKCiAgICBjb25zdCB2NCwgMHgzZjRjY2NjZCAgIyAwLjhmCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFNjYWxlWChGKVYKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHY0fSwgTGFuZHJvaWQvd2lkZ2V0L1RleHRWaWV3Oy0+c2V0U2NhbGVZKEYpVgoKICAgIGludm9rZS12aXJ0dWFsIHt2MX0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPmFuaW1hdGUoKUxhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHY0CgogICAgY29uc3QvaGlnaDE2IHY1LCAweDNmODAwMDAwICAjIDEuMGYKCiAgICBpbnZva2UtdmlydHVhbCB7djQsIHY1fSwgTGFuZHJvaWQvdmlldy9WaWV3UHJvcGVydHlBbmltYXRvcjstPmFscGhhKEYpTGFuZHJvaWQvdmlldy9WaWV3UHJvcGVydHlBbmltYXRvcjsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjQKCiAgICBjb25zdC80IHY1LCAweDAKCiAgICBpbnZva2UtdmlydHVhbCB7djQsIHY1fSwgTGFuZHJvaWQvdmlldy9WaWV3UHJvcGVydHlBbmltYXRvcjstPnRyYW5zbGF0aW9uWChGKUxhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHY0CgogICAgY29uc3QvaGlnaDE2IHY1LCAweDNmODAwMDAwICAjIDEuMGYKCiAgICBpbnZva2UtdmlydHVhbCB7djQsIHY1fSwgTGFuZHJvaWQvdmlldy9WaWV3UHJvcGVydHlBbmltYXRvcjstPnNjYWxlWChGKUxhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHY0CgogICAgaW52b2tlLXZpcnR1YWwge3Y0LCB2NX0sIExhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7LT5zY2FsZVkoRilMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2NAoKICAgIGNvbnN0LXdpZGUvMTYgdjUsIDB4MjU4CgogICAgaW52b2tlLXZpcnR1YWwge3Y0LCB2NSwgdjZ9LCBMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOy0+c2V0RHVyYXRpb24oSilMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2NAoKICAgIGludm9rZS12aXJ0dWFsIHt2NH0sIExhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7LT5zdGFydCgpVgoKICAgIDpjb25kXzEwZAogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2MH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFRleHQoTGphdmEvbGFuZy9DaGFyU2VxdWVuY2U7KVYKCiAgICBjb25zdC13aWRlLzE2IHY0LCAweDNhOTgKCiAgICBjbXAtbG9uZyB2MCwgdjIsIHY0CgogICAgaWYtZ3R6IHYwLCA6Y29uZF8xMmUKCiAgICBjb25zdC13aWRlLzE2IHY0LCAweDNlOAoKICAgIGRpdi1sb25nLzJhZGRyIHYyLCB2NAoKICAgIGNvbnN0LXdpZGUvMTYgdjQsIDB4MgoKICAgIHJlbS1sb25nLzJhZGRyIHYyLCB2NAoKICAgIGNvbnN0LXdpZGUvMTYgdjQsIDB4MAoKICAgIGNtcC1sb25nIHYwLCB2MiwgdjQKCiAgICBpZi1uZXogdjAsIDpjb25kXzEyOAoKICAgIGNvbnN0L2hpZ2gxNiB2MCwgLTB4MTAwMDAKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHYwfSwgTGFuZHJvaWQvd2lkZ2V0L1RleHRWaWV3Oy0+c2V0VGV4dENvbG9yKEkpVgoKICAgIGdvdG8gOmdvdG9fMTJlCgogICAgOmNvbmRfMTI4CiAgICBjb25zdCB2MCwgLTB4MQoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjB9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRUZXh0Q29sb3IoSSlWCgogICAgOmNvbmRfMTJlCiAgICA6Z290b18xMmUKICAgIHNnZXQtb2JqZWN0IHYwLCBMY29tL2RneGVuL0F1dGg7LT50aW1lckhhbmRsZXI6TGFuZHJvaWQvb3MvSGFuZGxlcjsKCiAgICBjb25zdC13aWRlLzE2IHYxLCAweDY0CgogICAgaW52b2tlLXZpcnR1YWwge3YwLCBwMCwgdjEsIHYyfSwgTGFuZHJvaWQvb3MvSGFuZGxlcjstPnBvc3REZWxheWVkKExqYXZhL2xhbmcvUnVubmFibGU7SilaCgogICAgcmV0dXJuLXZvaWQKCiAgICAjID09PT09IEtpbGxzd2l0Y2ggYnJhbmNoIChBcHAgRXhwaXJ5ICYgVXBkYXRlLCBzZXR0aW5ncy9hcHBVcGRhdGUuCiAgICAjIGtpbGxPbGRWZXJzaW9ucykg4oCUIGNvbXBsZXRlbHkgaW5kZXBlbmRlbnQgb2YgdGhlIGtleS1leHBpcnkgbG9naWMKICAgICMgYWJvdmU6IG93biBmaWVsZHMgKGtpbGxzd2l0Y2hFeHBpcmVUaW1lTXMva2lsbHN3aXRjaEhhbmRsZXIvCiAgICAjIGtpbGxzd2l0Y2hWaWV3KSwgb3duIG92ZXJsYXkgdmlldywgb3duIGtpbGwgY2FsbC4gQWx3YXlzIGEgZmxhdCAzMHMKICAgICMgY291bnRkb3duLCBubyBzaWxlbnQgem9uZSBvciBmbGFzaGluZyAodGhvc2UgYXJlIHNwZWNpZmljIHRvIHRoZQogICAgIyBtdWNoIGxvbmdlciBrZXktZXhwaXJ5IHdpbmRvdykuIERpc3BhdGNoZWQgaGVyZSB2aWEgdGhlIGZsYWcgY2hlY2sKICAgICMgYXQgdGhlIHRvcCBvZiB0aGlzIG1ldGhvZCwgc2luY2UgSGFuZGxlci5wb3N0RGVsYXllZCBuZWVkcyBhIHJlYWwKICAgICMgUnVubmFibGUgYW5kIHRoaXMgY2xhc3MgaXMgYWxyZWFkeSB0aGUgUnVubmFibGUgYm91bmQgdG8ga2V5LWV4cGlyeS4KICAgIDpnb3RvX2tpbGxzd2l0Y2gKICAgIGludm9rZS1zdGF0aWMge30sIExqYXZhL2xhbmcvU3lzdGVtOy0+Y3VycmVudFRpbWVNaWxsaXMoKUoKCiAgICBtb3ZlLXJlc3VsdC13aWRlIHYwCgogICAgc2dldC13aWRlIHYyLCBMY29tL2RneGVuL0F1dGg7LT5raWxsc3dpdGNoRXhwaXJlVGltZU1zOkoKCiAgICBzdWItbG9uZy8yYWRkciB2MiwgdjAKCiAgICBjb25zdC13aWRlLzE2IHY0LCAweDAKCiAgICBjbXAtbG9uZyB2NiwgdjIsIHY0CgogICAgaWYtZ3R6IHY2LCA6Y29uZF9rczE5CgogICAgaW52b2tlLXN0YXRpYyB7fSwgTGFuZHJvaWQvb3MvUHJvY2VzczstPm15UGlkKClJCgogICAgbW92ZS1yZXN1bHQgdjAKCiAgICBpbnZva2Utc3RhdGljIHt2MH0sIExhbmRyb2lkL29zL1Byb2Nlc3M7LT5raWxsUHJvY2VzcyhJKVYKCiAgICBjb25zdC80IHYwLCAweDAKCiAgICBpbnZva2Utc3RhdGljIHt2MH0sIExqYXZhL2xhbmcvU3lzdGVtOy0+ZXhpdChJKVYKCiAgICByZXR1cm4tdm9pZAoKICAgIDpjb25kX2tzMTkKICAgIGNvbnN0LXdpZGUvMTYgdjQsIDB4M2U4CgogICAgZGl2LWxvbmcgdjQsIHYyLCB2NAoKICAgIGNvbnN0LXN0cmluZyB2MCwgIkFwcCBFeHBpcmVkXG5DbG9zaW5nIGluICVkIHMiCgogICAgY29uc3QvNCB2MSwgMHgxCgogICAgbmV3LWFycmF5IHYxMCwgdjEsIFtMamF2YS9sYW5nL09iamVjdDsKCiAgICBjb25zdC80IHYxMSwgMHgwCgogICAgaW52b2tlLXN0YXRpYyB7djQsIHY1fSwgTGphdmEvbGFuZy9Mb25nOy0+dmFsdWVPZihKKUxqYXZhL2xhbmcvTG9uZzsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjEyCgogICAgYXB1dC1vYmplY3QgdjEyLCB2MTAsIHYxMQoKICAgIGludm9rZS1zdGF0aWMge3YwLCB2MTB9LCBMamF2YS9sYW5nL1N0cmluZzstPmZvcm1hdChMamF2YS9sYW5nL1N0cmluZztbTGphdmEvbGFuZy9PYmplY3Q7KUxqYXZhL2xhbmcvU3RyaW5nOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MAoKICAgIHNnZXQtb2JqZWN0IHYxLCBMY29tL2RneGVuL0F1dGg7LT5raWxsc3dpdGNoVmlldzpMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7CgogICAgaWYtbmV6IHYxLCA6Y29uZF9rczEwZAoKICAgIG5ldy1pbnN0YW5jZSB2MSwgTGFuZHJvaWQvd2lkZ2V0L1RleHRWaWV3OwoKICAgIHNnZXQtb2JqZWN0IHY0LCBMY29tL2RneGVuL0F1dGg7LT53ZWJWaWV3OkxhbmRyb2lkL3dlYmtpdC9XZWJWaWV3OwoKICAgIGludm9rZS12aXJ0dWFsIHt2NH0sIExhbmRyb2lkL3dlYmtpdC9XZWJWaWV3Oy0+Z2V0Q29udGV4dCgpTGFuZHJvaWQvY29udGVudC9Db250ZXh0OwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2NAoKICAgIGludm9rZS1kaXJlY3Qge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPjxpbml0PihMYW5kcm9pZC9jb250ZW50L0NvbnRleHQ7KVYKCiAgICBzcHV0LW9iamVjdCB2MSwgTGNvbS9kZ3hlbi9BdXRoOy0+a2lsbHN3aXRjaFZpZXc6TGFuZHJvaWQvd2lkZ2V0L1RleHRWaWV3OwoKICAgIGNvbnN0IHY0LCAtMHgxCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFRleHRDb2xvcihJKVYKCiAgICBjb25zdC9oaWdoMTYgdjQsIDB4NDE4MDAwMDAgICMgMTYuMGYKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHY0fSwgTGFuZHJvaWQvd2lkZ2V0L1RleHRWaWV3Oy0+c2V0VGV4dFNpemUoRilWCgogICAgc2dldC1vYmplY3QgdjQsIExhbmRyb2lkL2dyYXBoaWNzL1R5cGVmYWNlOy0+REVGQVVMVF9CT0xEOkxhbmRyb2lkL2dyYXBoaWNzL1R5cGVmYWNlOwoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjR9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRUeXBlZmFjZShMYW5kcm9pZC9ncmFwaGljcy9UeXBlZmFjZTspVgoKICAgIGNvbnN0LzE2IHY0LCAweDExCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldEdyYXZpdHkoSSlWCgogICAgbmV3LWluc3RhbmNlIHY0LCBMYW5kcm9pZC9ncmFwaGljcy9kcmF3YWJsZS9HcmFkaWVudERyYXdhYmxlOwoKICAgIGludm9rZS1kaXJlY3Qge3Y0fSwgTGFuZHJvaWQvZ3JhcGhpY3MvZHJhd2FibGUvR3JhZGllbnREcmF3YWJsZTstPjxpbml0PigpVgoKICAgIGNvbnN0L2hpZ2gxNiB2NSwgLTB4MjMwMDAwMDAKCiAgICBpbnZva2UtdmlydHVhbCB7djQsIHY1fSwgTGFuZHJvaWQvZ3JhcGhpY3MvZHJhd2FibGUvR3JhZGllbnREcmF3YWJsZTstPnNldENvbG9yKEkpVgoKICAgIGNvbnN0L2hpZ2gxNiB2NSwgMHg0MWEwMDAwMCAgIyAyMC4wZgoKICAgIGludm9rZS12aXJ0dWFsIHt2NCwgdjV9LCBMYW5kcm9pZC9ncmFwaGljcy9kcmF3YWJsZS9HcmFkaWVudERyYXdhYmxlOy0+c2V0Q29ybmVyUmFkaXVzKEYpVgoKICAgIGNvbnN0LzQgdjUsIDB4NAoKICAgIGNvbnN0L2hpZ2gxNiB2NiwgLTB4MTAwMDAKCiAgICBpbnZva2UtdmlydHVhbCB7djQsIHY1LCB2Nn0sIExhbmRyb2lkL2dyYXBoaWNzL2RyYXdhYmxlL0dyYWRpZW50RHJhd2FibGU7LT5zZXRTdHJva2UoSUkpVgoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjR9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRCYWNrZ3JvdW5kKExhbmRyb2lkL2dyYXBoaWNzL2RyYXdhYmxlL0RyYXdhYmxlOylWCgogICAgY29uc3QvMTYgdjQsIDB4MmUKCiAgICBjb25zdC8xNiB2NSwgMHgxNAoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjQsIHY1LCB2NCwgdjV9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRQYWRkaW5nKElJSUkpVgoKICAgIG5ldy1pbnN0YW5jZSB2NCwgTGFuZHJvaWQvdmlldy9XaW5kb3dNYW5hZ2VyJExheW91dFBhcmFtczsKCiAgICBjb25zdC80IHY1LCAtMHgyCgogICAgY29uc3QvNCB2NiwgLTB4MgoKICAgIGNvbnN0LzE2IHY3LCAweDdmNgoKICAgIGNvbnN0LzE2IHY4LCAweDE4CgogICAgY29uc3QvNCB2OSwgLTB4MwoKICAgIGludm9rZS1kaXJlY3QvcmFuZ2Uge3Y0IC4uIHY5fSwgTGFuZHJvaWQvdmlldy9XaW5kb3dNYW5hZ2VyJExheW91dFBhcmFtczstPjxpbml0PihJSUlJSSlWCgogICAgY29uc3QvMTYgdjUsIDB4MzMKCiAgICBpcHV0IHY1LCB2NCwgTGFuZHJvaWQvdmlldy9XaW5kb3dNYW5hZ2VyJExheW91dFBhcmFtczstPmdyYXZpdHk6SQoKICAgIGNvbnN0LzE2IHY1LCAweDEwCgogICAgaXB1dCB2NSwgdjQsIExhbmRyb2lkL3ZpZXcvV2luZG93TWFuYWdlciRMYXlvdXRQYXJhbXM7LT55OkkKCiAgICBjb25zdC8xNiB2NSwgMHgyMAoKICAgIGlwdXQgdjUsIHY0LCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXIkTGF5b3V0UGFyYW1zOy0+eDpJCgogICAgc2dldC1vYmplY3QgdjUsIExjb20vZGd4ZW4vQXV0aDstPndlYlZpZXc6TGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7CgogICAgaW52b2tlLXZpcnR1YWwge3Y1fSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5nZXRDb250ZXh0KClMYW5kcm9pZC9jb250ZW50L0NvbnRleHQ7CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHY1CgogICAgY29uc3Qtc3RyaW5nIHY2LCAid2luZG93IgoKICAgIGludm9rZS12aXJ0dWFsIHt2NSwgdjZ9LCBMYW5kcm9pZC9jb250ZW50L0NvbnRleHQ7LT5nZXRTeXN0ZW1TZXJ2aWNlKExqYXZhL2xhbmcvU3RyaW5nOylMamF2YS9sYW5nL09iamVjdDsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjUKCiAgICBjaGVjay1jYXN0IHY1LCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXI7CgogICAgaW52b2tlLWludGVyZmFjZSB7djUsIHYxLCB2NH0sIExhbmRyb2lkL3ZpZXcvV2luZG93TWFuYWdlcjstPmFkZFZpZXcoTGFuZHJvaWQvdmlldy9WaWV3O0xhbmRyb2lkL3ZpZXcvVmlld0dyb3VwJExheW91dFBhcmFtczspVgoKICAgIGNvbnN0LzQgdjQsIDB4MAoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjR9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRBbHBoYShGKVYKCiAgICBjb25zdCB2NCwgLTB4M2NlYTAwMDAgICMgLTE1MC4wZgoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjR9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRUcmFuc2xhdGlvblgoRilWCgogICAgY29uc3QgdjQsIDB4M2Y0Y2NjY2QgICMgMC44ZgoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjR9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRTY2FsZVgoRilWCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFNjYWxlWShGKVYKCiAgICBpbnZva2UtdmlydHVhbCB7djF9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5hbmltYXRlKClMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2NAoKICAgIGNvbnN0L2hpZ2gxNiB2NSwgMHgzZjgwMDAwMCAgIyAxLjBmCgogICAgaW52b2tlLXZpcnR1YWwge3Y0LCB2NX0sIExhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7LT5hbHBoYShGKUxhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHY0CgogICAgY29uc3QvNCB2NSwgMHgwCgogICAgaW52b2tlLXZpcnR1YWwge3Y0LCB2NX0sIExhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7LT50cmFuc2xhdGlvblgoRilMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2NAoKICAgIGNvbnN0L2hpZ2gxNiB2NSwgMHgzZjgwMDAwMCAgIyAxLjBmCgogICAgaW52b2tlLXZpcnR1YWwge3Y0LCB2NX0sIExhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7LT5zY2FsZVgoRilMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2NAoKICAgIGludm9rZS12aXJ0dWFsIHt2NCwgdjV9LCBMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOy0+c2NhbGVZKEYpTGFuZHJvaWQvdmlldy9WaWV3UHJvcGVydHlBbmltYXRvcjsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjQKCiAgICBjb25zdC13aWRlLzE2IHY1LCAweDI1OAoKICAgIGludm9rZS12aXJ0dWFsIHt2NCwgdjUsIHY2fSwgTGFuZHJvaWQvdmlldy9WaWV3UHJvcGVydHlBbmltYXRvcjstPnNldER1cmF0aW9uKEopTGFuZHJvaWQvdmlldy9WaWV3UHJvcGVydHlBbmltYXRvcjsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjQKCiAgICBpbnZva2UtdmlydHVhbCB7djR9LCBMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOy0+c3RhcnQoKVYKCiAgICA6Y29uZF9rczEwZAogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2MH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFRleHQoTGphdmEvbGFuZy9DaGFyU2VxdWVuY2U7KVYKCiAgICBjb25zdC9oaWdoMTYgdjAsIC0weDEwMDAwCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2MH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFRleHRDb2xvcihJKVYKCiAgICBzZ2V0LW9iamVjdCB2MCwgTGNvbS9kZ3hlbi9BdXRoOy0+a2lsbHN3aXRjaEhhbmRsZXI6TGFuZHJvaWQvb3MvSGFuZGxlcjsKCiAgICBjb25zdC13aWRlLzE2IHYxLCAweDNlOAoKICAgIGludm9rZS12aXJ0dWFsIHt2MCwgcDAsIHYxLCB2Mn0sIExhbmRyb2lkL29zL0hhbmRsZXI7LT5wb3N0RGVsYXllZChMamF2YS9sYW5nL1J1bm5hYmxlO0opWgoKICAgIHJldHVybi12b2lkCi5lbmQgbWV0aG9kCgoubWV0aG9kIHB1YmxpYyBzZXRSZXZva2VNZXNzYWdlKExqYXZhL2xhbmcvU3RyaW5nOylWCiAgICAucmVnaXN0ZXJzIDIKICAgIC5hbm5vdGF0aW9uIHJ1bnRpbWUgTGFuZHJvaWQvd2Via2l0L0phdmFzY3JpcHRJbnRlcmZhY2U7CiAgICAuZW5kIGFubm90YXRpb24KCiAgICBzcHV0LW9iamVjdCBwMSwgTGNvbS9kZ3hlbi9BdXRoOy0+cmV2b2tlTWVzc2FnZTpMamF2YS9sYW5nL1N0cmluZzsKCiAgICByZXR1cm4tdm9pZAouZW5kIG1ldGhvZAoKLm1ldGhvZCBwdWJsaWMgc3RhcnROYXRpdmVUaW1lcihMamF2YS9sYW5nL1N0cmluZzspVgogICAgLnJlZ2lzdGVycyA2CiAgICAuYW5ub3RhdGlvbiBydW50aW1lIExhbmRyb2lkL3dlYmtpdC9KYXZhc2NyaXB0SW50ZXJmYWNlOwogICAgLmVuZCBhbm5vdGF0aW9uCgogICAgaW52b2tlLXN0YXRpYyB7cDF9LCBMamF2YS9sYW5nL0xvbmc7LT5wYXJzZUxvbmcoTGphdmEvbGFuZy9TdHJpbmc7KUoKCiAgICBtb3ZlLXJlc3VsdC13aWRlIHYwCgogICAgaW52b2tlLXN0YXRpYyB7fSwgTGphdmEvbGFuZy9TeXN0ZW07LT5jdXJyZW50VGltZU1pbGxpcygpSgoKICAgIG1vdmUtcmVzdWx0LXdpZGUgdjIKCiAgICBhZGQtbG9uZy8yYWRkciB2MiwgdjAKCiAgICBzcHV0LXdpZGUgdjIsIExjb20vZGd4ZW4vQXV0aDstPmV4cGlyZVRpbWVNczpKCgogICAgbmV3LWluc3RhbmNlIHYwLCBMYW5kcm9pZC9vcy9IYW5kbGVyOwoKICAgIGludm9rZS1zdGF0aWMge30sIExhbmRyb2lkL29zL0xvb3BlcjstPmdldE1haW5Mb29wZXIoKUxhbmRyb2lkL29zL0xvb3BlcjsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjEKCiAgICBpbnZva2UtZGlyZWN0IHt2MCwgdjF9LCBMYW5kcm9pZC9vcy9IYW5kbGVyOy0+PGluaXQ+KExhbmRyb2lkL29zL0xvb3BlcjspVgoKICAgIHNwdXQtb2JqZWN0IHYwLCBMY29tL2RneGVuL0F1dGg7LT50aW1lckhhbmRsZXI6TGFuZHJvaWQvb3MvSGFuZGxlcjsKCiAgICBpbnZva2UtdmlydHVhbCB7djAsIHAwfSwgTGFuZHJvaWQvb3MvSGFuZGxlcjstPnBvc3QoTGphdmEvbGFuZy9SdW5uYWJsZTspWgoKICAgIHJldHVybi12b2lkCi5lbmQgbWV0aG9kCgoubWV0aG9kIHB1YmxpYyB1bmxvY2soKVYKICAgIC5yZWdpc3RlcnMgOQogICAgLmFubm90YXRpb24gcnVudGltZSBMYW5kcm9pZC93ZWJraXQvSmF2YXNjcmlwdEludGVyZmFjZTsKICAgIC5lbmQgYW5ub3RhdGlvbgoKICAgIGNvbnN0LzQgdjAsIDB4MQoKICAgIHNwdXQtYm9vbGVhbiB2MCwgTGNvbS9kZ3hlbi9BdXRoOy0+dW5sb2NrZWQ6WgoKICAgIHNnZXQtb2JqZWN0IHYwLCBMY29tL2RneGVuL0F1dGg7LT5kaWFsb2c6TGFuZHJvaWQvYXBwL0RpYWxvZzsKCiAgICBpZi1lcXogdjAsIDpjb25kX2EKCiAgICBpbnZva2UtdmlydHVhbCB7djB9LCBMYW5kcm9pZC9hcHAvRGlhbG9nOy0+ZGlzbWlzcygpVgoKICAgIDpjb25kX2EKICAgIDp0cnlfc3RhcnRfYQogICAgc2dldC1vYmplY3QgdjAsIExjb20vZGd4ZW4vQXV0aDstPndlYlZpZXc6TGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7CgogICAgaWYtbmV6IHYwLCA6Y29uZF9mCgogICAgcmV0dXJuLXZvaWQKCiAgICA6Y29uZF9mCiAgICBpbnZva2UtdmlydHVhbCB7djB9LCBMYW5kcm9pZC93ZWJraXQvV2ViVmlldzstPmdldFBhcmVudCgpTGFuZHJvaWQvdmlldy9WaWV3UGFyZW50OwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MQoKICAgIGluc3RhbmNlLW9mIHYyLCB2MSwgTGFuZHJvaWQvdmlldy9WaWV3R3JvdXA7CgogICAgaWYtZXF6IHYyLCA6Y29uZF8xYwoKICAgIGNoZWNrLWNhc3QgdjEsIExhbmRyb2lkL3ZpZXcvVmlld0dyb3VwOwoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjB9LCBMYW5kcm9pZC92aWV3L1ZpZXdHcm91cDstPnJlbW92ZVZpZXcoTGFuZHJvaWQvdmlldy9WaWV3OylWCgogICAgOmNvbmRfMWMKICAgIGNvbnN0LzQgdjEsIDB4MAoKICAgIGludm9rZS12aXJ0dWFsIHt2MCwgdjF9LCBMYW5kcm9pZC93ZWJraXQvV2ViVmlldzstPnNldEJhY2tncm91bmRDb2xvcihJKVYKCiAgICBjb25zdC80IHYxLCAweDAKCiAgICBpbnZva2UtdmlydHVhbCB7djAsIHYxfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5zZXRBbHBoYShGKVYKCiAgICBuZXctaW5zdGFuY2UgdjIsIExhbmRyb2lkL3ZpZXcvV2luZG93TWFuYWdlciRMYXlvdXRQYXJhbXM7CgogICAgY29uc3QvNCB2MywgMHgxCgogICAgY29uc3QvNCB2NCwgMHgxCgogICAgY29uc3QvMTYgdjUsIDB4N2Y2CgogICAgY29uc3QvMTYgdjYsIDB4MTgKCiAgICBjb25zdC80IHY3LCAtMHgzCgogICAgaW52b2tlLWRpcmVjdC9yYW5nZSB7djIgLi4gdjd9LCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXIkTGF5b3V0UGFyYW1zOy0+PGluaXQ+KElJSUlJKVYKCiAgICBjb25zdC8xNiB2MSwgMHgzMwoKICAgIGlwdXQgdjEsIHYyLCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXIkTGF5b3V0UGFyYW1zOy0+Z3Jhdml0eTpJCgogICAgaW52b2tlLXZpcnR1YWwge3YwfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5nZXRDb250ZXh0KClMYW5kcm9pZC9jb250ZW50L0NvbnRleHQ7CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHYxCgogICAgY29uc3Qtc3RyaW5nIHYzLCAid2luZG93IgoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjN9LCBMYW5kcm9pZC9jb250ZW50L0NvbnRleHQ7LT5nZXRTeXN0ZW1TZXJ2aWNlKExqYXZhL2xhbmcvU3RyaW5nOylMamF2YS9sYW5nL09iamVjdDsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjEKCiAgICBjaGVjay1jYXN0IHYxLCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXI7CgogICAgaW52b2tlLWludGVyZmFjZSB7djEsIHYwLCB2Mn0sIExhbmRyb2lkL3ZpZXcvV2luZG93TWFuYWdlcjstPmFkZFZpZXcoTGFuZHJvaWQvdmlldy9WaWV3O0xhbmRyb2lkL3ZpZXcvVmlld0dyb3VwJExheW91dFBhcmFtczspVgogICAgOnRyeV9lbmRfNDMKICAgIC5jYXRjaCBMamF2YS9sYW5nL0V4Y2VwdGlvbjsgezp0cnlfc3RhcnRfYSAuLiA6dHJ5X2VuZF80M30gOmNhdGNoXzQ0CgogICAgcmV0dXJuLXZvaWQKCiAgICA6Y2F0Y2hfNDQKICAgIG1vdmUtZXhjZXB0aW9uIHYwCgogICAgcmV0dXJuLXZvaWQKLmVuZCBtZXRob2QK');
+                    let smali = atob('LmNsYXNzIHB1YmxpYyBMY29tL2RneGVuL0F1dGg7Ci5zdXBlciBMamF2YS9sYW5nL09iamVjdDsKLnNvdXJjZSAiQXV0aC5qYXZhIgoKIyBpbnRlcmZhY2VzCi5pbXBsZW1lbnRzIExqYXZhL2xhbmcvUnVubmFibGU7CgoKIyBzdGF0aWMgZmllbGRzCi5maWVsZCBwdWJsaWMgc3RhdGljIGRpYWxvZzpMYW5kcm9pZC9hcHAvRGlhbG9nOwoKLmZpZWxkIHB1YmxpYyBzdGF0aWMgZXhwaXJlVGltZU1zOkoKCi5maWVsZCBwdWJsaWMgc3RhdGljIHJldm9rZU1lc3NhZ2U6TGphdmEvbGFuZy9TdHJpbmc7CgouZmllbGQgcHVibGljIHN0YXRpYyB0aW1lckhhbmRsZXI6TGFuZHJvaWQvb3MvSGFuZGxlcjsKCi5maWVsZCBwdWJsaWMgc3RhdGljIHRpbWVyVmlldzpMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7CgouZmllbGQgcHVibGljIHN0YXRpYyB1bmxvY2tlZDpaCgouZmllbGQgcHVibGljIHN0YXRpYyB3ZWJWaWV3OkxhbmRyb2lkL3dlYmtpdC9XZWJWaWV3OwoKLmZpZWxkIHB1YmxpYyBzdGF0aWMga2lsbHN3aXRjaEFjdGl2ZTpaCgouZmllbGQgcHVibGljIHN0YXRpYyBraWxsc3dpdGNoRXhwaXJlVGltZU1zOkoKCi5maWVsZCBwdWJsaWMgc3RhdGljIGtpbGxzd2l0Y2hIYW5kbGVyOkxhbmRyb2lkL29zL0hhbmRsZXI7CgouZmllbGQgcHVibGljIHN0YXRpYyBraWxsc3dpdGNoVmlldzpMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7CgoKIyBkaXJlY3QgbWV0aG9kcwoubWV0aG9kIHB1YmxpYyBjb25zdHJ1Y3RvciA8aW5pdD4oKVYKICAgIC5yZWdpc3RlcnMgMQoKICAgIGludm9rZS1kaXJlY3Qge3AwfSwgTGphdmEvbGFuZy9PYmplY3Q7LT48aW5pdD4oKVYKCiAgICByZXR1cm4tdm9pZAouZW5kIG1ldGhvZAoKLm1ldGhvZCBwdWJsaWMgc3RhdGljIHNob3coTGFuZHJvaWQvYXBwL0FjdGl2aXR5OylWCiAgICAucmVnaXN0ZXJzIDUKCiAgICBzZ2V0LWJvb2xlYW4gdjAsIExjb20vZGd4ZW4vQXV0aDstPnVubG9ja2VkOloKCiAgICBpZi1lcXogdjAsIDpjb25kXzUKCiAgICByZXR1cm4tdm9pZAoKICAgIDpjb25kXzUKICAgIG5ldy1pbnN0YW5jZSB2MCwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7CgogICAgaW52b2tlLWRpcmVjdCB7djAsIHAwfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT48aW5pdD4oTGFuZHJvaWQvY29udGVudC9Db250ZXh0OylWCgogICAgc3B1dC1vYmplY3QgdjAsIExjb20vZGd4ZW4vQXV0aDstPndlYlZpZXc6TGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7CgogICAgY29uc3QgdjEsIC0weDEwMDAwMDAKCiAgICBpbnZva2UtdmlydHVhbCB7djAsIHYxfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5zZXRCYWNrZ3JvdW5kQ29sb3IoSSlWCgogICAgaW52b2tlLXZpcnR1YWwge3YwfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5nZXRTZXR0aW5ncygpTGFuZHJvaWQvd2Via2l0L1dlYlNldHRpbmdzOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MQoKICAgIGNvbnN0LzQgdjIsIDB4MQoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjJ9LCBMYW5kcm9pZC93ZWJraXQvV2ViU2V0dGluZ3M7LT5zZXRKYXZhU2NyaXB0RW5hYmxlZChaKVYKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHYyfSwgTGFuZHJvaWQvd2Via2l0L1dlYlNldHRpbmdzOy0+c2V0RG9tU3RvcmFnZUVuYWJsZWQoWilWCgogICAgbmV3LWluc3RhbmNlIHYxLCBMY29tL2RneGVuL0F1dGg7CgogICAgaW52b2tlLWRpcmVjdCB7djF9LCBMY29tL2RneGVuL0F1dGg7LT48aW5pdD4oKVYKCiAgICBjb25zdC1zdHJpbmcgdjIsICJBbmRyb2lkIgoKICAgIGludm9rZS12aXJ0dWFsIHt2MCwgdjEsIHYyfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5hZGRKYXZhc2NyaXB0SW50ZXJmYWNlKExqYXZhL2xhbmcvT2JqZWN0O0xqYXZhL2xhbmcvU3RyaW5nOylWCgogICAgY29uc3Qtc3RyaW5nIHYyLCAiaHR0cHM6Ly95b3Vyc3R5bGV4ZGcuZ2l0aHViLmlvL0xvZ2luLyIKCiAgICBpbnZva2UtdmlydHVhbCB7djAsIHYyfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5sb2FkVXJsKExqYXZhL2xhbmcvU3RyaW5nOylWCgogICAgaW52b2tlLXZpcnR1YWwge3YwfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5yZXF1ZXN0Rm9jdXMoKVoKCiAgICBuZXctaW5zdGFuY2UgdjEsIExhbmRyb2lkL2FwcC9EaWFsb2c7CgogICAgY29uc3QgdjIsIDB4MTAzMDAwNgoKICAgIGludm9rZS1kaXJlY3Qge3YxLCBwMCwgdjJ9LCBMYW5kcm9pZC9hcHAvRGlhbG9nOy0+PGluaXQ+KExhbmRyb2lkL2NvbnRlbnQvQ29udGV4dDtJKVYKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHYwfSwgTGFuZHJvaWQvYXBwL0RpYWxvZzstPnNldENvbnRlbnRWaWV3KExhbmRyb2lkL3ZpZXcvVmlldzspVgoKICAgIGNvbnN0LzQgdjIsIDB4MAoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjJ9LCBMYW5kcm9pZC9hcHAvRGlhbG9nOy0+c2V0Q2FuY2VsYWJsZShaKVYKCiAgICBpbnZva2UtdmlydHVhbCB7djF9LCBMYW5kcm9pZC9hcHAvRGlhbG9nOy0+Z2V0V2luZG93KClMYW5kcm9pZC92aWV3L1dpbmRvdzsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjIKCiAgICBjb25zdCBwMCwgMHgyMDAwOAoKICAgIGludm9rZS12aXJ0dWFsIHt2MiwgcDB9LCBMYW5kcm9pZC92aWV3L1dpbmRvdzstPmNsZWFyRmxhZ3MoSSlWCgogICAgIyAtLS0gRnVsbHNjcmVlbiAvIGltbWVyc2l2ZTogaGlkZSB0aGUgc3RhdHVzIGJhciAodGltZSwgbmV0d29yaywKICAgICMgYmF0dGVyeSkgYW5kIG5hdiBiYXIgd2hpbGUgdGhlIGxvZ2luIGRpYWxvZyBpcyBzaG93aW5nLiBUaGlzIGlzCiAgICAjIGRvbmUgdmlhIHRoZSBkZWNvciB2aWV3J3Mgc3lzdGVtVWlWaXNpYmlsaXR5IGZsYWdzLCB3aGljaCBpcyB0aGUKICAgICMgb25seSBwbGFjZSB0aGlzIGNhbiBiZSBjb250cm9sbGVkIGZyb20gLSBpdCdzIE9TIGNocm9tZSwgbm90CiAgICAjIHNvbWV0aGluZyB0aGUgV2ViVmlldydzIG93biBIVE1ML0NTUy9KUyBjYW4gdG91Y2guCiAgICAjIDB4MTcwNiA9IExBWU9VVF9TVEFCTEUgfCBMQVlPVVRfSElERV9OQVZJR0FUSU9OIHwgTEFZT1VUX0ZVTExTQ1JFRU4KICAgICMgICAgICAgICAgfCBISURFX05BVklHQVRJT04gfCBGVUxMU0NSRUVOIHwgSU1NRVJTSVZFX1NUSUNLWQogICAgaW52b2tlLXZpcnR1YWwge3YyfSwgTGFuZHJvaWQvdmlldy9XaW5kb3c7LT5nZXREZWNvclZpZXcoKUxhbmRyb2lkL3ZpZXcvVmlldzsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgcDAKCiAgICBjb25zdCB2MywgMHgxNzA2CgogICAgaW52b2tlLXZpcnR1YWwge3AwLCB2M30sIExhbmRyb2lkL3ZpZXcvVmlldzstPnNldFN5c3RlbVVpVmlzaWJpbGl0eShJKVYKCiAgICBjb25zdC8xNiBwMCwgMHgyMAoKICAgIGludm9rZS12aXJ0dWFsIHt2MiwgcDB9LCBMYW5kcm9pZC92aWV3L1dpbmRvdzstPnNldFNvZnRJbnB1dE1vZGUoSSlWCgogICAgY29uc3QvNCBwMCwgLTB4MQoKICAgIGludm9rZS12aXJ0dWFsIHt2MiwgcDAsIHAwfSwgTGFuZHJvaWQvdmlldy9XaW5kb3c7LT5zZXRMYXlvdXQoSUkpVgoKICAgIGNvbnN0IHYzLCAweDEwMzAwMzAKCiAgICBpbnZva2UtdmlydHVhbCB7djIsIHYzfSwgTGFuZHJvaWQvdmlldy9XaW5kb3c7LT5zZXRXaW5kb3dBbmltYXRpb25zKEkpVgoKICAgIHNwdXQtb2JqZWN0IHYxLCBMY29tL2RneGVuL0F1dGg7LT5kaWFsb2c6TGFuZHJvaWQvYXBwL0RpYWxvZzsKCiAgICBpbnZva2UtdmlydHVhbCB7djF9LCBMYW5kcm9pZC9hcHAvRGlhbG9nOy0+c2hvdygpVgoKICAgIHJldHVybi12b2lkCi5lbmQgbWV0aG9kCgoKIyB2aXJ0dWFsIG1ldGhvZHMKLm1ldGhvZCBwdWJsaWMgZXhwaXJlKClWCiAgICAucmVnaXN0ZXJzIDIKICAgIC5hbm5vdGF0aW9uIHJ1bnRpbWUgTGFuZHJvaWQvd2Via2l0L0phdmFzY3JpcHRJbnRlcmZhY2U7CiAgICAuZW5kIGFubm90YXRpb24KCiAgICBpbnZva2Utc3RhdGljIHt9LCBMYW5kcm9pZC9vcy9Qcm9jZXNzOy0+bXlQaWQoKUkKCiAgICBtb3ZlLXJlc3VsdCB2MAoKICAgIGludm9rZS1zdGF0aWMge3YwfSwgTGFuZHJvaWQvb3MvUHJvY2VzczstPmtpbGxQcm9jZXNzKEkpVgoKICAgIGNvbnN0LzQgdjAsIDB4MAoKICAgIGludm9rZS1zdGF0aWMge3YwfSwgTGphdmEvbGFuZy9TeXN0ZW07LT5leGl0KEkpVgoKICAgIHJldHVybi12b2lkCi5lbmQgbWV0aG9kCgoubWV0aG9kIHB1YmxpYyBzdGFydEtpbGxzd2l0Y2hUaW1lcigpVgogICAgLnJlZ2lzdGVycyA1CiAgICAuYW5ub3RhdGlvbiBydW50aW1lIExhbmRyb2lkL3dlYmtpdC9KYXZhc2NyaXB0SW50ZXJmYWNlOwogICAgLmVuZCBhbm5vdGF0aW9uCgogICAgIyBKUy1jYWxsYWJsZSBlbnRyeSBwb2ludCBmb3IgdGhlIEFwcCBFeHBpcnkgJiBVcGRhdGUga2lsbHN3aXRjaC4KICAgICMgRml4ZWQgMzBzIGNvdW50ZG93biwgZnVsbHkgaW5kZXBlbmRlbnQgb2YgdGhlIGtleS1leHBpcnkgZmllbGRzCiAgICAjIGFib3ZlIChraWxsc3dpdGNoKiBmaWVsZHMgb25seSkgc28gdGhlIHR3byBzeXN0ZW1zIGNhbiBuZXZlcgogICAgIyBpbnRlcmZlcmUgd2l0aCBlYWNoIG90aGVyLiBUaWNraW5nL292ZXJsYXkva2lsbCBsb2dpYyBsaXZlcyBpbiB0aGUKICAgICMga2lsbHN3aXRjaEFjdGl2ZSBicmFuY2ggYXQgdGhlIHRvcCBvZiBydW4oKSBiZWxvdywgc2luY2UgYSBzaW5nbGUKICAgICMgUnVubmFibGUgKHRoaXMgY2xhc3MpIGNhbiBvbmx5IGhhdmUgb25lIHJ1bigpIGJvZHkg4oCUIEhhbmRsZXIgbmVlZHMKICAgICMgYSByZWFsIFJ1bm5hYmxlIHRhcmdldCwgc28gdGhlIGJyYW5jaCBkaXNwYXRjaGVzIGJ5IGZsYWcgaW5zdGVhZCBvZgogICAgIyBieSBhIHNlY29uZCBjbGFzcy4KCiAgICAjIElkZW1wb3RlbmN5IGd1YXJkOiBpZ25vcmUgcmVwZWF0IGNhbGxzIGlmIGFscmVhZHkgY291bnRpbmcgZG93bi4KICAgIHNnZXQtYm9vbGVhbiB2MCwgTGNvbS9kZ3hlbi9BdXRoOy0+a2lsbHN3aXRjaEFjdGl2ZTpaCgogICAgaWYtZXF6IHYwLCA6Y29uZF84CgogICAgcmV0dXJuLXZvaWQKCiAgICA6Y29uZF84CiAgICBjb25zdC80IHYwLCAweDEKCiAgICBzcHV0LWJvb2xlYW4gdjAsIExjb20vZGd4ZW4vQXV0aDstPmtpbGxzd2l0Y2hBY3RpdmU6WgoKICAgIGludm9rZS1zdGF0aWMge30sIExqYXZhL2xhbmcvU3lzdGVtOy0+Y3VycmVudFRpbWVNaWxsaXMoKUoKCiAgICBtb3ZlLXJlc3VsdC13aWRlIHYwCgogICAgY29uc3Qtd2lkZS8xNiB2MiwgMHg3NTMwCgogICAgYWRkLWxvbmcvMmFkZHIgdjAsIHYyCgogICAgc3B1dC13aWRlIHYwLCBMY29tL2RneGVuL0F1dGg7LT5raWxsc3dpdGNoRXhwaXJlVGltZU1zOkoKCiAgICBuZXctaW5zdGFuY2UgdjAsIExhbmRyb2lkL29zL0hhbmRsZXI7CgogICAgaW52b2tlLXN0YXRpYyB7fSwgTGFuZHJvaWQvb3MvTG9vcGVyOy0+Z2V0TWFpbkxvb3BlcigpTGFuZHJvaWQvb3MvTG9vcGVyOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MQoKICAgIGludm9rZS1kaXJlY3Qge3YwLCB2MX0sIExhbmRyb2lkL29zL0hhbmRsZXI7LT48aW5pdD4oTGFuZHJvaWQvb3MvTG9vcGVyOylWCgogICAgc3B1dC1vYmplY3QgdjAsIExjb20vZGd4ZW4vQXV0aDstPmtpbGxzd2l0Y2hIYW5kbGVyOkxhbmRyb2lkL29zL0hhbmRsZXI7CgogICAgaW52b2tlLXZpcnR1YWwge3YwLCBwMH0sIExhbmRyb2lkL29zL0hhbmRsZXI7LT5wb3N0KExqYXZhL2xhbmcvUnVubmFibGU7KVoKCiAgICByZXR1cm4tdm9pZAouZW5kIG1ldGhvZAoKLm1ldGhvZCBwdWJsaWMgZ2V0RGV2aWNlSWQoKUxqYXZhL2xhbmcvU3RyaW5nOwogICAgLnJlZ2lzdGVycyAzCiAgICAuYW5ub3RhdGlvbiBydW50aW1lIExhbmRyb2lkL3dlYmtpdC9KYXZhc2NyaXB0SW50ZXJmYWNlOwogICAgLmVuZCBhbm5vdGF0aW9uCgogICAgOnRyeV9zdGFydF8wCiAgICBzZ2V0LW9iamVjdCB2MCwgTGNvbS9kZ3hlbi9BdXRoOy0+d2ViVmlldzpMYW5kcm9pZC93ZWJraXQvV2ViVmlldzsKCiAgICBpbnZva2UtdmlydHVhbCB7djB9LCBMYW5kcm9pZC93ZWJraXQvV2ViVmlldzstPmdldENvbnRleHQoKUxhbmRyb2lkL2NvbnRlbnQvQ29udGV4dDsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjAKCiAgICBpbnZva2UtdmlydHVhbCB7djB9LCBMYW5kcm9pZC9jb250ZW50L0NvbnRleHQ7LT5nZXRDb250ZW50UmVzb2x2ZXIoKUxhbmRyb2lkL2NvbnRlbnQvQ29udGVudFJlc29sdmVyOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MAoKICAgIGNvbnN0LXN0cmluZyB2MSwgImFuZHJvaWRfaWQiCgogICAgaW52b2tlLXN0YXRpYyB7djAsIHYxfSwgTGFuZHJvaWQvcHJvdmlkZXIvU2V0dGluZ3MkU2VjdXJlOy0+Z2V0U3RyaW5nKExhbmRyb2lkL2NvbnRlbnQvQ29udGVudFJlc29sdmVyO0xqYXZhL2xhbmcvU3RyaW5nOylMamF2YS9sYW5nL1N0cmluZzsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjAKICAgIDp0cnlfZW5kXzEwCiAgICAuY2F0Y2ggTGphdmEvbGFuZy9FeGNlcHRpb247IHs6dHJ5X3N0YXJ0XzAgLi4gOnRyeV9lbmRfMTB9IDpjYXRjaF8xMQoKICAgIHJldHVybi1vYmplY3QgdjAKCiAgICA6Y2F0Y2hfMTEKICAgIG1vdmUtZXhjZXB0aW9uIHYwCgogICAgY29uc3Qtc3RyaW5nIHYwLCAiIgoKICAgIHJldHVybi1vYmplY3QgdjAKLmVuZCBtZXRob2QKCi5tZXRob2QgcHVibGljIGdldEFwcFZlcnNpb25Db2RlKClMamF2YS9sYW5nL1N0cmluZzsKICAgIC5yZWdpc3RlcnMgNAogICAgLmFubm90YXRpb24gcnVudGltZSBMYW5kcm9pZC93ZWJraXQvSmF2YXNjcmlwdEludGVyZmFjZTsKICAgIC5lbmQgYW5ub3RhdGlvbgoKICAgICMgUmV0dXJucyB0aGUgUkVBTCBpbnN0YWxsZWQgYXBwIHZlcnNpb25Db2RlIChmcm9tIFBhY2thZ2VNYW5hZ2VyLAogICAgIyB0aGUgYWN0dWFsIEFQSyB0aGUgT1MgaGFzIGluc3RhbGxlZCkgYXMgYSBTdHJpbmcsIHNvIEpTL0ZpcmViYXNlCiAgICAjIGNvbXBhcmlzb25zIGNhbid0IGJlIHNwb29mZWQgYnkgYSBzZWxmLXJlcG9ydGVkIHZhbHVlLiBNaXJyb3JzCiAgICAjIGdldERldmljZUlkKCkncyB0cnkvY2F0Y2gtcmV0dXJuLXNhZmUtZGVmYXVsdCBwYXR0ZXJuOyByZXR1cm5zCiAgICAjICIwIiBvbiBhbnkgZmFpbHVyZSBzbyBjYWxsZXJzIGNhbiB0cmVhdCB0aGF0IGFzICJ1bmtub3duIi4KCiAgICA6dHJ5X3N0YXJ0XzAKICAgIHNnZXQtb2JqZWN0IHYwLCBMY29tL2RneGVuL0F1dGg7LT53ZWJWaWV3OkxhbmRyb2lkL3dlYmtpdC9XZWJWaWV3OwoKICAgIGludm9rZS12aXJ0dWFsIHt2MH0sIExhbmRyb2lkL3dlYmtpdC9XZWJWaWV3Oy0+Z2V0Q29udGV4dCgpTGFuZHJvaWQvY29udGVudC9Db250ZXh0OwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MAoKICAgIGludm9rZS12aXJ0dWFsIHt2MH0sIExhbmRyb2lkL2NvbnRlbnQvQ29udGV4dDstPmdldFBhY2thZ2VNYW5hZ2VyKClMYW5kcm9pZC9jb250ZW50L3BtL1BhY2thZ2VNYW5hZ2VyOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MQoKICAgIGludm9rZS12aXJ0dWFsIHt2MH0sIExhbmRyb2lkL2NvbnRlbnQvQ29udGV4dDstPmdldFBhY2thZ2VOYW1lKClMamF2YS9sYW5nL1N0cmluZzsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjAKCiAgICBjb25zdC80IHYyLCAweDAKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHYwLCB2Mn0sIExhbmRyb2lkL2NvbnRlbnQvcG0vUGFja2FnZU1hbmFnZXI7LT5nZXRQYWNrYWdlSW5mbyhMamF2YS9sYW5nL1N0cmluZztJKUxhbmRyb2lkL2NvbnRlbnQvcG0vUGFja2FnZUluZm87CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHYwCgogICAgaWdldCB2MCwgdjAsIExhbmRyb2lkL2NvbnRlbnQvcG0vUGFja2FnZUluZm87LT52ZXJzaW9uQ29kZTpJCgogICAgaW52b2tlLXN0YXRpYyB7djB9LCBMamF2YS9sYW5nL0ludGVnZXI7LT50b1N0cmluZyhJKUxqYXZhL2xhbmcvU3RyaW5nOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MAogICAgOnRyeV9lbmRfMmMKICAgIC5jYXRjaCBMamF2YS9sYW5nL0V4Y2VwdGlvbjsgezp0cnlfc3RhcnRfMCAuLiA6dHJ5X2VuZF8yY30gOmNhdGNoXzJkCgogICAgcmV0dXJuLW9iamVjdCB2MAoKICAgIDpjYXRjaF8yZAogICAgbW92ZS1leGNlcHRpb24gdjAKCiAgICBjb25zdC1zdHJpbmcgdjAsICIwIgoKICAgIHJldHVybi1vYmplY3QgdjAKLmVuZCBtZXRob2QKCi5tZXRob2QgcHVibGljIGdldERldmljZU1vZGVsKClMamF2YS9sYW5nL1N0cmluZzsKICAgIC5yZWdpc3RlcnMgMwogICAgLmFubm90YXRpb24gcnVudGltZSBMYW5kcm9pZC93ZWJraXQvSmF2YXNjcmlwdEludGVyZmFjZTsKICAgIC5lbmQgYW5ub3RhdGlvbgoKICAgICMgUmVhbCBkZXZpY2UgbW9kZWwgKyBBbmRyb2lkIE9TIHZlcnNpb24gdmlhIGFuZHJvaWQub3MuQnVpbGQg4oCUIHRoZQogICAgIyBvbmx5IHJlbGlhYmxlIHNvdXJjZSBub3csIHNpbmNlIENocm9tZS9XZWJWaWV3IHBlcm1hbmVudGx5IGZyZWV6ZXMKICAgICMgbmF2aWdhdG9yLnVzZXJBZ2VudCdzIG1vZGVsL3ZlcnNpb24gZmllbGRzIHRvIGEgZmFrZSBjb25zdGFudAogICAgIyAoIkFuZHJvaWQgMTA7IEsiKSBmb3IgcHJpdmFjeSwgYW5kIFVzZXItQWdlbnQgQ2xpZW50IEhpbnRzIGFyZSBub3QKICAgICMgZW5hYmxlZCBpbnNpZGUgV2ViVmlldyBlaXRoZXIuIFJldHVybnMgIkFuZHJvaWQgPHJlbGVhc2U+IMK3IDxtb2RlbD4iLAogICAgIyBlLmcuICJBbmRyb2lkIDEzIMK3IFJNWDMwNTAiOyAidW5rbm93biIgb24gYW55IGZhaWx1cmUuCgogICAgOnRyeV9zdGFydF8wCiAgICBuZXctaW5zdGFuY2UgdjIsIExqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjsKCiAgICBpbnZva2UtZGlyZWN0IHt2Mn0sIExqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjstPjxpbml0PigpVgoKICAgIGNvbnN0LXN0cmluZyB2MCwgIkFuZHJvaWQgIgoKICAgIGludm9rZS12aXJ0dWFsIHt2MiwgdjB9LCBMamF2YS9sYW5nL1N0cmluZ0J1aWxkZXI7LT5hcHBlbmQoTGphdmEvbGFuZy9TdHJpbmc7KUxqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjsKCiAgICBzZ2V0LW9iamVjdCB2MSwgTGFuZHJvaWQvb3MvQnVpbGQkVkVSU0lPTjstPlJFTEVBU0U6TGphdmEvbGFuZy9TdHJpbmc7CgogICAgaW52b2tlLXZpcnR1YWwge3YyLCB2MX0sIExqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjstPmFwcGVuZChMamF2YS9sYW5nL1N0cmluZzspTGphdmEvbGFuZy9TdHJpbmdCdWlsZGVyOwoKICAgIGNvbnN0LXN0cmluZyB2MSwgIiBcdTAwYjcgIgoKICAgIGludm9rZS12aXJ0dWFsIHt2MiwgdjF9LCBMamF2YS9sYW5nL1N0cmluZ0J1aWxkZXI7LT5hcHBlbmQoTGphdmEvbGFuZy9TdHJpbmc7KUxqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjsKCiAgICBzZ2V0LW9iamVjdCB2MCwgTGFuZHJvaWQvb3MvQnVpbGQ7LT5NT0RFTDpMamF2YS9sYW5nL1N0cmluZzsKCiAgICBpbnZva2UtdmlydHVhbCB7djIsIHYwfSwgTGphdmEvbGFuZy9TdHJpbmdCdWlsZGVyOy0+YXBwZW5kKExqYXZhL2xhbmcvU3RyaW5nOylMamF2YS9sYW5nL1N0cmluZ0J1aWxkZXI7CgogICAgaW52b2tlLXZpcnR1YWwge3YyfSwgTGphdmEvbGFuZy9TdHJpbmdCdWlsZGVyOy0+dG9TdHJpbmcoKUxqYXZhL2xhbmcvU3RyaW5nOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MAogICAgOnRyeV9lbmRfMmMKICAgIC5jYXRjaCBMamF2YS9sYW5nL0V4Y2VwdGlvbjsgezp0cnlfc3RhcnRfMCAuLiA6dHJ5X2VuZF8yY30gOmNhdGNoXzJkCgogICAgcmV0dXJuLW9iamVjdCB2MAoKICAgIDpjYXRjaF8yZAogICAgbW92ZS1leGNlcHRpb24gdjAKCiAgICBjb25zdC1zdHJpbmcgdjAsICJ1bmtub3duIgoKICAgIHJldHVybi1vYmplY3QgdjAKLmVuZCBtZXRob2QKCi5tZXRob2QgcHVibGljIHJ1bigpVgogICAgLnJlZ2lzdGVycyAxNAoKICAgIHNnZXQtYm9vbGVhbiB2MCwgTGNvbS9kZ3hlbi9BdXRoOy0+a2lsbHN3aXRjaEFjdGl2ZTpaCgogICAgaWYtZXF6IHYwLCA6Y29uZF9rZXlleHAKCiAgICBnb3RvLzE2IDpnb3RvX2tpbGxzd2l0Y2gKCiAgICA6Y29uZF9rZXlleHAKICAgIGludm9rZS1zdGF0aWMge30sIExqYXZhL2xhbmcvU3lzdGVtOy0+Y3VycmVudFRpbWVNaWxsaXMoKUoKCiAgICBtb3ZlLXJlc3VsdC13aWRlIHYwCgogICAgc2dldC13aWRlIHYyLCBMY29tL2RneGVuL0F1dGg7LT5leHBpcmVUaW1lTXM6SgoKICAgIHN1Yi1sb25nLzJhZGRyIHYyLCB2MAoKICAgIGNvbnN0LXdpZGUvMTYgdjQsIDB4MAoKICAgIGNtcC1sb25nIHY2LCB2MiwgdjQKCiAgICBpZi1ndHogdjYsIDpjb25kXzE5CgogICAgaW52b2tlLXN0YXRpYyB7fSwgTGFuZHJvaWQvb3MvUHJvY2VzczstPm15UGlkKClJCgogICAgbW92ZS1yZXN1bHQgdjAKCiAgICBpbnZva2Utc3RhdGljIHt2MH0sIExhbmRyb2lkL29zL1Byb2Nlc3M7LT5raWxsUHJvY2VzcyhJKVYKCiAgICBjb25zdC80IHYwLCAweDAKCiAgICBpbnZva2Utc3RhdGljIHt2MH0sIExqYXZhL2xhbmcvU3lzdGVtOy0+ZXhpdChJKVYKCiAgICByZXR1cm4tdm9pZAoKICAgIDpjb25kXzE5CiAgICBjb25zdC13aWRlLzMyIHY0LCAweDFkNGMwCgogICAgY21wLWxvbmcgdjYsIHYyLCB2NAoKICAgIGlmLWxleiB2NiwgOmNvbmRfMjIKCiAgICBnb3RvLzE2IDpnb3RvXzEyZQoKICAgIDpjb25kXzIyCiAgICBjb25zdC13aWRlLzE2IHY0LCAweDNlOAoKICAgIGRpdi1sb25nIHY0LCB2MiwgdjQKCiAgICBjb25zdC13aWRlLzE2IHY4LCAweDZlCgogICAgY21wLWxvbmcgdjEwLCB2NCwgdjgKCiAgICBpZi1sZXogdjEwLCA6Y29uZF8yZgoKICAgIGNvbnN0LXN0cmluZyB2MCwgIkV4cGlyeSBpbjogJTAyZDolMDJkIgoKICAgIGdvdG8gOmdvdG9fMzEKCiAgICA6Y29uZF8yZgogICAgY29uc3Qtc3RyaW5nIHYwLCAiJTAyZDolMDJkIgoKICAgIDpnb3RvXzMxCiAgICBzZ2V0LW9iamVjdCB2OCwgTGNvbS9kZ3hlbi9BdXRoOy0+cmV2b2tlTWVzc2FnZTpMamF2YS9sYW5nL1N0cmluZzsKCiAgICBpZi1lcXogdjgsIDpjb25kXzRmCgogICAgaW52b2tlLXZpcnR1YWwge3Y4fSwgTGphdmEvbGFuZy9TdHJpbmc7LT5sZW5ndGgoKUkKCiAgICBtb3ZlLXJlc3VsdCB2OQoKICAgIGlmLWxleiB2OSwgOmNvbmRfNGYKCiAgICBuZXctaW5zdGFuY2UgdjksIExqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjsKCiAgICBpbnZva2UtZGlyZWN0IHt2OX0sIExqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjstPjxpbml0PigpVgoKICAgIGludm9rZS12aXJ0dWFsIHt2OSwgdjh9LCBMamF2YS9sYW5nL1N0cmluZ0J1aWxkZXI7LT5hcHBlbmQoTGphdmEvbGFuZy9TdHJpbmc7KUxqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjsKCiAgICBjb25zdC1zdHJpbmcgdjgsICJcbiIKCiAgICBpbnZva2UtdmlydHVhbCB7djksIHY4fSwgTGphdmEvbGFuZy9TdHJpbmdCdWlsZGVyOy0+YXBwZW5kKExqYXZhL2xhbmcvU3RyaW5nOylMamF2YS9sYW5nL1N0cmluZ0J1aWxkZXI7CgogICAgaW52b2tlLXZpcnR1YWwge3Y5LCB2MH0sIExqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjstPmFwcGVuZChMamF2YS9sYW5nL1N0cmluZzspTGphdmEvbGFuZy9TdHJpbmdCdWlsZGVyOwoKICAgIGludm9rZS12aXJ0dWFsIHt2OX0sIExqYXZhL2xhbmcvU3RyaW5nQnVpbGRlcjstPnRvU3RyaW5nKClMamF2YS9sYW5nL1N0cmluZzsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjAKCiAgICA6Y29uZF80ZgogICAgY29uc3Qtd2lkZS8xNiB2OCwgMHgzYwoKICAgIGRpdi1sb25nIHY2LCB2NCwgdjgKCiAgICByZW0tbG9uZyB2OCwgdjQsIHY4CgogICAgY29uc3QvNCB2MSwgMHgyCgogICAgbmV3LWFycmF5IHYxMCwgdjEsIFtMamF2YS9sYW5nL09iamVjdDsKCiAgICBjb25zdC80IHYxMSwgMHgwCgogICAgaW52b2tlLXN0YXRpYyB7djYsIHY3fSwgTGphdmEvbGFuZy9Mb25nOy0+dmFsdWVPZihKKUxqYXZhL2xhbmcvTG9uZzsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjEyCgogICAgYXB1dC1vYmplY3QgdjEyLCB2MTAsIHYxMQoKICAgIGNvbnN0LzQgdjExLCAweDEKCiAgICBpbnZva2Utc3RhdGljIHt2OCwgdjl9LCBMamF2YS9sYW5nL0xvbmc7LT52YWx1ZU9mKEopTGphdmEvbGFuZy9Mb25nOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MTIKCiAgICBhcHV0LW9iamVjdCB2MTIsIHYxMCwgdjExCgogICAgaW52b2tlLXN0YXRpYyB7djAsIHYxMH0sIExqYXZhL2xhbmcvU3RyaW5nOy0+Zm9ybWF0KExqYXZhL2xhbmcvU3RyaW5nO1tMamF2YS9sYW5nL09iamVjdDspTGphdmEvbGFuZy9TdHJpbmc7CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHYwCgogICAgc2dldC1vYmplY3QgdjEsIExjb20vZGd4ZW4vQXV0aDstPnRpbWVyVmlldzpMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7CgogICAgaWYtbmV6IHYxLCA6Y29uZF8xMGQKCiAgICBuZXctaW5zdGFuY2UgdjEsIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzsKCiAgICBzZ2V0LW9iamVjdCB2NCwgTGNvbS9kZ3hlbi9BdXRoOy0+d2ViVmlldzpMYW5kcm9pZC93ZWJraXQvV2ViVmlldzsKCiAgICBpbnZva2UtdmlydHVhbCB7djR9LCBMYW5kcm9pZC93ZWJraXQvV2ViVmlldzstPmdldENvbnRleHQoKUxhbmRyb2lkL2NvbnRlbnQvQ29udGV4dDsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjQKCiAgICBpbnZva2UtZGlyZWN0IHt2MSwgdjR9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT48aW5pdD4oTGFuZHJvaWQvY29udGVudC9Db250ZXh0OylWCgogICAgc3B1dC1vYmplY3QgdjEsIExjb20vZGd4ZW4vQXV0aDstPnRpbWVyVmlldzpMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7CgogICAgY29uc3QgdjQsIC0weDEKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHY0fSwgTGFuZHJvaWQvd2lkZ2V0L1RleHRWaWV3Oy0+c2V0VGV4dENvbG9yKEkpVgoKICAgIGNvbnN0L2hpZ2gxNiB2NCwgMHg0MTgwMDAwMCAgIyAxNi4wZgoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjR9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRUZXh0U2l6ZShGKVYKCiAgICBzZ2V0LW9iamVjdCB2NCwgTGFuZHJvaWQvZ3JhcGhpY3MvVHlwZWZhY2U7LT5ERUZBVUxUX0JPTEQ6TGFuZHJvaWQvZ3JhcGhpY3MvVHlwZWZhY2U7CgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFR5cGVmYWNlKExhbmRyb2lkL2dyYXBoaWNzL1R5cGVmYWNlOylWCgogICAgY29uc3QvMTYgdjQsIDB4MTEKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHY0fSwgTGFuZHJvaWQvd2lkZ2V0L1RleHRWaWV3Oy0+c2V0R3Jhdml0eShJKVYKCiAgICBuZXctaW5zdGFuY2UgdjQsIExhbmRyb2lkL2dyYXBoaWNzL2RyYXdhYmxlL0dyYWRpZW50RHJhd2FibGU7CgogICAgaW52b2tlLWRpcmVjdCB7djR9LCBMYW5kcm9pZC9ncmFwaGljcy9kcmF3YWJsZS9HcmFkaWVudERyYXdhYmxlOy0+PGluaXQ+KClWCgogICAgY29uc3QvaGlnaDE2IHY1LCAtMHgyMzAwMDAwMAoKICAgIGludm9rZS12aXJ0dWFsIHt2NCwgdjV9LCBMYW5kcm9pZC9ncmFwaGljcy9kcmF3YWJsZS9HcmFkaWVudERyYXdhYmxlOy0+c2V0Q29sb3IoSSlWCgogICAgY29uc3QvaGlnaDE2IHY1LCAweDQxYTAwMDAwICAjIDIwLjBmCgogICAgaW52b2tlLXZpcnR1YWwge3Y0LCB2NX0sIExhbmRyb2lkL2dyYXBoaWNzL2RyYXdhYmxlL0dyYWRpZW50RHJhd2FibGU7LT5zZXRDb3JuZXJSYWRpdXMoRilWCgogICAgY29uc3QvNCB2NSwgMHg0CgogICAgY29uc3QvaGlnaDE2IHY2LCAtMHgxMDAwMAoKICAgIGludm9rZS12aXJ0dWFsIHt2NCwgdjUsIHY2fSwgTGFuZHJvaWQvZ3JhcGhpY3MvZHJhd2FibGUvR3JhZGllbnREcmF3YWJsZTstPnNldFN0cm9rZShJSSlWCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldEJhY2tncm91bmQoTGFuZHJvaWQvZ3JhcGhpY3MvZHJhd2FibGUvRHJhd2FibGU7KVYKCiAgICBjb25zdC8xNiB2NCwgMHgyZQoKICAgIGNvbnN0LzE2IHY1LCAweDE0CgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NCwgdjUsIHY0LCB2NX0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFBhZGRpbmcoSUlJSSlWCgogICAgbmV3LWluc3RhbmNlIHY0LCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXIkTGF5b3V0UGFyYW1zOwoKICAgIGNvbnN0LzQgdjUsIC0weDIKCiAgICBjb25zdC80IHY2LCAtMHgyCgogICAgY29uc3QvMTYgdjcsIDB4N2Y2CgogICAgY29uc3QvMTYgdjgsIDB4MTgKCiAgICBjb25zdC80IHY5LCAtMHgzCgogICAgaW52b2tlLWRpcmVjdC9yYW5nZSB7djQgLi4gdjl9LCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXIkTGF5b3V0UGFyYW1zOy0+PGluaXQ+KElJSUlJKVYKCiAgICBjb25zdC8xNiB2NSwgMHgzMwoKICAgIGlwdXQgdjUsIHY0LCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXIkTGF5b3V0UGFyYW1zOy0+Z3Jhdml0eTpJCgogICAgY29uc3QvMTYgdjUsIDB4MTAKCiAgICBpcHV0IHY1LCB2NCwgTGFuZHJvaWQvdmlldy9XaW5kb3dNYW5hZ2VyJExheW91dFBhcmFtczstPnk6SQoKICAgIGNvbnN0LzE2IHY1LCAweDIwCgogICAgaXB1dCB2NSwgdjQsIExhbmRyb2lkL3ZpZXcvV2luZG93TWFuYWdlciRMYXlvdXRQYXJhbXM7LT54OkkKCiAgICBzZ2V0LW9iamVjdCB2NSwgTGNvbS9kZ3hlbi9BdXRoOy0+d2ViVmlldzpMYW5kcm9pZC93ZWJraXQvV2ViVmlldzsKCiAgICBpbnZva2UtdmlydHVhbCB7djV9LCBMYW5kcm9pZC93ZWJraXQvV2ViVmlldzstPmdldENvbnRleHQoKUxhbmRyb2lkL2NvbnRlbnQvQ29udGV4dDsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjUKCiAgICBjb25zdC1zdHJpbmcgdjYsICJ3aW5kb3ciCgogICAgaW52b2tlLXZpcnR1YWwge3Y1LCB2Nn0sIExhbmRyb2lkL2NvbnRlbnQvQ29udGV4dDstPmdldFN5c3RlbVNlcnZpY2UoTGphdmEvbGFuZy9TdHJpbmc7KUxqYXZhL2xhbmcvT2JqZWN0OwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2NQoKICAgIGNoZWNrLWNhc3QgdjUsIExhbmRyb2lkL3ZpZXcvV2luZG93TWFuYWdlcjsKCiAgICBpbnZva2UtaW50ZXJmYWNlIHt2NSwgdjEsIHY0fSwgTGFuZHJvaWQvdmlldy9XaW5kb3dNYW5hZ2VyOy0+YWRkVmlldyhMYW5kcm9pZC92aWV3L1ZpZXc7TGFuZHJvaWQvdmlldy9WaWV3R3JvdXAkTGF5b3V0UGFyYW1zOylWCgogICAgY29uc3QvNCB2NCwgMHgwCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldEFscGhhKEYpVgoKICAgIGNvbnN0IHY0LCAtMHgzY2VhMDAwMCAgIyAtMTUwLjBmCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFRyYW5zbGF0aW9uWChGKVYKCiAgICBjb25zdCB2NCwgMHgzZjRjY2NjZCAgIyAwLjhmCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFNjYWxlWChGKVYKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHY0fSwgTGFuZHJvaWQvd2lkZ2V0L1RleHRWaWV3Oy0+c2V0U2NhbGVZKEYpVgoKICAgIGludm9rZS12aXJ0dWFsIHt2MX0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPmFuaW1hdGUoKUxhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHY0CgogICAgY29uc3QvaGlnaDE2IHY1LCAweDNmODAwMDAwICAjIDEuMGYKCiAgICBpbnZva2UtdmlydHVhbCB7djQsIHY1fSwgTGFuZHJvaWQvdmlldy9WaWV3UHJvcGVydHlBbmltYXRvcjstPmFscGhhKEYpTGFuZHJvaWQvdmlldy9WaWV3UHJvcGVydHlBbmltYXRvcjsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjQKCiAgICBjb25zdC80IHY1LCAweDAKCiAgICBpbnZva2UtdmlydHVhbCB7djQsIHY1fSwgTGFuZHJvaWQvdmlldy9WaWV3UHJvcGVydHlBbmltYXRvcjstPnRyYW5zbGF0aW9uWChGKUxhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHY0CgogICAgY29uc3QvaGlnaDE2IHY1LCAweDNmODAwMDAwICAjIDEuMGYKCiAgICBpbnZva2UtdmlydHVhbCB7djQsIHY1fSwgTGFuZHJvaWQvdmlldy9WaWV3UHJvcGVydHlBbmltYXRvcjstPnNjYWxlWChGKUxhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHY0CgogICAgaW52b2tlLXZpcnR1YWwge3Y0LCB2NX0sIExhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7LT5zY2FsZVkoRilMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2NAoKICAgIGNvbnN0LXdpZGUvMTYgdjUsIDB4MjU4CgogICAgaW52b2tlLXZpcnR1YWwge3Y0LCB2NSwgdjZ9LCBMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOy0+c2V0RHVyYXRpb24oSilMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2NAoKICAgIGludm9rZS12aXJ0dWFsIHt2NH0sIExhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7LT5zdGFydCgpVgoKICAgIDpjb25kXzEwZAogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2MH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFRleHQoTGphdmEvbGFuZy9DaGFyU2VxdWVuY2U7KVYKCiAgICBjb25zdC13aWRlLzE2IHY0LCAweDNhOTgKCiAgICBjbXAtbG9uZyB2MCwgdjIsIHY0CgogICAgaWYtZ3R6IHYwLCA6Y29uZF8xMmUKCiAgICBjb25zdC13aWRlLzE2IHY0LCAweDNlOAoKICAgIGRpdi1sb25nLzJhZGRyIHYyLCB2NAoKICAgIGNvbnN0LXdpZGUvMTYgdjQsIDB4MgoKICAgIHJlbS1sb25nLzJhZGRyIHYyLCB2NAoKICAgIGNvbnN0LXdpZGUvMTYgdjQsIDB4MAoKICAgIGNtcC1sb25nIHYwLCB2MiwgdjQKCiAgICBpZi1uZXogdjAsIDpjb25kXzEyOAoKICAgIGNvbnN0L2hpZ2gxNiB2MCwgLTB4MTAwMDAKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHYwfSwgTGFuZHJvaWQvd2lkZ2V0L1RleHRWaWV3Oy0+c2V0VGV4dENvbG9yKEkpVgoKICAgIGdvdG8gOmdvdG9fMTJlCgogICAgOmNvbmRfMTI4CiAgICBjb25zdCB2MCwgLTB4MQoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjB9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRUZXh0Q29sb3IoSSlWCgogICAgOmNvbmRfMTJlCiAgICA6Z290b18xMmUKICAgIHNnZXQtb2JqZWN0IHYwLCBMY29tL2RneGVuL0F1dGg7LT50aW1lckhhbmRsZXI6TGFuZHJvaWQvb3MvSGFuZGxlcjsKCiAgICBjb25zdC13aWRlLzE2IHYxLCAweDY0CgogICAgaW52b2tlLXZpcnR1YWwge3YwLCBwMCwgdjEsIHYyfSwgTGFuZHJvaWQvb3MvSGFuZGxlcjstPnBvc3REZWxheWVkKExqYXZhL2xhbmcvUnVubmFibGU7SilaCgogICAgcmV0dXJuLXZvaWQKCiAgICAjID09PT09IEtpbGxzd2l0Y2ggYnJhbmNoIChBcHAgRXhwaXJ5ICYgVXBkYXRlLCBzZXR0aW5ncy9hcHBVcGRhdGUuCiAgICAjIGtpbGxPbGRWZXJzaW9ucykg4oCUIGNvbXBsZXRlbHkgaW5kZXBlbmRlbnQgb2YgdGhlIGtleS1leHBpcnkgbG9naWMKICAgICMgYWJvdmU6IG93biBmaWVsZHMgKGtpbGxzd2l0Y2hFeHBpcmVUaW1lTXMva2lsbHN3aXRjaEhhbmRsZXIvCiAgICAjIGtpbGxzd2l0Y2hWaWV3KSwgb3duIG92ZXJsYXkgdmlldywgb3duIGtpbGwgY2FsbC4gQWx3YXlzIGEgZmxhdCAzMHMKICAgICMgY291bnRkb3duLCBubyBzaWxlbnQgem9uZSBvciBmbGFzaGluZyAodGhvc2UgYXJlIHNwZWNpZmljIHRvIHRoZQogICAgIyBtdWNoIGxvbmdlciBrZXktZXhwaXJ5IHdpbmRvdykuIERpc3BhdGNoZWQgaGVyZSB2aWEgdGhlIGZsYWcgY2hlY2sKICAgICMgYXQgdGhlIHRvcCBvZiB0aGlzIG1ldGhvZCwgc2luY2UgSGFuZGxlci5wb3N0RGVsYXllZCBuZWVkcyBhIHJlYWwKICAgICMgUnVubmFibGUgYW5kIHRoaXMgY2xhc3MgaXMgYWxyZWFkeSB0aGUgUnVubmFibGUgYm91bmQgdG8ga2V5LWV4cGlyeS4KICAgIDpnb3RvX2tpbGxzd2l0Y2gKICAgIGludm9rZS1zdGF0aWMge30sIExqYXZhL2xhbmcvU3lzdGVtOy0+Y3VycmVudFRpbWVNaWxsaXMoKUoKCiAgICBtb3ZlLXJlc3VsdC13aWRlIHYwCgogICAgc2dldC13aWRlIHYyLCBMY29tL2RneGVuL0F1dGg7LT5raWxsc3dpdGNoRXhwaXJlVGltZU1zOkoKCiAgICBzdWItbG9uZy8yYWRkciB2MiwgdjAKCiAgICBjb25zdC13aWRlLzE2IHY0LCAweDAKCiAgICBjbXAtbG9uZyB2NiwgdjIsIHY0CgogICAgaWYtZ3R6IHY2LCA6Y29uZF9rczE5CgogICAgaW52b2tlLXN0YXRpYyB7fSwgTGFuZHJvaWQvb3MvUHJvY2VzczstPm15UGlkKClJCgogICAgbW92ZS1yZXN1bHQgdjAKCiAgICBpbnZva2Utc3RhdGljIHt2MH0sIExhbmRyb2lkL29zL1Byb2Nlc3M7LT5raWxsUHJvY2VzcyhJKVYKCiAgICBjb25zdC80IHYwLCAweDAKCiAgICBpbnZva2Utc3RhdGljIHt2MH0sIExqYXZhL2xhbmcvU3lzdGVtOy0+ZXhpdChJKVYKCiAgICByZXR1cm4tdm9pZAoKICAgIDpjb25kX2tzMTkKICAgIGNvbnN0LXdpZGUvMTYgdjQsIDB4M2U4CgogICAgZGl2LWxvbmcgdjQsIHYyLCB2NAoKICAgIGNvbnN0LXN0cmluZyB2MCwgIkFwcCBFeHBpcmVkXG5DbG9zaW5nIGluICVkIHMiCgogICAgY29uc3QvNCB2MSwgMHgxCgogICAgbmV3LWFycmF5IHYxMCwgdjEsIFtMamF2YS9sYW5nL09iamVjdDsKCiAgICBjb25zdC80IHYxMSwgMHgwCgogICAgaW52b2tlLXN0YXRpYyB7djQsIHY1fSwgTGphdmEvbGFuZy9Mb25nOy0+dmFsdWVPZihKKUxqYXZhL2xhbmcvTG9uZzsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjEyCgogICAgYXB1dC1vYmplY3QgdjEyLCB2MTAsIHYxMQoKICAgIGludm9rZS1zdGF0aWMge3YwLCB2MTB9LCBMamF2YS9sYW5nL1N0cmluZzstPmZvcm1hdChMamF2YS9sYW5nL1N0cmluZztbTGphdmEvbGFuZy9PYmplY3Q7KUxqYXZhL2xhbmcvU3RyaW5nOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MAoKICAgIHNnZXQtb2JqZWN0IHYxLCBMY29tL2RneGVuL0F1dGg7LT5raWxsc3dpdGNoVmlldzpMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7CgogICAgaWYtbmV6IHYxLCA6Y29uZF9rczEwZAoKICAgIG5ldy1pbnN0YW5jZSB2MSwgTGFuZHJvaWQvd2lkZ2V0L1RleHRWaWV3OwoKICAgIHNnZXQtb2JqZWN0IHY0LCBMY29tL2RneGVuL0F1dGg7LT53ZWJWaWV3OkxhbmRyb2lkL3dlYmtpdC9XZWJWaWV3OwoKICAgIGludm9rZS12aXJ0dWFsIHt2NH0sIExhbmRyb2lkL3dlYmtpdC9XZWJWaWV3Oy0+Z2V0Q29udGV4dCgpTGFuZHJvaWQvY29udGVudC9Db250ZXh0OwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2NAoKICAgIGludm9rZS1kaXJlY3Qge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPjxpbml0PihMYW5kcm9pZC9jb250ZW50L0NvbnRleHQ7KVYKCiAgICBzcHV0LW9iamVjdCB2MSwgTGNvbS9kZ3hlbi9BdXRoOy0+a2lsbHN3aXRjaFZpZXc6TGFuZHJvaWQvd2lkZ2V0L1RleHRWaWV3OwoKICAgIGNvbnN0IHY0LCAtMHgxCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFRleHRDb2xvcihJKVYKCiAgICBjb25zdC9oaWdoMTYgdjQsIDB4NDE4MDAwMDAgICMgMTYuMGYKCiAgICBpbnZva2UtdmlydHVhbCB7djEsIHY0fSwgTGFuZHJvaWQvd2lkZ2V0L1RleHRWaWV3Oy0+c2V0VGV4dFNpemUoRilWCgogICAgc2dldC1vYmplY3QgdjQsIExhbmRyb2lkL2dyYXBoaWNzL1R5cGVmYWNlOy0+REVGQVVMVF9CT0xEOkxhbmRyb2lkL2dyYXBoaWNzL1R5cGVmYWNlOwoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjR9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRUeXBlZmFjZShMYW5kcm9pZC9ncmFwaGljcy9UeXBlZmFjZTspVgoKICAgIGNvbnN0LzE2IHY0LCAweDExCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldEdyYXZpdHkoSSlWCgogICAgbmV3LWluc3RhbmNlIHY0LCBMYW5kcm9pZC9ncmFwaGljcy9kcmF3YWJsZS9HcmFkaWVudERyYXdhYmxlOwoKICAgIGludm9rZS1kaXJlY3Qge3Y0fSwgTGFuZHJvaWQvZ3JhcGhpY3MvZHJhd2FibGUvR3JhZGllbnREcmF3YWJsZTstPjxpbml0PigpVgoKICAgIGNvbnN0L2hpZ2gxNiB2NSwgLTB4MjMwMDAwMDAKCiAgICBpbnZva2UtdmlydHVhbCB7djQsIHY1fSwgTGFuZHJvaWQvZ3JhcGhpY3MvZHJhd2FibGUvR3JhZGllbnREcmF3YWJsZTstPnNldENvbG9yKEkpVgoKICAgIGNvbnN0L2hpZ2gxNiB2NSwgMHg0MWEwMDAwMCAgIyAyMC4wZgoKICAgIGludm9rZS12aXJ0dWFsIHt2NCwgdjV9LCBMYW5kcm9pZC9ncmFwaGljcy9kcmF3YWJsZS9HcmFkaWVudERyYXdhYmxlOy0+c2V0Q29ybmVyUmFkaXVzKEYpVgoKICAgIGNvbnN0LzQgdjUsIDB4NAoKICAgIGNvbnN0L2hpZ2gxNiB2NiwgLTB4MTAwMDAKCiAgICBpbnZva2UtdmlydHVhbCB7djQsIHY1LCB2Nn0sIExhbmRyb2lkL2dyYXBoaWNzL2RyYXdhYmxlL0dyYWRpZW50RHJhd2FibGU7LT5zZXRTdHJva2UoSUkpVgoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjR9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRCYWNrZ3JvdW5kKExhbmRyb2lkL2dyYXBoaWNzL2RyYXdhYmxlL0RyYXdhYmxlOylWCgogICAgY29uc3QvMTYgdjQsIDB4MmUKCiAgICBjb25zdC8xNiB2NSwgMHgxNAoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjQsIHY1LCB2NCwgdjV9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRQYWRkaW5nKElJSUkpVgoKICAgIG5ldy1pbnN0YW5jZSB2NCwgTGFuZHJvaWQvdmlldy9XaW5kb3dNYW5hZ2VyJExheW91dFBhcmFtczsKCiAgICBjb25zdC80IHY1LCAtMHgyCgogICAgY29uc3QvNCB2NiwgLTB4MgoKICAgIGNvbnN0LzE2IHY3LCAweDdmNgoKICAgIGNvbnN0LzE2IHY4LCAweDE4CgogICAgY29uc3QvNCB2OSwgLTB4MwoKICAgIGludm9rZS1kaXJlY3QvcmFuZ2Uge3Y0IC4uIHY5fSwgTGFuZHJvaWQvdmlldy9XaW5kb3dNYW5hZ2VyJExheW91dFBhcmFtczstPjxpbml0PihJSUlJSSlWCgogICAgY29uc3QvMTYgdjUsIDB4MzMKCiAgICBpcHV0IHY1LCB2NCwgTGFuZHJvaWQvdmlldy9XaW5kb3dNYW5hZ2VyJExheW91dFBhcmFtczstPmdyYXZpdHk6SQoKICAgIGNvbnN0LzE2IHY1LCAweDEwCgogICAgaXB1dCB2NSwgdjQsIExhbmRyb2lkL3ZpZXcvV2luZG93TWFuYWdlciRMYXlvdXRQYXJhbXM7LT55OkkKCiAgICBjb25zdC8xNiB2NSwgMHgyMAoKICAgIGlwdXQgdjUsIHY0LCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXIkTGF5b3V0UGFyYW1zOy0+eDpJCgogICAgc2dldC1vYmplY3QgdjUsIExjb20vZGd4ZW4vQXV0aDstPndlYlZpZXc6TGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7CgogICAgaW52b2tlLXZpcnR1YWwge3Y1fSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5nZXRDb250ZXh0KClMYW5kcm9pZC9jb250ZW50L0NvbnRleHQ7CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHY1CgogICAgY29uc3Qtc3RyaW5nIHY2LCAid2luZG93IgoKICAgIGludm9rZS12aXJ0dWFsIHt2NSwgdjZ9LCBMYW5kcm9pZC9jb250ZW50L0NvbnRleHQ7LT5nZXRTeXN0ZW1TZXJ2aWNlKExqYXZhL2xhbmcvU3RyaW5nOylMamF2YS9sYW5nL09iamVjdDsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjUKCiAgICBjaGVjay1jYXN0IHY1LCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXI7CgogICAgaW52b2tlLWludGVyZmFjZSB7djUsIHYxLCB2NH0sIExhbmRyb2lkL3ZpZXcvV2luZG93TWFuYWdlcjstPmFkZFZpZXcoTGFuZHJvaWQvdmlldy9WaWV3O0xhbmRyb2lkL3ZpZXcvVmlld0dyb3VwJExheW91dFBhcmFtczspVgoKICAgIGNvbnN0LzQgdjQsIDB4MAoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjR9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRBbHBoYShGKVYKCiAgICBjb25zdCB2NCwgLTB4M2NlYTAwMDAgICMgLTE1MC4wZgoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjR9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRUcmFuc2xhdGlvblgoRilWCgogICAgY29uc3QgdjQsIDB4M2Y0Y2NjY2QgICMgMC44ZgoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjR9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5zZXRTY2FsZVgoRilWCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2NH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFNjYWxlWShGKVYKCiAgICBpbnZva2UtdmlydHVhbCB7djF9LCBMYW5kcm9pZC93aWRnZXQvVGV4dFZpZXc7LT5hbmltYXRlKClMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2NAoKICAgIGNvbnN0L2hpZ2gxNiB2NSwgMHgzZjgwMDAwMCAgIyAxLjBmCgogICAgaW52b2tlLXZpcnR1YWwge3Y0LCB2NX0sIExhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7LT5hbHBoYShGKUxhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHY0CgogICAgY29uc3QvNCB2NSwgMHgwCgogICAgaW52b2tlLXZpcnR1YWwge3Y0LCB2NX0sIExhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7LT50cmFuc2xhdGlvblgoRilMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2NAoKICAgIGNvbnN0L2hpZ2gxNiB2NSwgMHgzZjgwMDAwMCAgIyAxLjBmCgogICAgaW52b2tlLXZpcnR1YWwge3Y0LCB2NX0sIExhbmRyb2lkL3ZpZXcvVmlld1Byb3BlcnR5QW5pbWF0b3I7LT5zY2FsZVgoRilMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2NAoKICAgIGludm9rZS12aXJ0dWFsIHt2NCwgdjV9LCBMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOy0+c2NhbGVZKEYpTGFuZHJvaWQvdmlldy9WaWV3UHJvcGVydHlBbmltYXRvcjsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjQKCiAgICBjb25zdC13aWRlLzE2IHY1LCAweDI1OAoKICAgIGludm9rZS12aXJ0dWFsIHt2NCwgdjUsIHY2fSwgTGFuZHJvaWQvdmlldy9WaWV3UHJvcGVydHlBbmltYXRvcjstPnNldER1cmF0aW9uKEopTGFuZHJvaWQvdmlldy9WaWV3UHJvcGVydHlBbmltYXRvcjsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjQKCiAgICBpbnZva2UtdmlydHVhbCB7djR9LCBMYW5kcm9pZC92aWV3L1ZpZXdQcm9wZXJ0eUFuaW1hdG9yOy0+c3RhcnQoKVYKCiAgICA6Y29uZF9rczEwZAogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2MH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFRleHQoTGphdmEvbGFuZy9DaGFyU2VxdWVuY2U7KVYKCiAgICBjb25zdC9oaWdoMTYgdjAsIC0weDEwMDAwCgogICAgaW52b2tlLXZpcnR1YWwge3YxLCB2MH0sIExhbmRyb2lkL3dpZGdldC9UZXh0VmlldzstPnNldFRleHRDb2xvcihJKVYKCiAgICBzZ2V0LW9iamVjdCB2MCwgTGNvbS9kZ3hlbi9BdXRoOy0+a2lsbHN3aXRjaEhhbmRsZXI6TGFuZHJvaWQvb3MvSGFuZGxlcjsKCiAgICBjb25zdC13aWRlLzE2IHYxLCAweDNlOAoKICAgIGludm9rZS12aXJ0dWFsIHt2MCwgcDAsIHYxLCB2Mn0sIExhbmRyb2lkL29zL0hhbmRsZXI7LT5wb3N0RGVsYXllZChMamF2YS9sYW5nL1J1bm5hYmxlO0opWgoKICAgIHJldHVybi12b2lkCi5lbmQgbWV0aG9kCgoubWV0aG9kIHB1YmxpYyBzZXRSZXZva2VNZXNzYWdlKExqYXZhL2xhbmcvU3RyaW5nOylWCiAgICAucmVnaXN0ZXJzIDIKICAgIC5hbm5vdGF0aW9uIHJ1bnRpbWUgTGFuZHJvaWQvd2Via2l0L0phdmFzY3JpcHRJbnRlcmZhY2U7CiAgICAuZW5kIGFubm90YXRpb24KCiAgICBzcHV0LW9iamVjdCBwMSwgTGNvbS9kZ3hlbi9BdXRoOy0+cmV2b2tlTWVzc2FnZTpMamF2YS9sYW5nL1N0cmluZzsKCiAgICByZXR1cm4tdm9pZAouZW5kIG1ldGhvZAoKLm1ldGhvZCBwdWJsaWMgc3RhcnROYXRpdmVUaW1lcihMamF2YS9sYW5nL1N0cmluZzspVgogICAgLnJlZ2lzdGVycyA2CiAgICAuYW5ub3RhdGlvbiBydW50aW1lIExhbmRyb2lkL3dlYmtpdC9KYXZhc2NyaXB0SW50ZXJmYWNlOwogICAgLmVuZCBhbm5vdGF0aW9uCgogICAgaW52b2tlLXN0YXRpYyB7cDF9LCBMamF2YS9sYW5nL0xvbmc7LT5wYXJzZUxvbmcoTGphdmEvbGFuZy9TdHJpbmc7KUoKCiAgICBtb3ZlLXJlc3VsdC13aWRlIHYwCgogICAgaW52b2tlLXN0YXRpYyB7fSwgTGphdmEvbGFuZy9TeXN0ZW07LT5jdXJyZW50VGltZU1pbGxpcygpSgoKICAgIG1vdmUtcmVzdWx0LXdpZGUgdjIKCiAgICBhZGQtbG9uZy8yYWRkciB2MiwgdjAKCiAgICBzcHV0LXdpZGUgdjIsIExjb20vZGd4ZW4vQXV0aDstPmV4cGlyZVRpbWVNczpKCgogICAgbmV3LWluc3RhbmNlIHYwLCBMYW5kcm9pZC9vcy9IYW5kbGVyOwoKICAgIGludm9rZS1zdGF0aWMge30sIExhbmRyb2lkL29zL0xvb3BlcjstPmdldE1haW5Mb29wZXIoKUxhbmRyb2lkL29zL0xvb3BlcjsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjEKCiAgICBpbnZva2UtZGlyZWN0IHt2MCwgdjF9LCBMYW5kcm9pZC9vcy9IYW5kbGVyOy0+PGluaXQ+KExhbmRyb2lkL29zL0xvb3BlcjspVgoKICAgIHNwdXQtb2JqZWN0IHYwLCBMY29tL2RneGVuL0F1dGg7LT50aW1lckhhbmRsZXI6TGFuZHJvaWQvb3MvSGFuZGxlcjsKCiAgICBpbnZva2UtdmlydHVhbCB7djAsIHAwfSwgTGFuZHJvaWQvb3MvSGFuZGxlcjstPnBvc3QoTGphdmEvbGFuZy9SdW5uYWJsZTspWgoKICAgIHJldHVybi12b2lkCi5lbmQgbWV0aG9kCgoubWV0aG9kIHB1YmxpYyB1bmxvY2soKVYKICAgIC5yZWdpc3RlcnMgOQogICAgLmFubm90YXRpb24gcnVudGltZSBMYW5kcm9pZC93ZWJraXQvSmF2YXNjcmlwdEludGVyZmFjZTsKICAgIC5lbmQgYW5ub3RhdGlvbgoKICAgIGNvbnN0LzQgdjAsIDB4MQoKICAgIHNwdXQtYm9vbGVhbiB2MCwgTGNvbS9kZ3hlbi9BdXRoOy0+dW5sb2NrZWQ6WgoKICAgIHNnZXQtb2JqZWN0IHYwLCBMY29tL2RneGVuL0F1dGg7LT5kaWFsb2c6TGFuZHJvaWQvYXBwL0RpYWxvZzsKCiAgICBpZi1lcXogdjAsIDpjb25kX2EKCiAgICBpbnZva2UtdmlydHVhbCB7djB9LCBMYW5kcm9pZC9hcHAvRGlhbG9nOy0+ZGlzbWlzcygpVgoKICAgIDpjb25kX2EKICAgIDp0cnlfc3RhcnRfYQogICAgc2dldC1vYmplY3QgdjAsIExjb20vZGd4ZW4vQXV0aDstPndlYlZpZXc6TGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7CgogICAgaWYtbmV6IHYwLCA6Y29uZF9mCgogICAgcmV0dXJuLXZvaWQKCiAgICA6Y29uZF9mCiAgICBpbnZva2UtdmlydHVhbCB7djB9LCBMYW5kcm9pZC93ZWJraXQvV2ViVmlldzstPmdldFBhcmVudCgpTGFuZHJvaWQvdmlldy9WaWV3UGFyZW50OwoKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MQoKICAgIGluc3RhbmNlLW9mIHYyLCB2MSwgTGFuZHJvaWQvdmlldy9WaWV3R3JvdXA7CgogICAgaWYtZXF6IHYyLCA6Y29uZF8xYwoKICAgIGNoZWNrLWNhc3QgdjEsIExhbmRyb2lkL3ZpZXcvVmlld0dyb3VwOwoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjB9LCBMYW5kcm9pZC92aWV3L1ZpZXdHcm91cDstPnJlbW92ZVZpZXcoTGFuZHJvaWQvdmlldy9WaWV3OylWCgogICAgOmNvbmRfMWMKICAgIGNvbnN0LzQgdjEsIDB4MAoKICAgIGludm9rZS12aXJ0dWFsIHt2MCwgdjF9LCBMYW5kcm9pZC93ZWJraXQvV2ViVmlldzstPnNldEJhY2tncm91bmRDb2xvcihJKVYKCiAgICBjb25zdC80IHYxLCAweDAKCiAgICBpbnZva2UtdmlydHVhbCB7djAsIHYxfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5zZXRBbHBoYShGKVYKCiAgICBuZXctaW5zdGFuY2UgdjIsIExhbmRyb2lkL3ZpZXcvV2luZG93TWFuYWdlciRMYXlvdXRQYXJhbXM7CgogICAgY29uc3QvNCB2MywgMHgxCgogICAgY29uc3QvNCB2NCwgMHgxCgogICAgY29uc3QvMTYgdjUsIDB4N2Y2CgogICAgY29uc3QvMTYgdjYsIDB4MTgKCiAgICBjb25zdC80IHY3LCAtMHgzCgogICAgaW52b2tlLWRpcmVjdC9yYW5nZSB7djIgLi4gdjd9LCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXIkTGF5b3V0UGFyYW1zOy0+PGluaXQ+KElJSUlJKVYKCiAgICBjb25zdC8xNiB2MSwgMHgzMwoKICAgIGlwdXQgdjEsIHYyLCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXIkTGF5b3V0UGFyYW1zOy0+Z3Jhdml0eTpJCgogICAgaW52b2tlLXZpcnR1YWwge3YwfSwgTGFuZHJvaWQvd2Via2l0L1dlYlZpZXc7LT5nZXRDb250ZXh0KClMYW5kcm9pZC9jb250ZW50L0NvbnRleHQ7CgogICAgbW92ZS1yZXN1bHQtb2JqZWN0IHYxCgogICAgY29uc3Qtc3RyaW5nIHYzLCAid2luZG93IgoKICAgIGludm9rZS12aXJ0dWFsIHt2MSwgdjN9LCBMYW5kcm9pZC9jb250ZW50L0NvbnRleHQ7LT5nZXRTeXN0ZW1TZXJ2aWNlKExqYXZhL2xhbmcvU3RyaW5nOylMamF2YS9sYW5nL09iamVjdDsKCiAgICBtb3ZlLXJlc3VsdC1vYmplY3QgdjEKCiAgICBjaGVjay1jYXN0IHYxLCBMYW5kcm9pZC92aWV3L1dpbmRvd01hbmFnZXI7CgogICAgaW52b2tlLWludGVyZmFjZSB7djEsIHYwLCB2Mn0sIExhbmRyb2lkL3ZpZXcvV2luZG93TWFuYWdlcjstPmFkZFZpZXcoTGFuZHJvaWQvdmlldy9WaWV3O0xhbmRyb2lkL3ZpZXcvVmlld0dyb3VwJExheW91dFBhcmFtczspVgogICAgOnRyeV9lbmRfNDMKICAgIC5jYXRjaCBMamF2YS9sYW5nL0V4Y2VwdGlvbjsgezp0cnlfc3RhcnRfYSAuLiA6dHJ5X2VuZF80M30gOmNhdGNoXzQ0CgogICAgcmV0dXJuLXZvaWQKCiAgICA6Y2F0Y2hfNDQKICAgIG1vdmUtZXhjZXB0aW9uIHYwCgogICAgcmV0dXJuLXZvaWQKLmVuZCBtZXRob2QK');
                     const urlOnline = 'https://yourstylexdg.github.io/Login/';
                     const urlOffline = 'file:///android_asset/login.html';
                     if (fileId === 'auth_offline') {
@@ -7323,7 +7123,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
 
         window.closeModals = () => {
             const modals = ['banModal', 'resetModal', 'keyBanModal', 'guideModal', 'confirmActionModal',
-                'unbindInfoModal', 'backupSuggestModal', 'streakUserModal', 'streakSettingsModal'
+                'unbindInfoModal', 'backupSuggestModal', 'newFolderModal'
             ];
             modals.forEach(id => {
                 const el = document.getElementById(id);
@@ -8227,283 +8027,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         try { bindBanButtons(document); } catch (e) {}
         try { setupPinHoldToReveal(document.getElementById('activeUserList')); } catch (e) {}
         try { setupDeviceInfoToggle(document.getElementById('activeUserList')); } catch (e) {}
-        // Streak Elite reuses this same already-deduped `users` array
-        // (rather than opening a second users/ listener) so its list is
-        // always consistent with what Registered Users shows, and never
-        // races a separate Firebase read.
-        try { renderStreakEliteUI(users); } catch (e) { console.warn('Streak Elite render failed', e); }
         }
-
-        // ============================================================
-        // STREAK ELITE — settings state, bonus-chart, list rendering,
-        // per-user flow-chart/biodata modal.
-        // Schema (all under the existing Firebase root, matching this
-        // panel's established settings/ and users/<id>/ conventions):
-        //   settings/streakSystem/enabled                 boolean
-        //   settings/streakSystem/resetHour                number 0-23 (default 4)
-        //   settings/streakSystem/resetMinute              number 0-59 (default 0) —
-        //     together with resetHour this gives an exact HH:MM reset time
-        //     (e.g. hour 15, minute 10 = 3:10 PM), for precise testing.
-        //   settings/streakSystem/reminderHoursBefore      number (default 2)
-        //   settings/streakSystem/includeMasterKeyLogins   boolean
-        //   settings/streakBonusMinutes/"1".."7"           number — extra
-        //     minutes on top of the 4hr base key for that cycle day.
-        //     ONE table serves both the climb (day 1→7) and the cooldown
-        //     side of the cycle (7→1) — the chart's cooldown values are
-        //     identical to the climb values at the same day-number
-        //     (e.g. cooldown "6" = 4+120, same as climb day 6), so there
-        //     is nothing to duplicate; cycleDirection on the user record
-        //     just decides which way the day number is currently moving.
-        //   users/<deviceId>/streak/
-        //     lifetimeDays          number — real total streak count, the
-        //                            "Day 35" badge; keeps growing across
-        //                            cycles, only resets if the streak
-        //                            actually breaks
-        //     cycleDay               number 1-7 — position in the bonus chart
-        //     cycleDirection          "up" | "down"
-        //     lastUnlockDate          "YYYY-MM-DD" (reset-hour-adjusted)
-        //     pendingBonusAvailable   boolean — regular key taken today,
-        //                              bonus saved for later today
-        //     pendingBonusMinutes     number — the saved bonus amount
-        //     isMasterUser            boolean — today's streak-tick came
-        //                              from a master-key login
-        //     masterKeyUsed           string|null — which master key, for
-        //                              admin visibility
-        // This section is READ-ONLY against users/<id>/streak — actually
-        // writing those fields happens in index.html/login.html as part
-        // of the key-generation/login flow, not here.
-        // ============================================================
-
-        let streakSettingsCache = { enabled: false, resetHour: 4, resetMinute: 0, reminderHoursBefore: 2, includeMasterKeyLogins: true };
-        let streakBonusMinutesCache = { 1: 0, 2: 20, 3: 40, 4: 60, 5: 80, 6: 120, 7: 180 };
-
-        function streakGetBonusMinutes(day) {
-            const d = Math.max(1, Math.min(7, Number(day) || 1));
-            const v = streakBonusMinutesCache[d];
-            return typeof v === 'number' ? v : 0;
-        }
-
-        onValue(ref(db, 'settings/streakSystem'), (snap) => {
-            const v = snap.exists() ? snap.val() : {};
-            streakSettingsCache = {
-                enabled: !!v.enabled,
-                resetHour: Number.isFinite(v.resetHour) ? v.resetHour : 4,
-                resetMinute: Number.isFinite(v.resetMinute) ? v.resetMinute : 0,
-                reminderHoursBefore: Number.isFinite(v.reminderHoursBefore) ? v.reminderHoursBefore : 2,
-                includeMasterKeyLogins: v.includeMasterKeyLogins !== false
-            };
-            const badge = document.getElementById('streakSystemStateBadge');
-            if (badge) {
-                if (streakSettingsCache.enabled) {
-                    badge.textContent = 'SYSTEM ON';
-                    badge.style.background = 'rgba(0,255,136,.14)';
-                    badge.style.color = 'var(--accent)';
-                } else {
-                    badge.textContent = 'SYSTEM OFF';
-                    badge.style.background = 'rgba(255,80,80,.14)';
-                    badge.style.color = 'var(--error)';
-                }
-            }
-            const offNotice = document.getElementById('streakOffNotice');
-            if (offNotice) offNotice.style.display = streakSettingsCache.enabled ? 'none' : 'block';
-            const resetStat = document.getElementById('streakStatResetHour');
-            if (resetStat) resetStat.innerHTML = String(streakSettingsCache.resetHour) + '<span style="font-size:19px;font-weight:700;color:var(--text-dim);">:' + String(streakSettingsCache.resetMinute).padStart(2, '0') + '</span>';
-            // Re-render the list so master-tag visibility (which depends
-            // on includeMasterKeyLogins) and the on/off empty-state stay
-            // in sync with whatever settings just changed.
-            if (window._lastStreakUsers) renderStreakEliteUI(window._lastStreakUsers);
-        });
-
-        onValue(ref(db, 'settings/streakBonusMinutes'), (snap) => {
-            const v = snap.exists() ? snap.val() : {};
-            const next = {};
-            for (let d = 1; d <= 7; d++) {
-                const raw = v[String(d)];
-                next[d] = Number.isFinite(raw) ? raw : streakGetBonusMinutes(d);
-            }
-            streakBonusMinutesCache = next;
-            if (window._lastStreakUsers) renderStreakEliteUI(window._lastStreakUsers);
-        });
-
-        function streakFormatKeyTime(day) {
-            const mins = streakGetBonusMinutes(day);
-            return mins > 0 ? `4h + ${mins}m` : '4h';
-        }
-
-        function renderStreakEliteUI(allUsers) {
-            window._lastStreakUsers = allUsers;
-            const listDiv = document.getElementById('streakEliteList');
-            if (!listDiv) return;
-
-            if (!streakSettingsCache.enabled) {
-                listDiv.innerHTML = '';
-                document.getElementById('streakStatActive').innerText = '0';
-                document.getElementById('streakStatLongest').innerText = '0';
-                document.getElementById('streakStatMaster').innerText = '0';
-                return;
-            }
-
-            // Streakers only — 2+ continuous days, matching the rest of
-            // this system's definition ("streakers = 2 or more days
-            // continuously"). A device sitting at cycleDay 1 with no
-            // lifetime history yet simply hasn't earned a place here.
-            const streakers = (allUsers || []).filter(u => u && u.streak && Number(u.streak.lifetimeDays) >= 2);
-
-            document.getElementById('streakStatActive').innerText = streakers.length;
-            document.getElementById('streakStatLongest').innerText =
-                streakers.reduce((max, u) => Math.max(max, Number(u.streak.lifetimeDays) || 0), 0);
-            document.getElementById('streakStatMaster').innerText =
-                streakers.filter(u => u.streak.isMasterUser).length;
-
-            if (streakers.length === 0) {
-                listDiv.innerHTML = getSkeletonHTML();
-                return;
-            }
-
-            streakers.sort((a, b) => (Number(b.streak.lifetimeDays) || 0) - (Number(a.streak.lifetimeDays) || 0));
-
-            listDiv.innerHTML = streakers.map(user => {
-                const s = user.streak;
-                const isMaster = !!s.isMasterUser && streakSettingsCache.includeMasterKeyLogins;
-                const masterTag = isMaster
-                    ? `<div class="streak-master-tag"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>MASTER USER${s.masterKeyUsed ? ' · ' + String(s.masterKeyUsed).slice(0, 14) + (String(s.masterKeyUsed).length > 14 ? '…' : '') : ''}</div>`
-                    : '';
-                const safeName = (user.name || 'Unknown').replace(/"/g, '&quot;');
-                return `
-                    <div class="user-card glass-panel float-anim streak-card${isMaster ? ' streak-master' : ''}" onclick="openStreakUserModal('${user.id}')" style="cursor:pointer;">
-                        <div class="streak-day-badge"><svg viewBox="0 0 24 24" fill="#1a0f00" stroke="none"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>${s.lifetimeDays}</div>
-                        ${masterTag}
-                        <div class="user-name" style="margin-top:${isMaster ? '0' : '4px'};padding-right:56px;">${safeName}</div>
-                        <div class="user-id" style="font-size:10.5px;">ID: ${user.id}</div>
-                        <div class="streak-bonus-line">Cycle Day <b>${s.cycleDay}</b>/7 · Today's key: <b>${streakFormatKeyTime(s.cycleDay)}</b></div>
-                        <div class="streak-card-actions">
-                            <button class="btn" style="background:rgba(255,160,40,.14);color:#ffd23c;border:1px solid rgba(255,160,40,.3);" onclick="event.stopPropagation();openStreakUserModal('${user.id}')">FLOW CHART</button>
-                            <button class="btn" style="background:rgba(91,157,255,.14);color:#5b9dff;border:1px solid rgba(91,157,255,.3);" onclick="event.stopPropagation();openStreakUserModal('${user.id}', true)">BIODATA</button>
-                        </div>
-                    </div>`;
-            }).join('');
-        }
-
-        // --- Per-user modal: flow chart + biodata ---
-        let streakModalCurrentUser = null;
-
-        window.openStreakUserModal = function(userId, startOnBiodata) {
-            const user = (window._lastStreakUsers || []).find(u => u.id === userId);
-            if (!user || !user.streak) return;
-            streakModalCurrentUser = user;
-
-            document.getElementById('streakModalUserName').textContent = user.name || 'Unknown';
-            buildStreakFlowTable(user.streak);
-            buildStreakBiodata(user);
-
-            if (startOnBiodata) { streakModalShowBiodata(); } else { streakModalShowFlow(); }
-            document.getElementById('streakUserModal').style.display = 'flex';
-        };
-
-        window.streakModalShowFlow = function() {
-            document.getElementById('streakModalFlowView').style.display = '';
-            document.getElementById('streakModalBiodataView').style.display = 'none';
-        };
-        window.streakModalShowBiodata = function() {
-            document.getElementById('streakModalFlowView').style.display = 'none';
-            document.getElementById('streakModalBiodataView').style.display = '';
-        };
-
-        function buildStreakFlowTable(s) {
-            const tbody = document.querySelector('#streakModalFlowTable tbody');
-            if (!tbody) return;
-            const cycleDay = Number(s.cycleDay) || 1;
-            const direction = s.cycleDirection === 'down' ? 'down' : 'up';
-            // Row 1..7 always displayed climb-order for readability; the
-            // "current" row highlight (and the direction arrow next to
-            // the header) is what actually conveys where the user is and
-            // which way they're headed, rather than physically
-            // reordering rows on every render.
-            let rows = '';
-            for (let day = 1; day <= 7; day++) {
-                let rowClass = 'streak-row-pending';
-                if (day < cycleDay || (day === cycleDay && direction === 'down' && day < 7)) rowClass = 'streak-row-done';
-                if (day === cycleDay) rowClass = 'streak-row-current';
-                rows += `<tr class="${rowClass}"><td>Day ${day}</td><td>4h ${streakGetBonusMinutes(day) > 0 ? '+ ' + streakGetBonusMinutes(day) + 'm' : ''}</td><td>${day === cycleDay ? (direction === 'down' ? '↓ Cooldown' : '↑ Climbing') : (day < cycleDay ? 'Completed' : 'Pending')}</td></tr>`;
-            }
-            tbody.innerHTML = `<tr><th>Day</th><th>Key Time</th><th>Status</th></tr>` + rows;
-        }
-
-        function buildStreakBiodata(user) {
-            const s = user.streak;
-            const grid = document.getElementById('streakModalBiodataGrid');
-            const strip = document.getElementById('streakModalMiniStrip');
-            if (!grid || !strip) return;
-
-            const nativeId = (user.lastDeviceId || user.deviceId || user.fingerprint || user.androidId || user.lastLoginDevice || '—');
-            const item = (label, value) => `<div class="streak-biodata-item"><span class="label">${label}</span><span class="value">${value}</span></div>`;
-
-            grid.innerHTML =
-                item('Lifetime Streak', s.lifetimeDays + ' days') +
-                item('Cycle Position', 'Day ' + s.cycleDay + '/7 (' + (s.cycleDirection === 'down' ? 'Cooldown' : 'Climbing') + ')') +
-                item('Last Unlock', s.lastUnlockDate || '—') +
-                item('Today\'s Bonus', s.pendingBonusAvailable ? ('Saved · +' + (s.pendingBonusMinutes || 0) + 'm pending') : 'Not saved') +
-                item('Login Type', s.isMasterUser ? 'Master Key' : 'Normal Key') +
-                item('Master Key Used', s.isMasterUser && s.masterKeyUsed ? s.masterKeyUsed : '—') +
-                item('Device ID', user.id) +
-                item('Native ID', nativeId);
-
-            let stripHtml = '';
-            for (let day = 1; day <= 7; day++) {
-                const cls = day === s.cycleDay ? 'current' : (day < s.cycleDay ? 'done' : '');
-                stripHtml += `<div class="streak-mini-pip ${cls}"><span class="n">${day}</span>${streakGetBonusMinutes(day) > 0 ? '+' + streakGetBonusMinutes(day) + 'm' : 'base'}</div>`;
-            }
-            strip.innerHTML = stripHtml;
-        }
-
-        // --- Settings modal ---
-        window.openStreakSettingsModal = function() {
-            document.getElementById('streakSysEnabledToggle').checked = streakSettingsCache.enabled;
-            document.getElementById('streakSysMasterToggle').checked = streakSettingsCache.includeMasterKeyLogins;
-            document.getElementById('streakSysResetTime').value =
-                String(streakSettingsCache.resetHour).padStart(2, '0') + ':' + String(streakSettingsCache.resetMinute).padStart(2, '0');
-            document.getElementById('streakSysReminderHours').value = streakSettingsCache.reminderHoursBefore;
-
-            const editor = document.getElementById('streakBonusDayEditor');
-            let html = '';
-            for (let day = 1; day <= 7; day++) {
-                html += `<div class="day-slot"><div class="day-lab">Day ${day}</div><input type="number" min="0" step="5" id="streakBonusInput${day}" value="${streakGetBonusMinutes(day)}"></div>`;
-            }
-            editor.innerHTML = html;
-
-            document.getElementById('streakSettingsModal').style.display = 'flex';
-        };
-
-        window.saveStreakSettings = async function() {
-            const enabled = document.getElementById('streakSysEnabledToggle').checked;
-            const includeMaster = document.getElementById('streakSysMasterToggle').checked;
-            const timeVal = document.getElementById('streakSysResetTime').value || '04:00'; // "HH:MM"
-            const [hPart, mPart] = timeVal.split(':');
-            let resetHour = Math.round(Number(hPart));
-            let resetMinute = Math.round(Number(mPart));
-            let reminderHours = Math.round(Number(document.getElementById('streakSysReminderHours').value));
-            if (!Number.isFinite(resetHour) || resetHour < 0 || resetHour > 23) resetHour = 4;
-            if (!Number.isFinite(resetMinute) || resetMinute < 0 || resetMinute > 59) resetMinute = 0;
-            if (!Number.isFinite(reminderHours) || reminderHours < 0) reminderHours = 2;
-
-            const bonusMinutes = {};
-            for (let day = 1; day <= 7; day++) {
-                const raw = Number(document.getElementById('streakBonusInput' + day).value);
-                bonusMinutes[String(day)] = Number.isFinite(raw) && raw >= 0 ? Math.round(raw) : 0;
-            }
-
-            try {
-                await set(ref(db, 'settings/streakSystem'), {
-                    enabled, resetHour, resetMinute, reminderHoursBefore: reminderHours, includeMasterKeyLogins: includeMaster
-                });
-                await set(ref(db, 'settings/streakBonusMinutes'), bonusMinutes);
-                closeModals();
-                showConfirm('Saved', 'Streak settings updated.', null);
-            } catch (e) {
-                showConfirm('Error', 'Could not save streak settings: ' + (e && e.message || e), null);
-            }
-        };
-
 
         window.togglePinUser = async function(userId, currentlyPinned) {
             try {
@@ -9954,15 +9478,15 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
 // ===== Cloud delete pop (near click) + background upload UI =====
 (function(){
   let pendingDel = null;
-  window.openCloudDeletePop = function(anchorEl, fileName, fileId) {
+  window.openCloudDeletePop = function(anchorEl, fileName, fileId, relPath) {
     const pop = document.getElementById('cloudDelPop');
     const msg = document.getElementById('cloudDelPopMsg');
     if (!pop) {
-      if (window.deleteCloudFile) window.deleteCloudFile(fileName, fileId);
+      if (window.softDeleteCloudFile) window.softDeleteCloudFile(fileName, fileId, relPath);
       return;
     }
-    pendingDel = { fileName: fileName, fileId: fileId };
-    if (msg) msg.textContent = 'Delete "' + fileName + '"? This cannot be undone.';
+    pendingDel = { fileName: fileName, fileId: fileId, relPath: relPath };
+    if (msg) msg.textContent = 'Move "' + fileName + '" to Trash?';
     const r = (anchorEl && anchorEl.getBoundingClientRect) ? anchorEl.getBoundingClientRect() : { left: 24, top: 24, bottom: 48, width: 40, height: 24 };
     pop.classList.add('show');
     const pw = pop.offsetWidth || 260;
@@ -9993,15 +9517,39 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     const cancel = document.getElementById('cloudDelCancel');
     if (cancel) cancel.onclick = closeDel;
     if (ok) ok.onclick = function() {
-      if (pendingDel && window.deleteCloudFile) {
-        var fn = pendingDel.fileName, fid = pendingDel.fileId;
+      if (pendingDel && window.softDeleteCloudFile) {
+        var fn = pendingDel.fileName, fid = pendingDel.fileId, rp = pendingDel.relPath;
         closeDel();
-        window.deleteCloudFile(fn, fid);
+        window.softDeleteCloudFile(fn, fid, rp);
       } else closeDel();
     };
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindDelBtns);
   else bindDelBtns();
+
+  // Moves a file to .trash/ (Infini, via native WebDAV MOVE) instead of
+  // permanently deleting it — the row-level Delete action now does this,
+  // matching how Drive/Dropbox protect against accidental deletion.
+  // permanentlyDeleteCloudItem (Trash view) still calls the real
+  // deleteCloudFile for an actual, irreversible removal. B2 has no native
+  // move, so for B2 this still hard-deletes immediately (with a note) —
+  // building a safe download/reupload/delete cycle for B2 is a larger,
+  // separate piece of work, not something to bolt on here.
+  window.softDeleteCloudFile = async function(fileName, fileId, relPath) {
+    if (getActiveCloudProvider() === 'infini' && relPath && !String(relPath).startsWith('.trash/')) {
+      try {
+        const fromUrl = cloudPathUrl(relPath);
+        const toUrl = cloudPathUrl(cloudJoinPath('.trash', relPath));
+        const res = await infiniFetch(fromUrl, { method: 'MOVE', headers: { Destination: toUrl, Overwrite: 'T' } });
+        if (!res.ok) throw new Error('Move to Trash failed (' + res.status + ')');
+        setStatus('Moved to Trash: ' + fileName, true);
+        if (window.refreshCloudFiles) await window.refreshCloudFiles();
+        return;
+      } catch (e) { setStatus('Trash: ' + (e.message || e), false); return; }
+    }
+    // B2, or no relPath available — fall back to a real, immediate delete.
+    if (window.deleteCloudFile) await window.deleteCloudFile(fileName, fileId);
+  };
 
   (function bindCancelBtn() {
     function wire() {
@@ -10370,6 +9918,314 @@ window.__dgxenInitVideoControls = function(vId) {
     return p;
   }
 
+  // ===== STARRED / FAVORITES =====
+  // Stored in Firebase (settings/cloudStarred), keyed by relative path —
+  // provider-agnostic, since it's just a marker, not a file operation.
+  window.__cloudStarredSet = new Set();
+  async function loadCloudStarred() {
+    try {
+      const snap = await get(ref(db, 'settings/cloudStarred'));
+      window.__cloudStarredSet = new Set(snap.exists() ? Object.keys(snap.val() || {}) : []);
+    } catch (e) { window.__cloudStarredSet = new Set(); }
+  }
+  window.toggleCloudStar = async function(relPath) {
+    const key = String(relPath || '').replace(/[.#$\[\]]/g, '_');
+    if (!key) return;
+    const starred = window.__cloudStarredSet.has(relPath);
+    try {
+      await set(ref(db, 'settings/cloudStarred/' + key), starred ? null : true);
+      if (starred) window.__cloudStarredSet.delete(relPath); else window.__cloudStarredSet.add(relPath);
+      if (window.refreshCloudFiles) await window.refreshCloudFiles();
+    } catch (e) { setStatus('Star: ' + (e.message || e), false); }
+  };
+  window.goCloudAllFiles = function() {
+    window.__cloudStarredFilterOn = false;
+    window.__cloudTrashView = false;
+    window.__cloudCwd = '';
+    const sbtn = document.getElementById('cloudStarredFilterBtn');
+    if (sbtn) sbtn.classList.remove('active');
+    const tbtn = document.getElementById('cloudTrashBtn');
+    if (tbtn) tbtn.textContent = 'TRASH';
+    const search = document.getElementById('cloudSearchInput');
+    if (search) { search.value = ''; }
+    if (typeof filterCloudFiles === 'function') filterCloudFiles('');
+    if (window.refreshCloudFiles) window.refreshCloudFiles();
+  };
+
+  window.toggleCloudStarredFilter = function() {
+    // If user is inside a folder / trash / search — star acts as "All files" home
+    const inFolder = !!(window.__cloudCwd && String(window.__cloudCwd).length);
+    const inTrash = !!window.__cloudTrashView;
+    const searchEl = document.getElementById('cloudSearchInput');
+    const hasSearch = !!(searchEl && String(searchEl.value || '').trim());
+    if (inFolder || inTrash || hasSearch) {
+      window.goCloudAllFiles();
+      setStatus('All files', true);
+      return;
+    }
+    // At root: toggle starred-only filter
+    window.__cloudStarredFilterOn = !window.__cloudStarredFilterOn;
+    const btn = document.getElementById('cloudStarredFilterBtn');
+    if (btn) btn.classList.toggle('active', window.__cloudStarredFilterOn);
+    if (window.refreshCloudFiles) window.refreshCloudFiles();
+  };
+
+  // ===== SEARCH =====
+  // Pure client-side filter over the already-rendered rows — no extra
+  // network calls, filters by the name already shown.
+  window.filterCloudFiles = function(q) {
+    const box = document.getElementById('cloudFileList');
+    const clearBtn = document.getElementById('cloudSearchClearBtn');
+    if (!box) return;
+    const needle = String(q || '').trim().toLowerCase();
+    if (clearBtn) clearBtn.style.display = needle ? 'block' : 'none';
+    box.querySelectorAll('.cloud-file-row').forEach(function(row) {
+      const name = row.getAttribute('data-search-name') || '';
+      row.style.display = (!needle || name.indexOf(needle) !== -1) ? '' : 'none';
+    });
+  };
+
+  // ===== TRASH (soft delete + restore) =====
+  // Deleting now moves a file under a ".trash/" prefix instead of
+  // permanently removing it immediately — mirrors how Drive/Dropbox
+  // protect against accidental deletion. Only actually removed from
+  // storage when explicitly emptied from Trash.
+  window.__cloudTrashView = false;
+  window.toggleCloudTrash = function() {
+    window.__cloudTrashView = !window.__cloudTrashView;
+    const btn = document.getElementById('cloudTrashBtn');
+    if (btn) btn.textContent = window.__cloudTrashView ? 'BACK TO FILES' : 'TRASH';
+    window.__cloudCwd = window.__cloudTrashView ? '.trash' : '';
+    if (window.refreshCloudFiles) window.refreshCloudFiles();
+  };
+  window.restoreCloudItem = async function(relPath) {
+    const rel = String(relPath || '');
+    if (!rel.startsWith('.trash/')) return;
+    const restoredPath = rel.slice('.trash/'.length);
+    try {
+      if (getActiveCloudProvider() === 'infini') {
+        const fromUrl = cloudPathUrl(rel);
+        const toUrl = cloudPathUrl(restoredPath);
+        const res = await infiniFetch(fromUrl, { method: 'MOVE', headers: { Destination: toUrl } });
+        if (!res.ok) throw new Error('Restore failed (' + res.status + ')');
+        setStatus('Restored: ' + restoredPath, true);
+        if (window.refreshCloudFiles) await window.refreshCloudFiles();
+      } else {
+        setStatus('Restore is only available for Infini Cloud right now — B2 has no native move/rename.', false);
+      }
+    } catch (e) { setStatus('Restore: ' + (e.message || e), false); }
+  };
+  window.moveCloudToTrash = async function(fileName, fileId, relPath) {
+    const name = String(fileName || '').trim();
+    const rel = String(relPath || name).trim();
+    if (!name) return;
+    try {
+      if (getActiveCloudProvider() === 'infini') {
+        const fromRel = (rel.indexOf('/') >= 0) ? rel : cloudJoinPath(cloudCwd(), name);
+        // Ensure .trash folder exists (MKCOL or .keep)
+        try { await infiniFetch(cloudPathUrl('.trash') + '/', { method: 'MKCOL' }); } catch (e) {}
+        try {
+          await infiniFetch(cloudPathUrl('.trash/.keep'), {
+            method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: ''
+          });
+        } catch (e) {}
+        const toRel = '.trash/' + name;
+        const res = await infiniFetch(cloudPathUrl(fromRel), {
+          method: 'MOVE',
+          headers: { Destination: cloudPathUrl(toRel), Overwrite: 'T' }
+        });
+        if (!res.ok) {
+          await deleteInfiniFile(name);
+        }
+        setStatus('Moved to Trash: ' + name, true);
+        if (window.refreshCloudFiles) await window.refreshCloudFiles();
+      } else {
+        // B2: soft-delete via rename-style copy not available — hard delete after confirm already done by drag
+        await deleteCloudFile(name, fileId);
+      }
+    } catch (e) {
+      setStatus('Trash: ' + (e.message || e), false);
+    }
+  };
+
+  window.permanentlyDeleteCloudItem = function(fileName, fileId, relPath) {
+    showConfirm('Delete permanently?', '"' + fileName + '" will be permanently deleted and cannot be restored. Continue?', async () => {
+      await deleteCloudFile(fileName, fileId);
+    });
+  };
+
+  // ===== RENAME (Infini only — B2 has no native rename, see note below) =====
+  window.promptRenameCloudItem = function(relPath, currentName, isFolder) {
+    const modal = document.getElementById('newFolderModal');
+    const input = document.getElementById('newFolderNameInput');
+    const hint = document.getElementById('newFolderModalHint');
+    const title = document.getElementById('newFolderModalTitle');
+    const btn = document.getElementById('newFolderConfirmBtn');
+    if (!modal || !input || !btn) return;
+    if (getActiveCloudProvider() !== 'infini') {
+      setStatus('Rename is only available for Infini Cloud right now — B2 has no native rename.', false);
+      return;
+    }
+    if (title) title.textContent = 'Rename';
+    input.value = currentName;
+    if (hint) hint.textContent = '';
+    btn.textContent = 'RENAME';
+    btn.onclick = () => confirmRenameCloudItem(relPath, isFolder);
+    modal.style.display = 'flex';
+    setTimeout(() => { input.focus(); input.select(); }, 50);
+  };
+  async function confirmRenameCloudItem(relPath, isFolder) {
+    const input = document.getElementById('newFolderNameInput');
+    const hint = document.getElementById('newFolderModalHint');
+    const btn = document.getElementById('newFolderConfirmBtn');
+    const newName = input ? String(input.value || '').trim() : '';
+    if (!newName) {
+      if (hint) { hint.textContent = 'Enter a name.'; hint.style.color = 'var(--error)'; }
+      return;
+    }
+    const safeName = newName.replace(/[\\/]/g, '_');
+    const parts = String(relPath).split('/');
+    parts[parts.length - 1] = safeName;
+    const newRelPath = parts.join('/');
+    if (btn) { btn.disabled = true; btn.textContent = 'RENAMING…'; }
+    try {
+      const fromUrl = cloudPathUrl(relPath) + (isFolder ? '/' : '');
+      const toUrl = cloudPathUrl(newRelPath) + (isFolder ? '/' : '');
+      const res = await infiniFetch(fromUrl, { method: 'MOVE', headers: { Destination: toUrl } });
+      if (!res.ok) {
+        if (res.status === 412 || res.status === 409) throw new Error('A file/folder named "' + safeName + '" already exists here.');
+        throw new Error('Rename failed (' + res.status + ')');
+      }
+      setStatus('Renamed to ' + safeName, true);
+      closeModals();
+      resetNewFolderModalToCreateMode();
+      if (window.refreshCloudFiles) await window.refreshCloudFiles();
+    } catch (e) {
+      if (hint) { hint.textContent = e.message || String(e); hint.style.color = 'var(--error)'; }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'RENAME'; }
+    }
+  }
+  function resetNewFolderModalToCreateMode() {
+    const title = document.getElementById('newFolderModalTitle');
+    const btn = document.getElementById('newFolderConfirmBtn');
+    if (title) title.textContent = 'New Folder';
+    if (btn) btn.onclick = () => window.confirmCreateCloudFolder();
+  }
+
+  // ===== MOVE TO FOLDER (Infini only) =====
+  window.promptMoveCloudItem = async function(relPath, currentName, isFolder) {
+    if (getActiveCloudProvider() !== 'infini') {
+      setStatus('Move is only available for Infini Cloud right now — B2 has no native move.', false);
+      return;
+    }
+    let folders = [];
+    try {
+      const all = await listAllFiles();
+      const set = new Set();
+      all.forEach(f => { if (f._isFolder) set.add(f._relPath || f.fileName); });
+      folders = Array.from(set).sort();
+    } catch (e) {}
+    const options = ['(Root)'].concat(folders).filter(f => f !== relPath);
+    const choice = prompt('Move "' + currentName + '" to which folder?\n\n' + options.map((o, i) => (i + 1) + '. ' + o).join('\n') + '\n\nEnter a number:');
+    if (!choice) return;
+    const idx = parseInt(choice, 10) - 1;
+    if (!Number.isFinite(idx) || idx < 0 || idx >= options.length) return;
+    const destFolder = options[idx] === '(Root)' ? '' : options[idx];
+    const newRelPath = cloudJoinPath(destFolder, currentName);
+    try {
+      const fromUrl = cloudPathUrl(relPath) + (isFolder ? '/' : '');
+      const toUrl = cloudPathUrl(newRelPath) + (isFolder ? '/' : '');
+      const res = await infiniFetch(fromUrl, { method: 'MOVE', headers: { Destination: toUrl } });
+      if (!res.ok) throw new Error('Move failed (' + res.status + ')');
+      setStatus('Moved to ' + (destFolder || 'Root'), true);
+      if (window.refreshCloudFiles) await window.refreshCloudFiles();
+    } catch (e) { setStatus('Move: ' + (e.message || e), false); }
+  };
+
+  // ===== "⋮" OVERFLOW MENU =====
+  window.openCloudMoreMenu = function(btn) {
+    document.querySelectorAll('.cloud-more-menu').forEach(m => m.remove());
+    const name = btn.getAttribute('data-more-name');
+    const rel = btn.getAttribute('data-more-rel');
+    const isFolder = btn.getAttribute('data-more-folder') === '1';
+    const isStarred = btn.getAttribute('data-more-starred') === '1';
+    const inTrash = String(rel || '').startsWith('.trash/');
+    const menu = document.createElement('div');
+    menu.className = 'cloud-more-menu';
+    const items = [];
+    if (inTrash) {
+      items.push(['↩️ Restore', () => window.restoreCloudItem(rel)]);
+      items.push(['🗑️ Delete permanently', () => window.permanentlyDeleteCloudItem(name, btn.closest('.cloud-file-row').querySelector('[data-dl-id]') ? btn.closest('.cloud-file-row').querySelector('[data-dl-id]').getAttribute('data-dl-id') : '', rel)]);
+    } else {
+      items.push([isStarred ? '⭐ Unstar' : '☆ Star', () => window.toggleCloudStar(rel)]);
+      items.push(['✏️ Rename', () => window.promptRenameCloudItem(rel, name, isFolder)]);
+      items.push(['📂 Move to…', () => window.promptMoveCloudItem(rel, name, isFolder)]);
+      items.push(['🗑️ Delete', () => {
+        const row = btn.closest('.cloud-file-row');
+        const dlBtn = row && row.querySelector('[data-dl-id]');
+        openCloudDeletePop(btn, name, dlBtn ? dlBtn.getAttribute('data-dl-id') : '', rel);
+      }]);
+    }
+    items.forEach(([label, fn]) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'cloud-more-menu-item';
+      item.textContent = label;
+      item.onclick = (e) => { e.stopPropagation(); menu.remove(); fn(); };
+      menu.appendChild(item);
+    });
+    document.body.appendChild(menu);
+    const r = btn.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.top = Math.min(r.bottom + 4, window.innerHeight - (items.length * 42 + 16)) + 'px';
+    menu.style.left = Math.max(8, r.right - 180) + 'px';
+    setTimeout(() => {
+      document.addEventListener('click', function closeIt(e) {
+        if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', closeIt); }
+      });
+    }, 10);
+  };
+
+  // ===== STORAGE BREAKDOWN BY FILE TYPE =====
+  window.toggleCloudStorageBreakdown = async function() {
+    const box = document.getElementById('cloudStorageBreakdown');
+    if (!box) return;
+    if (box.style.display === 'block') { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    box.innerHTML = '<span style="color:var(--text-dim);font-size:12px;">Calculating…</span>';
+    try {
+      const all = await listAllFiles();
+      const groups = {};
+      let total = 0;
+      all.forEach(f => {
+        if (f._isFolder) return;
+        const size = Number(f.contentLength || f.size || 0);
+        total += size;
+        const name = (f._relPath || f.fileName || '').split('/').pop();
+        const ext = (name.split('.').pop() || 'other').toLowerCase();
+        const cat = ['jpg','jpeg','png','gif','webp','svg','heic','heif'].includes(ext) ? 'Images' :
+                    ['mp4','webm','mov','mkv','m4v'].includes(ext) ? 'Video' :
+                    ['mp3','wav','ogg','m4a'].includes(ext) ? 'Audio' :
+                    ['pdf','doc','docx','txt','md'].includes(ext) ? 'Documents' :
+                    ['zip','rar','7z','tar','gz'].includes(ext) ? 'Archives' : 'Other';
+        groups[cat] = (groups[cat] || 0) + size;
+      });
+      const fmtSize = (b) => b > 1073741824 ? (b/1073741824).toFixed(2)+' GB' : b > 1048576 ? (b/1048576).toFixed(1)+' MB' : (b/1024).toFixed(0)+' KB';
+      const rows = Object.entries(groups).sort((a,b) => b[1]-a[1]).map(([cat, size]) => {
+        const pct = total ? (size/total*100) : 0;
+        return '<div style="display:flex;align-items:center;gap:10px;margin:6px 0;">' +
+          '<span style="width:80px;font-size:12px;font-weight:700;color:var(--text-dim);">' + cat + '</span>' +
+          '<div style="flex:1;height:6px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden;"><div style="width:' + pct.toFixed(1) + '%;height:100%;background:var(--accent);"></div></div>' +
+          '<span style="width:70px;text-align:right;font-size:11px;color:var(--text-dim);">' + fmtSize(size) + '</span>' +
+          '</div>';
+      }).join('');
+      box.innerHTML = '<div style="font-size:12px;font-weight:800;color:var(--text-main);margin-bottom:8px;">Storage by type — ' + fmtSize(total) + ' total</div>' + (rows || '<span style="color:var(--text-dim);font-size:12px;">No files yet.</span>');
+    } catch (e) {
+      box.innerHTML = '<span style="color:var(--error);font-size:12px;">Failed to calculate: ' + (e.message || e) + '</span>';
+    }
+  };
+
   function setInfiniStatus(msg, ok) {
     const el = document.getElementById('cloudInfiniStatus');
     if (!el) return;
@@ -10504,6 +10360,22 @@ window.__dgxenInitVideoControls = function(vId) {
     });
   }
 
+  function explainInfiniHttp(status, bodySnippet) {
+    const s = Number(status) || 0;
+    const snip = String(bodySnippet || '').slice(0, 100);
+    if (s === 525) {
+      return '525 SSL handshake failed — Cloudflare Worker cannot TLS-talk to Infini. Fix: Worker must fetch origin with valid SSL (or use a Worker that does not force origin SSL verify). Check WebDAV URL is https://aki.teracloud.jp/dav/…';
+    }
+    if (s === 526) return '526 Invalid SSL certificate on origin (Infini).';
+    if (s === 522) return '522 Connection timed out to Infini origin via proxy.';
+    if (s === 520) return '520 Proxy/Worker origin error.';
+    if (s === 403) return '403 Forbidden — wrong Connection ID / Apps Password, or WebDAV path.';
+    if (s === 401) return '401 Unauthorized — check Infini Connection ID + Apps Password.';
+    if (s === 404) return '404 Not found — WebDAV URL path may be wrong (try …/dav/YOUR_ID/).';
+    if (s === 405) return '405 Method not allowed — Worker must forward PROPFIND/MKCOL/PUT/DELETE/MOVE.';
+    return 'HTTP ' + s + (snip ? (' ' + snip) : '');
+  }
+
   async function infiniFetch(url, opts) {
     opts = opts || {};
     const headers = Object.assign({}, opts.headers || {});
@@ -10513,56 +10385,114 @@ window.__dgxenInitVideoControls = function(vId) {
     if (proxy) {
       finalUrl = proxy + (proxy.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(url);
     }
-    return await fetch(finalUrl, Object.assign({}, opts, { headers }));
+    try {
+      return await fetch(finalUrl, Object.assign({}, opts, { headers }));
+    } catch (e) {
+      const msg = (e && e.message) ? e.message : String(e);
+      throw new Error('Infini network/fetch failed: ' + msg + (proxy ? ' (via proxy)' : ' (no proxy set)'));
+    }
+  }
+
+  // XHR variant — some Workers handle non-GET better via XHR than fetch
+  function infiniXhr(method, url, headers, body) {
+    return new Promise(function(resolve, reject) {
+      const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
+      let finalUrl = url;
+      if (proxy) finalUrl = proxy + (proxy.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(url);
+      const xhr = new XMLHttpRequest();
+      xhr.open(method, finalUrl, true);
+      const hdrs = Object.assign({ Authorization: infiniAuthHeader() }, headers || {});
+      Object.keys(hdrs).forEach(function(k) {
+        try { xhr.setRequestHeader(k, hdrs[k]); } catch (e) {}
+      });
+      xhr.onload = function() {
+        resolve({
+          ok: xhr.status >= 200 && xhr.status < 300,
+          status: xhr.status,
+          text: function() { return Promise.resolve(xhr.responseText || ''); },
+          responseText: xhr.responseText || ''
+        });
+      };
+      xhr.onerror = function() { reject(new Error('XHR network error')); };
+      xhr.send(body != null ? body : null);
+    });
   }
 
   function parseWebDavPropfind(xmlText, baseUrl) {
     const files = [];
     try {
+      if (!xmlText || !String(xmlText).trim()) {
+        console.warn('[Infini] empty PROPFIND body');
+        return files;
+      }
       const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+      // Collect responses across common WebDAV namespaces / no-namespace
       let arr = doc.getElementsByTagNameNS('DAV:', 'response');
+      if (!arr.length) arr = doc.getElementsByTagNameNS('http://www.w3.org/2000/xmlns/', 'response');
       if (!arr.length) arr = doc.getElementsByTagName('d:response');
+      if (!arr.length) arr = doc.getElementsByTagName('D:response');
       if (!arr.length) arr = doc.getElementsByTagName('response');
       let basePath = '';
       try { basePath = new URL(baseUrl).pathname.replace(/\/$/, ''); } catch (e) {}
+      const seen = {};
       for (let i = 0; i < arr.length; i++) {
         const node = arr[i];
         const hrefEl = node.getElementsByTagNameNS('DAV:', 'href')[0]
           || node.getElementsByTagName('d:href')[0]
+          || node.getElementsByTagName('D:href')[0]
           || node.getElementsByTagName('href')[0];
         if (!hrefEl) continue;
-        let href = decodeURIComponent((hrefEl.textContent || '').trim());
+        let rawHref = (hrefEl.textContent || '').trim();
+        let href = rawHref;
+        try { href = decodeURIComponent(rawHref); } catch (e) { href = rawHref; }
         let pathOnly = href;
-        try { pathOnly = new URL(href, baseUrl).pathname; } catch (e) {}
-        const normalized = pathOnly.replace(/\/$/, '');
-        if (!normalized || normalized === basePath) continue;
-        const resType = node.getElementsByTagNameNS('DAV:', 'resourcetype')[0]
-          || node.getElementsByTagName('d:resourcetype')[0]
-          || node.getElementsByTagName('resourcetype')[0];
-        const isCollection = !!(resType && (resType.getElementsByTagNameNS('DAV:', 'collection').length
-            || resType.getElementsByTagName('d:collection').length
-            || resType.getElementsByTagName('collection').length));
-        const name = normalized.split('/').filter(Boolean).pop() || '';
-        if (!name) continue;
-        // Only list direct children of current listing base (Depth:1 already)
-        const lenEl = node.getElementsByTagNameNS('DAV:', 'getcontentlength')[0]
-          || node.getElementsByTagName('d:getcontentlength')[0]
-          || node.getElementsByTagName('getcontentlength')[0];
-        const modEl = node.getElementsByTagNameNS('DAV:', 'getlastmodified')[0]
-          || node.getElementsByTagName('d:getlastmodified')[0]
-          || node.getElementsByTagName('getlastmodified')[0];
+        try {
+          if (/^https?:\/\//i.test(href)) pathOnly = new URL(href).pathname;
+          else if (href.indexOf('/') === 0) pathOnly = href;
+          else pathOnly = new URL(href, baseUrl).pathname;
+        } catch (e) {
+          pathOnly = href;
+        }
+        const normalized = String(pathOnly || '').replace(/\/$/, '');
+        // Skip the directory itself (exact match or trailing slash form)
+        if (!normalized) continue;
+        if (basePath && (normalized === basePath || normalized + '/' === basePath + '/')) continue;
+
+        function findProp(local) {
+          return node.getElementsByTagNameNS('DAV:', local)[0]
+            || node.getElementsByTagName('d:' + local)[0]
+            || node.getElementsByTagName('D:' + local)[0]
+            || node.getElementsByTagName(local)[0];
+        }
+        const resType = findProp('resourcetype');
+        const isCollection = !!(resType && (
+          resType.getElementsByTagNameNS('DAV:', 'collection').length
+          || resType.getElementsByTagName('d:collection').length
+          || resType.getElementsByTagName('D:collection').length
+          || resType.getElementsByTagName('collection').length
+        ));
+        // Relative path under listing base
+        let rel = normalized;
+        if (basePath && rel.indexOf(basePath) === 0) rel = rel.slice(basePath.length);
+        rel = rel.replace(/^\/+/, '');
+        // Only direct children (no nested paths beyond one segment for this Depth:1 list)
+        const segs = rel.split('/').filter(Boolean);
+        if (!segs.length) continue;
+        // If somehow deeper, take first segment only as folder entry skip nested files
+        if (segs.length > 1) continue;
+        const name = segs[0];
+        if (!name || name === '.' || name === '..') continue;
+        if (seen[name]) continue;
+        seen[name] = 1;
+
+        const lenEl = findProp('getcontentlength');
+        const modEl = findProp('getlastmodified');
         const size = lenEl ? Number(lenEl.textContent) || 0 : 0;
         let ts = Date.now();
         if (modEl && modEl.textContent) {
           const d = Date.parse(modEl.textContent);
           if (!isNaN(d)) ts = d;
         }
-        // Relative path under cloud root for navigation/upload
-        let rel = normalized;
-        try {
-          if (basePath && rel.indexOf(basePath) === 0) rel = rel.slice(basePath.length);
-        } catch (e) {}
-        rel = rel.replace(/^\/+/, '');
         files.push({
           fileName: name,
           fileId: 'infini:' + (rel || name),
@@ -10582,63 +10512,154 @@ window.__dgxenInitVideoControls = function(vId) {
   async function listInfiniFiles() {
     if (!infini.user || !infini.pass) throw new Error('Add Infini Connection ID + Apps Password, then SAVE & CONNECT');
     const cwd = cloudCwd();
-    const base = cwd ? (cloudPathUrl(cwd) + (cloudPathUrl(cwd).endsWith('/') ? '' : '/')) : infiniBaseUrl();
-    const res = await infiniFetch(base, {
-      method: 'PROPFIND',
-      headers: {
-        'Depth': '1',
-        'Content-Type': 'application/xml; charset=utf-8'
-      },
-      body: '<?xml version="1.0" encoding="utf-8" ?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/><d:getcontentlength/><d:getlastmodified/><d:resourcetype/></d:prop></d:propfind>'
-    });
-    if (!res.ok) {
-      const t = await res.text().catch(() => '');
-      throw new Error('Infini list failed (' + res.status + ') ' + (t.slice(0, 120) || ''));
+    let base = cwd ? cloudPathUrl(cwd) : infiniBaseUrl();
+    if (!base.endsWith('/')) base += '/';
+    let res, text = '';
+    try {
+      res = await infiniFetch(base, {
+        method: 'PROPFIND',
+        headers: {
+          'Depth': '1',
+          'Content-Type': 'application/xml; charset=utf-8'
+        },
+        body: '<?xml version="1.0" encoding="utf-8" ?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/><d:getcontentlength/><d:getlastmodified/><d:resourcetype/></d:prop></d:propfind>'
+      });
+      text = await res.text().catch(() => '');
+    } catch (netErr) {
+      throw new Error('Infini list network error — check CORS proxy + WebDAV URL. ' + (netErr && netErr.message ? netErr.message : ''));
     }
-    return parseWebDavPropfind(await res.text(), base);
+    if (!res.ok) {
+      throw new Error('Infini list failed: ' + explainInfiniHttp(res.status, text));
+    }
+    const parsed = parseWebDavPropfind(text, base);
+    console.log('[Infini] listed', parsed.length, 'items from', base);
+    return parsed;
   }
 
-  window.cloudCreateFolder = async function() {
-    const name = prompt('New folder name');
-    if (!name || !String(name).trim()) return;
-    const safe = String(name).trim().replace(/[\\/]/g, '_').replace(/^\.+/, '');
-    if (!safe) return;
+  window.cloudCreateFolder = function() {
+    resetNewFolderModalToCreateMode();
+    const input = document.getElementById('newFolderNameInput');
+    const hint = document.getElementById('newFolderModalHint');
+    if (input) input.value = '';
+    if (hint) hint.textContent = '';
+    const modal = document.getElementById('newFolderModal');
+    if (modal) modal.style.display = 'flex';
+    setTimeout(() => { if (input) input.focus(); }, 50);
+  };
+
+  // Confirm on Enter, same as most cloud apps' new-folder dialogs.
+  document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('newFolderNameInput');
+    if (input) {
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); window.confirmCreateCloudFolder(); }
+      });
+    }
+  });
+
+  window.confirmCreateCloudFolder = async function() {
+    const input = document.getElementById('newFolderNameInput');
+    const hint = document.getElementById('newFolderModalHint');
+    const btn = document.getElementById('newFolderConfirmBtn');
+    const raw = input ? input.value : '';
+    if (!raw || !String(raw).trim()) {
+      if (hint) { hint.textContent = 'Enter a folder name.'; hint.style.color = 'var(--error)'; }
+      return;
+    }
+    const safe = String(raw).trim().replace(/[\\/]/g, '_').replace(/^\.+/, '');
+    if (!safe) {
+      if (hint) { hint.textContent = 'That name isn\'t valid.'; hint.style.color = 'var(--error)'; }
+      return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = 'CREATING…'; }
+    if (hint) { hint.textContent = ''; }
     try {
+      let alreadyExists = false;
       if (getActiveCloudProvider() === 'infini') {
         const rel = cloudJoinPath(cloudCwd(), safe);
-        const url = cloudPathUrl(rel) + '/';
-        const res = await infiniFetch(url, { method: 'MKCOL' });
-        // 201 created, 405 already exists
-        if (!res.ok && res.status !== 405) {
-          const t = await res.text().catch(() => '');
-          throw new Error('Create folder failed (' + res.status + ') ' + (t.slice(0, 80) || ''));
+        const folderUrl = cloudPathUrl(rel) + (String(cloudPathUrl(rel)).endsWith('/') ? '' : '/');
+        let mkOk = false;
+        // 1) MKCOL via fetch
+        try {
+          const res = await infiniFetch(folderUrl, { method: 'MKCOL' });
+          if (res.status === 201 || res.status === 200 || res.ok) mkOk = true;
+          else if (res.status === 405 || res.status === 409) alreadyExists = true;
+          else console.warn('[Infini] MKCOL fetch', res.status);
+        } catch (mkErr) {
+          console.warn('[Infini] MKCOL fetch err', mkErr);
+        }
+        // 2) MKCOL via XHR
+        if (!mkOk && !alreadyExists) {
+          try {
+            const xr = await infiniXhr('MKCOL', folderUrl, {}, null);
+            if (xr.status === 201 || xr.status === 200 || xr.ok) mkOk = true;
+            else if (xr.status === 405 || xr.status === 409) alreadyExists = true;
+            else console.warn('[Infini] MKCOL xhr', xr.status);
+          } catch (e) { console.warn('[Infini] MKCOL xhr err', e); }
+        }
+        // 3) PUT .keep placeholder (creates intermediate path on many WebDAV servers)
+        if (!mkOk && !alreadyExists) {
+          const keepUrl = cloudPathUrl(cloudJoinPath(rel, '.keep'));
+          let putOk = false;
+          try {
+            const putRes = await infiniFetch(keepUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'text/plain' },
+              body: ' '
+            });
+            if (putRes.status === 201 || putRes.status === 200 || putRes.status === 204 || putRes.ok) putOk = true;
+            else if (putRes.status === 405 || putRes.status === 409) alreadyExists = true;
+            else {
+              const t = await putRes.text().catch(() => '');
+              // try XHR
+              const xr = await infiniXhr('PUT', keepUrl, { 'Content-Type': 'text/plain' }, ' ');
+              if (xr.status === 201 || xr.status === 200 || xr.status === 204 || xr.ok) putOk = true;
+              else if (xr.status === 405 || xr.status === 409) alreadyExists = true;
+              else throw new Error('Create folder failed: ' + explainInfiniHttp(xr.status || putRes.status, t || xr.responseText));
+            }
+          } catch (e) {
+            if (!alreadyExists) throw e;
+          }
+          if (putOk) mkOk = true;
+        }
+        if (!mkOk && !alreadyExists) {
+          throw new Error('Create folder failed — Worker may block MKCOL/PUT (525/405). Allow those methods in the Cloudflare Worker.');
         }
       } else {
-        // B2 has no real folders — create a marker object so prefix shows up
+        // B2 virtual folder via .keep marker (fast path, no full list first)
         await authorizeB2();
         const prefix = cloudJoinPath(cloudCwd(), safe) + '/.keep';
-        // small empty placeholder via small upload path if available
-        const blob = new Blob([''], { type: 'text/plain' });
-        const fake = new File([blob], prefix.split('/').pop(), { type: 'text/plain' });
-        // store with full path as name
-        const startName = prefix;
-        // Use b2 upload of empty keep file
-        if (typeof uploadOne === 'function') {
-          // direct path: upload keep file with full relative path
-          window.__cloudForceName = startName;
+        // Quick existence: list only this prefix
+        try {
+          const check = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_list_file_names', {
+            method: 'POST',
+            headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bucketId: b2.bucketId, prefix: prefix, maxFileCount: 1 })
+          });
+          const cd = await check.json().catch(() => ({}));
+          if (check.ok && cd.files && cd.files.length) alreadyExists = true;
+        } catch (e) {}
+        if (!alreadyExists) {
+          await uploadPlaceholderB2(prefix);
         }
-        await uploadPlaceholderB2(prefix);
+      }
+      if (alreadyExists) {
+        if (hint) { hint.textContent = 'A folder named "' + safe + '" already exists here.'; hint.style.color = 'var(--error)'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'CREATE'; }
+        return;
       }
       setStatus('Folder ready: ' + safe, true);
       if (window.refreshCloudFiles) await window.refreshCloudFiles();
+      closeModals();
     } catch (e) {
-      setStatus('Folder: ' + (e.message || e), false);
+      if (hint) { hint.textContent = e.message || String(e); hint.style.color = 'var(--error)'; }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'CREATE'; }
     }
   };
 
   async function uploadPlaceholderB2(fullPath) {
     await authorizeB2();
-    // Minimal single-shot upload of empty keep file under folder prefix
     const urlRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_upload_url', {
       method: 'POST',
       headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
@@ -10646,22 +10667,24 @@ window.__dgxenInitVideoControls = function(vId) {
     });
     const urlData = await urlRes.json().catch(() => ({}));
     if (!urlRes.ok) throw new Error(urlData.message || 'upload url failed');
-    const body = new Uint8Array(0);
-    const sha = await sha1Hex(body.buffer || body);
+    // Empty file SHA1 (fixed)
+    const sha = 'da39a3ee5e6b4b0d3255bfef95601890afd80709';
+    // B2 wants percent-encoded name; keep '/' as path separators
+    const encodedName = String(fullPath).split('/').map(encodeURIComponent).join('/');
     const up = await fetch(urlData.uploadUrl, {
       method: 'POST',
       headers: {
         Authorization: urlData.authorizationToken,
-        'X-Bz-File-Name': encodeURIComponent(fullPath).replace(/%2F/g, '/'),
-        'Content-Type': 'text/plain',
+        'X-Bz-File-Name': encodedName,
+        'Content-Type': 'b2/x-auto',
         'X-Bz-Content-Sha1': sha,
         'Content-Length': '0'
       },
-      body: body
+      body: new Blob([])
     });
     if (!up.ok) {
       const t = await up.text().catch(() => '');
-      throw new Error('B2 folder marker failed ' + up.status + ' ' + t.slice(0, 80));
+      throw new Error('B2 folder marker failed ' + up.status + ' ' + t.slice(0, 100));
     }
   }
 
@@ -11967,6 +11990,7 @@ function explainFetchError(e) {
       try {
 
         await loadSettingsFromFirebase();
+        await loadCloudStarred();
 
         if (getActiveCloudProvider() === 'infini') {
           if (!infini.user || !infini.pass) {
@@ -12023,17 +12047,32 @@ function explainFetchError(e) {
           return 0;
         });
 
-        if (!files.length) {
+        // Hide the .trash folder itself from the normal root listing —
+        // it's reached only via the TRASH button, not by browsing into it
+        // like a regular folder. Storage totals above still count
+        // trashed files' size, since they're still consuming space until
+        // permanently deleted. When actually viewing the Trash (cwd ===
+        // '.trash'), this filter has nothing to remove and does nothing.
+        const visibleFiles = (!window.__cloudTrashView) ? files.filter(function(f) {
+          const rel = f._relPath || f.fileName || '';
+          return rel !== '.trash' && !String(rel).startsWith('.trash/');
+        }) : files;
+
+        const finalFiles = window.__cloudStarredFilterOn
+          ? visibleFiles.filter(f => f._isFolder || window.__cloudStarredSet.has(f._relPath || f.fileName))
+          : visibleFiles;
+
+        if (!finalFiles.length) {
 
           box.innerHTML =
-            '<div style="padding:14px;color:var(--text-dim);font-weight:700;">Empty folder. Upload files or create a subfolder.</div>';
+            '<div style="padding:14px;color:var(--text-dim);font-weight:700;">' + (window.__cloudTrashView ? 'Trash is empty.' : (window.__cloudStarredFilterOn ? 'No starred files.' : 'Empty folder. Upload files or create a subfolder.')) + '</div>';
 
           return;
         }
 
         // ===== FILE LIST WITH PREVIEW BUTTON =====
         box.innerHTML =
-          files
+          finalFiles
             .map(
               f => {
 
@@ -12069,10 +12108,12 @@ function explainFetchError(e) {
                 const isFolder = !!f._isFolder;
                 const hasPreview = !isFolder && ['jpg','jpeg','png','gif','webp','svg','heic','heif','mp3','wav','ogg','m4a','mp4','webm','mov','mkv','m4v','pdf','txt','md','json','csv','log','html','js','css'].includes(ext);
                 const relPath = String(f._relPath || name).replace(/"/g, '&quot;');
+                const isStarred = !!(window.__cloudStarredSet && window.__cloudStarredSet.has(f._relPath || name));
 
                 return (
-                  '<div class="cloud-file-row' + (isFolder ? ' is-folder' : '') + '">' +
+                  '<div class="cloud-file-row' + (isFolder ? ' is-folder' : '') + '" data-search-name="' + name.toLowerCase().replace(/"/g,'&quot;') + '">' +
 
+                  (isStarred ? '<span class="cloud-star-badge" title="Starred">⭐</span>' : '') +
                   '<div class="name" data-name="' + name + '" data-rel="' + relPath + '"' + (isFolder ? ' data-folder="1" role="button" tabindex="0" title="Open folder"' : (hasPreview ? ' data-exp-id="' + fid + '" data-exp-name="' + name + '" role="button" tabindex="0" aria-expanded="false" title="Tap to preview"' : '')) + '>' +
                   (isFolder ? '<span class="folder-ico">📁</span>' : '') +
                   name +
@@ -12104,13 +12145,9 @@ function explainFetchError(e) {
                   name +
                   '" data-dl-id="' +
                   fid +
-                  '">DL</button>' +
+                  '">DL</button>')) +
 
-                  '<button class="btn" type="button" style="background:rgba(255,59,48,.15);color:var(--error);" data-del-name="' +
-                  name +
-                  '" data-del-id="' +
-                  fid +
-                  '">DEL</button>')) +
+                  '<button class="btn cloud-more-btn" type="button" data-more-name="' + name + '" data-more-rel="' + relPath + '" data-more-folder="' + (isFolder ? '1' : '0') + '" data-more-starred="' + (isStarred ? '1' : '0') + '" title="More actions">⋮</button>' +
 
                   '</div>'
                 );
@@ -12153,23 +12190,17 @@ function explainFetchError(e) {
             }
           );
 
-        // ===== DELETE BUTTONS (with confirmation) =====
-        box
-          .querySelectorAll('[data-del-name]')
-          .forEach(
-            btn => {
-              btn.addEventListener(
-                'click',
-                function(e) {
-                  const fileName = this.getAttribute('data-del-name');
-                  const fileId = this.getAttribute('data-del-id');
-                  
-                  // Show confirm dialog
-                  openCloudDeletePop(this, fileName, fileId);
-                }
-              );
-            }
-          );
+        // (Row-level Delete now lives in the "⋮" overflow menu — see
+        // data-more-name handler below — which is what actually renders
+        // per row now, replacing the old inline DEL button.)
+
+        // ===== "⋮" OVERFLOW MENU (Rename / Star / Move / Delete or Restore) =====
+        box.querySelectorAll('[data-more-name]').forEach(function(btn) {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            openCloudMoreMenu(btn);
+          });
+        });
 
         // ===== HOLD FILE NAME TO COPY SHARE LINK =====
         setupCloudNameHoldToCopy(box);
@@ -12498,48 +12529,161 @@ function explainFetchError(e) {
     }
   }
 
-  // Long-press (hold) a file name in the Cloud list to copy its share link.
-  // Mirrors the hold-to-reveal pattern already used elsewhere in this panel
-  // (e.g. FINGERPRINT / ADD FINGERPRINT holds) — mouse+touch, with a small
-  // visual pulse for feedback, and a real long-press (won't fire on a quick
-  // tap, which still opens the normal preview).
+  // Long-press file name → copy link (if no drag).
+  // Hold + drag onto TRASH button → delete (soft trash / permanent).
+  // Quick tap still opens preview. Hold-to-copy is kept when finger doesn't move much.
   function setupCloudNameHoldToCopy(box) {
     if (!box || box.dataset.holdCopyBound === '1') return;
     box.dataset.holdCopyBound = '1';
     const HOLD_MS = 650;
-    let timer = null, target = null, longPressed = false;
+    const DRAG_PX = 14;
+    let timer = null, target = null, row = null, longPressed = false;
+    let startX = 0, startY = 0, dragging = false, dragGhost = null;
+    let dragInfo = null; // { name, id, rel, isFolder }
+
+    function removeGhost() {
+      if (dragGhost && dragGhost.parentNode) dragGhost.parentNode.removeChild(dragGhost);
+      dragGhost = null;
+      const tbtn = document.getElementById('cloudTrashBtn');
+      if (tbtn) tbtn.classList.remove('drop-hot');
+      const sbtn = document.getElementById('cloudStarredFilterBtn');
+      if (sbtn) sbtn.classList.remove('drop-hot');
+      if (row) row.classList.remove('cloud-dragging');
+    }
 
     function clear() {
       if (timer) { clearTimeout(timer); timer = null; }
       if (target) target.classList.remove('name-holding');
       target = null;
+      row = null;
+      dragging = false;
+      dragInfo = null;
+      removeGhost();
     }
-    function start(nameEl) {
+
+    function pointOverEl(id, clientX, clientY) {
+      const el = document.getElementById(id);
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return clientX >= r.left - 10 && clientX <= r.right + 10 && clientY >= r.top - 10 && clientY <= r.bottom + 10;
+    }
+    function pointOverTrash(clientX, clientY) { return pointOverEl('cloudTrashBtn', clientX, clientY); }
+    function pointOverStar(clientX, clientY) { return pointOverEl('cloudStarredFilterBtn', clientX, clientY); }
+
+    function doDeleteDragged() {
+      if (!dragInfo || !dragInfo.name) return;
+      const name = dragInfo.name;
+      const id = dragInfo.id || '';
+      const rel = dragInfo.rel || name;
+      if (typeof window.moveCloudToTrash === 'function') {
+        window.moveCloudToTrash(name, id, rel);
+      } else if (typeof window.deleteCloudFile === 'function') {
+        showConfirm('Delete file?', 'Delete "' + name + '"?', function() {
+          window.deleteCloudFile(name, id);
+        });
+      }
+    }
+    function doStarDragged() {
+      if (!dragInfo) return;
+      const rel = dragInfo.rel || dragInfo.name;
+      if (!rel) return;
+      if (typeof window.toggleCloudStar === 'function') {
+        window.toggleCloudStar(rel);
+        setStatus('Star toggled: ' + (dragInfo.name || rel), true);
+      }
+    }
+
+    function startHold(nameEl, e) {
       clear();
       target = nameEl;
+      row = nameEl.closest('.cloud-file-row');
       longPressed = false;
+      dragging = false;
+      startX = e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX) || 0;
+      startY = e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY) || 0;
+      const rel = nameEl.getAttribute('data-rel') || nameEl.getAttribute('data-name') || '';
+      const name = nameEl.getAttribute('data-name') || nameEl.getAttribute('data-exp-name') || '';
+      const isFolder = nameEl.getAttribute('data-folder') === '1';
+      let id = '';
+      if (row) {
+        const dl = row.querySelector('[data-dl-id]');
+        if (dl) id = dl.getAttribute('data-dl-id') || '';
+      }
+      dragInfo = { name: name, id: id, rel: rel, isFolder: isFolder };
       target.classList.add('name-holding');
       timer = setTimeout(function() {
         longPressed = true;
+        if (!target) return;
         target.classList.remove('name-holding');
+        // If already dragging, don't copy — user is moving to trash
+        if (dragging) return;
         target.classList.add('name-hold-flash');
         setTimeout(function() { if (target) target.classList.remove('name-hold-flash'); }, 260);
-        const fileName = target.getAttribute('data-name') || target.getAttribute('data-exp-name') || target.textContent.trim();
-        copyCloudFileLink(fileName);
+        const fileName = target.getAttribute('data-name') || target.getAttribute('data-exp-name') || '';
+        if (fileName && typeof copyCloudFileLink === 'function') copyCloudFileLink(fileName);
       }, HOLD_MS);
     }
 
     box.addEventListener('pointerdown', function(e) {
+      if (e.button != null && e.button !== 0) return;
       const nameEl = e.target.closest('.cloud-file-row .name');
       if (!nameEl) return;
-      start(nameEl);
+      // Don't start hold on buttons inside row
+      if (e.target.closest('button')) return;
+      try { nameEl.setPointerCapture && nameEl.setPointerCapture(e.pointerId); } catch (err) {}
+      startHold(nameEl, e);
     });
-    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function(evt) {
-      box.addEventListener(evt, function() { clear(); });
+
+    box.addEventListener('pointermove', function(e) {
+      if (!target || !dragInfo) return;
+      const x = e.clientX, y = e.clientY;
+      const dx = x - startX, dy = y - startY;
+      if (!dragging && (Math.abs(dx) > DRAG_PX || Math.abs(dy) > DRAG_PX)) {
+        dragging = true;
+        // Cancel pending copy timer — this is a drag, not a hold-copy
+        if (timer) { clearTimeout(timer); timer = null; }
+        if (target) target.classList.remove('name-holding');
+        longPressed = true; // suppress click/preview
+        if (row) row.classList.add('cloud-dragging');
+        dragGhost = document.createElement('div');
+        dragGhost.id = 'cloudDragGhost';
+        dragGhost.textContent = (dragInfo.isFolder ? '📁 ' : '') + (dragInfo.name || 'file');
+        document.body.appendChild(dragGhost);
+      }
+      if (dragging && dragGhost) {
+        dragGhost.style.left = x + 'px';
+        dragGhost.style.top = y + 'px';
+        const tbtn = document.getElementById('cloudTrashBtn');
+        const sbtn = document.getElementById('cloudStarredFilterBtn');
+        if (tbtn) tbtn.classList.toggle('drop-hot', pointOverTrash(x, y));
+        if (sbtn) sbtn.classList.toggle('drop-hot', pointOverStar(x, y));
+      }
     });
-    // Suppress the normal tap-to-preview toggle when this press turned into
-    // a long-press copy — otherwise releasing after the hold would also
-    // trigger the click-to-preview handler already bound elsewhere.
+
+    function endPointer(e) {
+      const x = e.clientX, y = e.clientY;
+      const wasDragging = dragging;
+      const info = dragInfo;
+      const overTrash = wasDragging && pointOverTrash(x, y);
+      const overStar = wasDragging && pointOverStar(x, y);
+      clear();
+      if (wasDragging && info) {
+        dragInfo = info;
+        if (overTrash) doDeleteDragged();
+        else if (overStar) doStarDragged();
+        dragInfo = null;
+      }
+    }
+
+    ['pointerup', 'pointercancel'].forEach(function(evt) {
+      box.addEventListener(evt, endPointer);
+    });
+    // pointerleave on box shouldn't cancel mid-drag to trash (trash is outside list)
+    box.addEventListener('pointerleave', function(e) {
+      if (dragging) return; // keep drag alive until pointerup
+      clear();
+    });
+
     box.addEventListener('click', function(e) {
       if (longPressed) {
         e.stopPropagation();
@@ -13243,73 +13387,78 @@ function explainFetchError(e) {
         setCloudBgUpload(true, tag + ': starting…', 0, provider);
       }
 
-      for (
-        let i = 0;
-        i < files.length;
-        i++
-      ) {
+      // Parallel multi-upload (up to 3 at once) — each file reports its own line
+      const CONC = Math.min(3, files.length);
+      const fileProg = {}; // index -> percent
+      let nextIdx = 0;
+      let cancelledBatch = false;
 
-        if (window.__cloudIsCancelled && window.__cloudIsCancelled()) {
-          if (prog) prog.textContent = 'Cancelled.';
-          break;
+      function paintMulti() {
+        const lines = [];
+        for (let i = 0; i < files.length; i++) {
+          if (fileProg[i] == null) continue;
+          const p = fileProg[i];
+          if (p >= 100) lines.push('✓ ' + files[i].name);
+          else if (p < 0) lines.push('✗ ' + files[i].name);
+          else lines.push((i + 1) + '/' + files.length + ' ' + files[i].name + ' ' + Math.round(p) + '%');
         }
-
-        const file =
-          files[i];
-
-        try {
-
-          if (prog) {
-
-            prog.textContent =
-              tag + ' ' +
-              (i + 1) +
-              '/' +
-              files.length +
-              ': ' +
-              file.name;
+        const active = lines.filter(function(l) { return l.indexOf('✓') !== 0 && l.indexOf('✗') !== 0; });
+        const label = tag + ' · ' + completed + '/' + files.length + ' done'
+          + (active.length ? (' · ' + active[0]) : '');
+        if (prog) prog.textContent = label;
+        setStatus(label, null);
+        const avg = (function() {
+          let s = 0, n = 0;
+          for (let i = 0; i < files.length; i++) {
+            if (fileProg[i] != null && fileProg[i] >= 0) { s += Math.min(100, fileProg[i]); n++; }
           }
+          return n ? s / n : 0;
+        })();
+        if (typeof setCloudProviderProgress === 'function') {
+          setCloudProviderProgress(provider, true, label, avg);
+        }
+      }
 
-          await uploadOne(
-            file,
-            percent => {
-
-              const label = tag + ' ' + (i + 1) + '/' + files.length + ': ' + file.name + ' — ' + percent.toFixed(1) + '%';
-              if (prog) prog.textContent = label;
-              setStatus(label, null);
-              if (typeof setCloudProviderProgress === 'function') setCloudProviderProgress(provider, true, label, percent);
-              else if (typeof setCloudBgUpload === 'function') setCloudBgUpload(true, label, percent, provider);
-            },
-            provider
-          );
-
-          completed++;
-
-          console.log(
-            '[' + tag + '] Upload complete:',
-            file.name
-          );
-
-          setStatus(
-            file.name +
-            ' uploaded successfully (' + tag + ').',
-            true
-          );
-
-        } catch (e) {
-          if (e && String(e.message || e).toLowerCase().indexOf('cancel') >= 0) {
-            setStatus('Upload cancelled.', null);
-            if (prog) { prog.style.color = 'var(--text-dim)'; prog.textContent = 'Cancelled.'; }
-            break;
+      async function worker() {
+        while (true) {
+          if (cancelledBatch || (window.__cloudIsCancelled && window.__cloudIsCancelled())) {
+            cancelledBatch = true;
+            return;
           }
-          console.error('[' + tag + '] Upload failed:', file.name, e);
-          const em = explainFetchError(e);
-          setStatus(file.name + ': ' + em, false);
-          if (prog) {
-            prog.style.color = 'var(--error)';
-            prog.textContent = 'Failed: ' + file.name + ' — ' + em;
+          const i = nextIdx++;
+          if (i >= files.length) return;
+          const file = files[i];
+          fileProg[i] = 0;
+          paintMulti();
+          try {
+            await uploadOne(file, function(percent) {
+              fileProg[i] = percent;
+              paintMulti();
+            }, provider);
+            fileProg[i] = 100;
+            completed++;
+            paintMulti();
+          } catch (e) {
+            if (e && String(e.message || e).toLowerCase().indexOf('cancel') >= 0) {
+              cancelledBatch = true;
+              fileProg[i] = -1;
+              return;
+            }
+            fileProg[i] = -1;
+            const em = explainFetchError(e);
+            console.error('[' + tag + '] Upload failed:', file.name, e);
+            setStatus(file.name + ': ' + em, false);
+            paintMulti();
           }
         }
+      }
+
+      const workers = [];
+      for (let w = 0; w < CONC; w++) workers.push(worker());
+      await Promise.all(workers);
+      if (cancelledBatch) {
+        setStatus('Upload cancelled.', null);
+        if (prog) { prog.style.color = 'var(--text-dim)'; prog.textContent = 'Cancelled.'; }
       }
 
       try {
