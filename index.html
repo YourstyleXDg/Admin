@@ -9605,7 +9605,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     try {
       if (getActiveCloudProvider() === 'infini') {
         const path = (rel && rel.indexOf('/') >= 0) ? rel : cloudJoinPath(cloudCwd(), name || rel);
-        await deleteInfiniFile(path, false);
+        await deleteInfiniFile(path);
         setStatus('Deleted: ' + (name || path), true);
       } else if (window.deleteCloudFile) {
         await window.deleteCloudFile(name, fileId, rel);
@@ -10971,58 +10971,60 @@ window.__dgxenInitVideoControls = function(vId) {
 
   async function deleteInfiniFile(fileName, isFolder) {
     const rel = (String(fileName).indexOf('/') >= 0) ? fileName : cloudJoinPath(cloudCwd(), fileName);
-    const candidates = [];
-    const base = cloudPathUrl(rel);
-    candidates.push(base);
-    if (!base.endsWith('/')) candidates.push(base + '/');
-    else candidates.push(base.replace(/\/$/, ''));
-    // Also try raw name only under root if path looks wrong
-    if (rel.indexOf('/') >= 0) {
-      const only = cloudPathUrl(rel.split('/').pop());
-      candidates.push(only);
-    }
-    console.log('[Infini] DELETE candidates', candidates);
-    let lastStatus = 0, lastBody = '';
-
-    async function tryDelete(url) {
-      // Direct first (fast path when CORS allows DELETE)
+    const base = cloudPathUrl(rel).replace(/\/+$/, '');
+    // WebDAV: folders want a trailing slash, files must NOT have one.
+    // If the caller didn't say, ask the server (PROPFIND Depth:0 via the Worker).
+    if (typeof isFolder !== 'boolean') {
+      isFolder = false;
       try {
-        const xr0 = await new Promise(function(resolve, reject) {
-          const xhr = new XMLHttpRequest();
-          xhr.open('DELETE', url, true);
-          try { xhr.setRequestHeader('Authorization', infiniAuthHeader()); } catch (e) {}
-          xhr.onload = function() { resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, responseText: xhr.responseText || '' }); };
-          xhr.onerror = function() { reject(new Error('direct network')); };
-          xhr.send(null);
+        const pf = await infiniFetch(base, {
+          method: 'PROPFIND',
+          headers: { Depth: '0', 'Content-Type': 'application/xml; charset=utf-8' },
+          body: '<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/></d:prop></d:propfind>'
         });
-        lastStatus = xr0.status; lastBody = xr0.responseText || '';
-        if (xr0.ok || xr0.status === 204 || xr0.status === 404) return true;
+        const txt = await pf.text().catch(function() { return ''; });
+        isFolder = /<[a-z0-9]*:?collection\b/i.test(txt);
       } catch (e) {}
-      // Proxy XHR
-      try {
-        const xr = await infiniXhr('DELETE', url, {}, null);
-        lastStatus = xr.status; lastBody = xr.responseText || '';
-        console.log('[Infini] DELETE xhr', url, xr.status);
-        if (xr.ok || xr.status === 204 || xr.status === 404) return true;
-      } catch (e) { console.warn('[Infini] DELETE xhr err', e); }
-      // Proxy fetch
-      try {
-        const res = await infiniFetch(url, { method: 'DELETE' });
-        lastStatus = res.status;
-        lastBody = await res.text().catch(() => '');
-        console.log('[Infini] DELETE fetch', url, res.status);
-        if (res.ok || res.status === 204 || res.status === 404) return true;
-      } catch (e) { console.warn('[Infini] DELETE fetch err', e); }
-      return false;
+    }
+    const url = isFolder ? (base + '/') : base;
+    console.log('[Infini] DELETE →', url, '| proxy:', (infini.proxyUrl || b2.proxyUrl || '(none)'));
+
+    // ALWAYS go through the Worker. The old code first tried a DIRECT request to
+    // the WebDAV server (blocked by CORS / never reached the Worker, so no logs)
+    // and treated HTTP 404 as "deleted" — which made failures look like success.
+    let status = 0, body = '';
+    try {
+      const res = await infiniFetch(url, { method: 'DELETE' });
+      status = res.status;
+      body = await res.text().catch(function() { return ''; });
+      console.log('[Infini] DELETE response', status, body.slice(0, 200));
+    } catch (e) {
+      // fetch() itself failed (network/CORS) — retry once via XHR through the proxy
+      console.warn('[Infini] DELETE fetch failed, retrying via XHR:', e && e.message);
+      const xr = await infiniXhr('DELETE', url, {}, null);
+      status = xr.status;
+      body = xr.responseText || '';
+      console.log('[Infini] DELETE xhr response', status, body.slice(0, 200));
     }
 
-    for (let i = 0; i < candidates.length; i++) {
-      if (await tryDelete(candidates[i])) {
+    // 2xx = deleted.  404 = it is already gone. Verify before believing it.
+    if (status >= 200 && status < 300) {
+      try { await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(fileName)), null); } catch (e) {}
+      return;
+    }
+    if (status === 404) {
+      // Only trust a 404 if a PROPFIND confirms the item is really absent.
+      let stillThere = false;
+      try {
+        const chk = await infiniFetch(base, { method: 'PROPFIND', headers: { Depth: '0' } });
+        stillThere = (chk.status >= 200 && chk.status < 300) || chk.status === 207;
+      } catch (e) {}
+      if (!stillThere) {
         try { await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(fileName)), null); } catch (e) {}
         return;
       }
     }
-    throw new Error('Infini delete failed: ' + explainInfiniHttp(lastStatus, lastBody));
+    throw new Error('Infini delete failed: ' + explainInfiniHttp(status, body));
   }
 
   async function downloadInfiniFile(fileName) {
@@ -12259,6 +12261,7 @@ function explainFetchError(e) {
                   String(
                     f.fileName || ''
                   )
+                    .replace(/&/g, '&amp;')
                     .replace(
                       /"/g,
                       '&quot;'
