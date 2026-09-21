@@ -9536,19 +9536,48 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   // building a safe download/reupload/delete cycle for B2 is a larger,
   // separate piece of work, not something to bolt on here.
   window.softDeleteCloudFile = async function(fileName, fileId, relPath) {
-    if (getActiveCloudProvider() === 'infini' && relPath && !String(relPath).startsWith('.trash/')) {
+    const name = String(fileName || '').trim();
+    const rel = String(relPath || name).trim();
+    try {
+      if (getActiveCloudProvider() === 'infini' && rel && !String(rel).startsWith('.trash/')) {
+        try {
+          await infiniFetch(cloudPathUrl('.trash') + '/', { method: 'MKCOL' }).catch(function(){});
+        } catch (e) {}
+        const fromUrl = cloudPathUrl(rel);
+        const toRel = cloudJoinPath('.trash', rel.split('/').pop());
+        const toUrl = cloudPathUrl(toRel);
+        const res = await infiniFetch(fromUrl, {
+          method: 'MOVE',
+          headers: { Destination: toUrl, Overwrite: 'T' }
+        });
+        if (res.ok) {
+          setStatus('Moved to Trash: ' + name, true);
+          if (window.refreshCloudFiles) await window.refreshCloudFiles();
+          return;
+        }
+        // MOVE failed (proxy may block) → hard delete
+        console.warn('[Infini] MOVE trash failed', res.status);
+      }
+      if (window.deleteCloudFile) await window.deleteCloudFile(name, fileId);
+      else {
+        setStatus('Delete unavailable', false);
+      }
+    } catch (e) {
+      // Last resort hard delete
       try {
-        const fromUrl = cloudPathUrl(relPath);
-        const toUrl = cloudPathUrl(cloudJoinPath('.trash', relPath));
-        const res = await infiniFetch(fromUrl, { method: 'MOVE', headers: { Destination: toUrl, Overwrite: 'T' } });
-        if (!res.ok) throw new Error('Move to Trash failed (' + res.status + ')');
-        setStatus('Moved to Trash: ' + fileName, true);
-        if (window.refreshCloudFiles) await window.refreshCloudFiles();
-        return;
-      } catch (e) { setStatus('Trash: ' + (e.message || e), false); return; }
+        if (getActiveCloudProvider() === 'infini') {
+          await deleteInfiniFile(rel || name, false);
+          setStatus('Deleted: ' + name, true);
+          if (window.refreshCloudFiles) await window.refreshCloudFiles();
+        } else if (window.deleteCloudFile) {
+          await window.deleteCloudFile(name, fileId);
+        } else {
+          setStatus('Trash: ' + (e.message || e), false);
+        }
+      } catch (e2) {
+        setStatus('Delete failed: ' + (e2.message || e2), false);
+      }
     }
-    // B2, or no relPath available — fall back to a real, immediate delete.
-    if (window.deleteCloudFile) await window.deleteCloudFile(fileName, fileId);
   };
 
   (function bindCancelBtn() {
@@ -10018,33 +10047,38 @@ window.__dgxenInitVideoControls = function(vId) {
   window.moveCloudToTrash = async function(fileName, fileId, relPath) {
     const name = String(fileName || '').trim();
     const rel = String(relPath || name).trim();
-    if (!name) return;
+    if (!name && !rel) return;
     try {
       if (getActiveCloudProvider() === 'infini') {
         const fromRel = (rel.indexOf('/') >= 0) ? rel : cloudJoinPath(cloudCwd(), name);
-        // Ensure .trash folder exists (MKCOL or .keep)
         try { await infiniFetch(cloudPathUrl('.trash') + '/', { method: 'MKCOL' }); } catch (e) {}
         try {
           await infiniFetch(cloudPathUrl('.trash/.keep'), {
-            method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: ''
+            method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: ' '
           });
         } catch (e) {}
-        const toRel = '.trash/' + name;
-        const res = await infiniFetch(cloudPathUrl(fromRel), {
-          method: 'MOVE',
-          headers: { Destination: cloudPathUrl(toRel), Overwrite: 'T' }
-        });
-        if (!res.ok) {
-          await deleteInfiniFile(name);
+        const toRel = '.trash/' + (name || fromRel.split('/').pop());
+        let moved = false;
+        try {
+          const res = await infiniFetch(cloudPathUrl(fromRel), {
+            method: 'MOVE',
+            headers: { Destination: cloudPathUrl(toRel), Overwrite: 'T' }
+          });
+          if (res.ok) moved = true;
+        } catch (e) {}
+        if (!moved) {
+          await deleteInfiniFile(fromRel, false);
+          setStatus('Deleted: ' + name, true);
+        } else {
+          setStatus('Moved to Trash: ' + name, true);
         }
-        setStatus('Moved to Trash: ' + name, true);
         if (window.refreshCloudFiles) await window.refreshCloudFiles();
       } else {
-        // B2: soft-delete via rename-style copy not available — hard delete after confirm already done by drag
         await deleteCloudFile(name, fileId);
       }
     } catch (e) {
       setStatus('Trash: ' + (e.message || e), false);
+      try { if (window.refreshCloudFiles) await window.refreshCloudFiles(); } catch (e2) {}
     }
   };
 
@@ -10369,7 +10403,7 @@ window.__dgxenInitVideoControls = function(vId) {
     if (s === 526) return '526 Invalid SSL certificate on origin (Infini).';
     if (s === 522) return '522 Connection timed out to Infini origin via proxy.';
     if (s === 520) return '520 Proxy/Worker origin error.';
-    if (s === 403) return '403 Forbidden — wrong Connection ID / Apps Password, or WebDAV path.';
+    if (s === 403) return '403 Forbidden — Worker may block MKCOL/PUT/DELETE, or path/auth issue. If list works, allow those methods in Cloudflare Worker.';
     if (s === 401) return '401 Unauthorized — check Infini Connection ID + Apps Password.';
     if (s === 404) return '404 Not found — WebDAV URL path may be wrong (try …/dav/YOUR_ID/).';
     if (s === 405) return '405 Method not allowed — Worker must forward PROPFIND/MKCOL/PUT/DELETE/MOVE.';
@@ -10475,13 +10509,37 @@ window.__dgxenInitVideoControls = function(vId) {
         let rel = normalized;
         if (basePath && rel.indexOf(basePath) === 0) rel = rel.slice(basePath.length);
         rel = rel.replace(/^\/+/, '');
-        // Only direct children (no nested paths beyond one segment for this Depth:1 list)
         const segs = rel.split('/').filter(Boolean);
         if (!segs.length) continue;
-        // If somehow deeper, take first segment only as folder entry skip nested files
-        if (segs.length > 1) continue;
+        // Promote parent as folder when we only see "Folder/.keep" or nested paths
+        if (segs.length > 1) {
+          const parent = segs[0];
+          if (parent && parent !== '.' && parent !== '..' && !seen[parent]) {
+            seen[parent] = 1;
+            files.push({
+              fileName: parent,
+              fileId: 'infini:' + parent,
+              contentLength: 0,
+              uploadTimestamp: Date.now(),
+              fileInfo: {},
+              _provider: 'infini',
+              _href: href,
+              _isFolder: true,
+              _relPath: parent
+            });
+          }
+          continue;
+        }
         const name = segs[0];
         if (!name || name === '.' || name === '..') continue;
+        // Hide .keep placeholder files themselves
+        if (name === '.keep') continue;
+        if (seen[name] && isCollection) {
+          // Upgrade existing entry to folder if we saw it as file first
+          const existing = files.find(function(f) { return f.fileName === name; });
+          if (existing) existing._isFolder = true;
+          continue;
+        }
         if (seen[name]) continue;
         seen[name] = 1;
 
@@ -10856,12 +10914,27 @@ window.__dgxenInitVideoControls = function(vId) {
     return { fileName: safeName };
   }
 
-  async function deleteInfiniFile(fileName) {
+  async function deleteInfiniFile(fileName, isFolder) {
     const rel = (String(fileName).indexOf('/') >= 0) ? fileName : cloudJoinPath(cloudCwd(), fileName);
-    const res = await infiniFetch(cloudPathUrl(rel), { method: 'DELETE' });
+    let url = cloudPathUrl(rel);
+    if (isFolder && !url.endsWith('/')) url += '/';
+    // Try DELETE (file or folder)
+    let res = await infiniFetch(url, { method: 'DELETE' });
+    if (!res.ok && res.status !== 404 && isFolder) {
+      // Some servers want no trailing slash
+      res = await infiniFetch(cloudPathUrl(rel), { method: 'DELETE' });
+    }
     if (!res.ok && res.status !== 404) {
+      // XHR fallback
+      try {
+        const xr = await infiniXhr('DELETE', url, {}, null);
+        if (xr.ok || xr.status === 404) {
+          try { await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(fileName)), null); } catch (e) {}
+          return;
+        }
+      } catch (e) {}
       const t = await res.text().catch(() => '');
-      throw new Error('Infini delete failed (' + res.status + ') ' + (t.slice(0, 80) || ''));
+      throw new Error('Infini delete failed: ' + explainInfiniHttp(res.status, t));
     }
     try { await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(fileName)), null); } catch (e) {}
   }
@@ -11897,12 +11970,27 @@ function explainFetchError(e) {
       (data.files || [])
         .forEach(
           f => {
-            // Hide .keep markers used as empty folder placeholders
-            if (String(f.fileName || '').endsWith('/.keep')) return;
-            // Display name = relative to cwd
             const full = String(f.fileName || '');
+            // .keep markers → virtual folder at parent
+            if (full.endsWith('/.keep') || full.endsWith('.keep')) {
+              let folderFull = full.replace(/\/?\.keep$/, '');
+              let dispF = prefix && folderFull.indexOf(prefix) === 0 ? folderFull.slice(prefix.length) : folderFull;
+              dispF = dispF.replace(/\/+$/, '');
+              if (dispF && dispF.indexOf('/') < 0) {
+                files.push({
+                  fileName: dispF,
+                  fileId: 'folder:' + folderFull,
+                  contentLength: 0,
+                  uploadTimestamp: 0,
+                  fileInfo: {},
+                  _isFolder: true,
+                  _relPath: folderFull
+                });
+              }
+              return;
+            }
             const disp = prefix && full.indexOf(prefix) === 0 ? full.slice(prefix.length) : full;
-            if (!disp || disp.indexOf('/') >= 0) return; // only current level files
+            if (!disp || disp.indexOf('/') >= 0) return;
             files.push(Object.assign({}, f, {
               fileName: disp,
               _relPath: full,
@@ -12535,11 +12623,12 @@ function explainFetchError(e) {
   function setupCloudNameHoldToCopy(box) {
     if (!box || box.dataset.holdCopyBound === '1') return;
     box.dataset.holdCopyBound = '1';
-    const HOLD_MS = 650;
-    const DRAG_PX = 14;
+    const HOLD_MS = 550;
+    const DRAG_PX = 10;
     let timer = null, target = null, row = null, longPressed = false;
     let startX = 0, startY = 0, dragging = false, dragGhost = null;
-    let dragInfo = null; // { name, id, rel, isFolder }
+    let dragInfo = null;
+    let docMove = null, docUp = null;
 
     function removeGhost() {
       if (dragGhost && dragGhost.parentNode) dragGhost.parentNode.removeChild(dragGhost);
@@ -12551,6 +12640,15 @@ function explainFetchError(e) {
       if (row) row.classList.remove('cloud-dragging');
     }
 
+    function unbindDoc() {
+      if (docMove) { document.removeEventListener('pointermove', docMove, true); docMove = null; }
+      if (docUp) {
+        document.removeEventListener('pointerup', docUp, true);
+        document.removeEventListener('pointercancel', docUp, true);
+        docUp = null;
+      }
+    }
+
     function clear() {
       if (timer) { clearTimeout(timer); timer = null; }
       if (target) target.classList.remove('name-holding');
@@ -12559,91 +12657,45 @@ function explainFetchError(e) {
       dragging = false;
       dragInfo = null;
       removeGhost();
+      unbindDoc();
     }
 
     function pointOverEl(id, clientX, clientY) {
       const el = document.getElementById(id);
       if (!el) return false;
       const r = el.getBoundingClientRect();
-      return clientX >= r.left - 10 && clientX <= r.right + 10 && clientY >= r.top - 10 && clientY <= r.bottom + 10;
+      return clientX >= r.left - 14 && clientX <= r.right + 14 && clientY >= r.top - 14 && clientY <= r.bottom + 14;
     }
-    function pointOverTrash(clientX, clientY) { return pointOverEl('cloudTrashBtn', clientX, clientY); }
-    function pointOverStar(clientX, clientY) { return pointOverEl('cloudStarredFilterBtn', clientX, clientY); }
+    function pointOverTrash(x, y) { return pointOverEl('cloudTrashBtn', x, y); }
+    function pointOverStar(x, y) { return pointOverEl('cloudStarredFilterBtn', x, y); }
 
-    function doDeleteDragged() {
-      if (!dragInfo || !dragInfo.name) return;
-      const name = dragInfo.name;
-      const id = dragInfo.id || '';
-      const rel = dragInfo.rel || name;
+    function doDeleteDragged(info) {
+      if (!info || !info.name) return;
       if (typeof window.moveCloudToTrash === 'function') {
-        window.moveCloudToTrash(name, id, rel);
+        window.moveCloudToTrash(info.name, info.id || '', info.rel || info.name);
       } else if (typeof window.deleteCloudFile === 'function') {
-        showConfirm('Delete file?', 'Delete "' + name + '"?', function() {
-          window.deleteCloudFile(name, id);
-        });
+        window.deleteCloudFile(info.name, info.id || '');
       }
     }
-    function doStarDragged() {
-      if (!dragInfo) return;
-      const rel = dragInfo.rel || dragInfo.name;
+    function doStarDragged(info) {
+      if (!info) return;
+      const rel = info.rel || info.name;
       if (!rel) return;
       if (typeof window.toggleCloudStar === 'function') {
         window.toggleCloudStar(rel);
-        setStatus('Star toggled: ' + (dragInfo.name || rel), true);
+        setStatus('Star toggled: ' + (info.name || rel), true);
       }
     }
 
-    function startHold(nameEl, e) {
-      clear();
-      target = nameEl;
-      row = nameEl.closest('.cloud-file-row');
-      longPressed = false;
-      dragging = false;
-      startX = e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX) || 0;
-      startY = e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY) || 0;
-      const rel = nameEl.getAttribute('data-rel') || nameEl.getAttribute('data-name') || '';
-      const name = nameEl.getAttribute('data-name') || nameEl.getAttribute('data-exp-name') || '';
-      const isFolder = nameEl.getAttribute('data-folder') === '1';
-      let id = '';
-      if (row) {
-        const dl = row.querySelector('[data-dl-id]');
-        if (dl) id = dl.getAttribute('data-dl-id') || '';
-      }
-      dragInfo = { name: name, id: id, rel: rel, isFolder: isFolder };
-      target.classList.add('name-holding');
-      timer = setTimeout(function() {
-        longPressed = true;
-        if (!target) return;
-        target.classList.remove('name-holding');
-        // If already dragging, don't copy — user is moving to trash
-        if (dragging) return;
-        target.classList.add('name-hold-flash');
-        setTimeout(function() { if (target) target.classList.remove('name-hold-flash'); }, 260);
-        const fileName = target.getAttribute('data-name') || target.getAttribute('data-exp-name') || '';
-        if (fileName && typeof copyCloudFileLink === 'function') copyCloudFileLink(fileName);
-      }, HOLD_MS);
-    }
-
-    box.addEventListener('pointerdown', function(e) {
-      if (e.button != null && e.button !== 0) return;
-      const nameEl = e.target.closest('.cloud-file-row .name');
-      if (!nameEl) return;
-      // Don't start hold on buttons inside row
-      if (e.target.closest('button')) return;
-      try { nameEl.setPointerCapture && nameEl.setPointerCapture(e.pointerId); } catch (err) {}
-      startHold(nameEl, e);
-    });
-
-    box.addEventListener('pointermove', function(e) {
-      if (!target || !dragInfo) return;
+    function onDocMove(e) {
+      if (!dragInfo) return;
       const x = e.clientX, y = e.clientY;
       const dx = x - startX, dy = y - startY;
       if (!dragging && (Math.abs(dx) > DRAG_PX || Math.abs(dy) > DRAG_PX)) {
         dragging = true;
-        // Cancel pending copy timer — this is a drag, not a hold-copy
         if (timer) { clearTimeout(timer); timer = null; }
         if (target) target.classList.remove('name-holding');
-        longPressed = true; // suppress click/preview
+        longPressed = true;
         if (row) row.classList.add('cloud-dragging');
         dragGhost = document.createElement('div');
         dragGhost.id = 'cloudDragGhost';
@@ -12658,9 +12710,9 @@ function explainFetchError(e) {
         if (tbtn) tbtn.classList.toggle('drop-hot', pointOverTrash(x, y));
         if (sbtn) sbtn.classList.toggle('drop-hot', pointOverStar(x, y));
       }
-    });
+    }
 
-    function endPointer(e) {
+    function onDocUp(e) {
       const x = e.clientX, y = e.clientY;
       const wasDragging = dragging;
       const info = dragInfo;
@@ -12668,20 +12720,53 @@ function explainFetchError(e) {
       const overStar = wasDragging && pointOverStar(x, y);
       clear();
       if (wasDragging && info) {
-        dragInfo = info;
-        if (overTrash) doDeleteDragged();
-        else if (overStar) doStarDragged();
-        dragInfo = null;
+        if (overTrash) doDeleteDragged(info);
+        else if (overStar) doStarDragged(info);
       }
     }
 
-    ['pointerup', 'pointercancel'].forEach(function(evt) {
-      box.addEventListener(evt, endPointer);
-    });
-    // pointerleave on box shouldn't cancel mid-drag to trash (trash is outside list)
-    box.addEventListener('pointerleave', function(e) {
-      if (dragging) return; // keep drag alive until pointerup
+    function startHold(nameEl, e) {
       clear();
+      target = nameEl;
+      row = nameEl.closest('.cloud-file-row');
+      longPressed = false;
+      dragging = false;
+      startX = e.clientX || 0;
+      startY = e.clientY || 0;
+      const rel = nameEl.getAttribute('data-rel') || nameEl.getAttribute('data-name') || '';
+      const name = nameEl.getAttribute('data-name') || nameEl.getAttribute('data-exp-name') || '';
+      const isFolder = nameEl.getAttribute('data-folder') === '1';
+      let id = '';
+      if (row) {
+        const dl = row.querySelector('[data-dl-id]');
+        if (dl) id = dl.getAttribute('data-dl-id') || '';
+      }
+      dragInfo = { name: name, id: id, rel: rel, isFolder: isFolder };
+      target.classList.add('name-holding');
+      // Document-level so drag works outside the list (to TRASH / STAR)
+      docMove = onDocMove;
+      docUp = onDocUp;
+      document.addEventListener('pointermove', docMove, true);
+      document.addEventListener('pointerup', docUp, true);
+      document.addEventListener('pointercancel', docUp, true);
+      timer = setTimeout(function() {
+        longPressed = true;
+        if (!target || dragging) return;
+        target.classList.remove('name-holding');
+        target.classList.add('name-hold-flash');
+        setTimeout(function() { if (target) target.classList.remove('name-hold-flash'); }, 260);
+        const fileName = target.getAttribute('data-name') || target.getAttribute('data-exp-name') || '';
+        if (fileName && typeof copyCloudFileLink === 'function') copyCloudFileLink(fileName);
+      }, HOLD_MS);
+    }
+
+    box.addEventListener('pointerdown', function(e) {
+      if (e.button != null && e.button !== 0) return;
+      const nameEl = e.target.closest('.cloud-file-row .name');
+      if (!nameEl) return;
+      if (e.target.closest('button')) return;
+      try { nameEl.setPointerCapture && nameEl.setPointerCapture(e.pointerId); } catch (err) {}
+      startHold(nameEl, e);
     });
 
     box.addEventListener('click', function(e) {
@@ -12692,6 +12777,7 @@ function explainFetchError(e) {
       }
     }, true);
   }
+
 
   // =========================================================
   // DELETE
@@ -12710,12 +12796,13 @@ function explainFetchError(e) {
     }
     if (getActiveCloudProvider() === 'infini') {
       try {
-        await deleteInfiniFile(fileName);
-        setStatus('Deleted.', true);
-        if (window.refreshCloudFiles) await window.refreshCloudFiles();
+        const path = (String(fileName).indexOf('/') >= 0) ? fileName : cloudJoinPath(cloudCwd(), fileName);
+        await deleteInfiniFile(path, false);
+        setStatus('Deleted: ' + fileName, true);
       } catch (e) {
         setStatus('Delete: ' + (e.message || e), false);
       }
+      try { if (window.refreshCloudFiles) await window.refreshCloudFiles(); } catch (e) {}
       return;
     }
     if (!fileId) {
