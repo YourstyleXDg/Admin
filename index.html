@@ -10210,7 +10210,11 @@ window.__dgxenInitVideoControls = function(vId) {
       items.push(['🗑️ Delete', () => {
         const row = btn.closest('.cloud-file-row');
         const dlBtn = row && row.querySelector('[data-dl-id]');
-        openCloudDeletePop(btn, name, dlBtn ? dlBtn.getAttribute('data-dl-id') : '', rel);
+        const fid = dlBtn ? dlBtn.getAttribute('data-dl-id') : '';
+        showConfirm('Delete file?', 'Delete "' + name + '" permanently?', function() {
+          if (window.softDeleteCloudFile) window.softDeleteCloudFile(name, fid, rel);
+          else if (window.deleteCloudFile) window.deleteCloudFile(name, fid, rel);
+        });
       }]);
     }
     items.forEach(([label, fn]) => {
@@ -10953,25 +10957,44 @@ window.__dgxenInitVideoControls = function(vId) {
     const rel = (String(fileName).indexOf('/') >= 0) ? fileName : cloudJoinPath(cloudCwd(), fileName);
     let url = cloudPathUrl(rel);
     if (isFolder && !url.endsWith('/')) url += '/';
-    // Try DELETE (file or folder)
-    let res = await infiniFetch(url, { method: 'DELETE' });
-    if (!res.ok && res.status !== 404 && isFolder) {
-      // Some servers want no trailing slash
-      res = await infiniFetch(cloudPathUrl(rel), { method: 'DELETE' });
+    console.log('[Infini] DELETE', url);
+    let lastStatus = 0, lastBody = '';
+    // 1) XHR DELETE (often more reliable through CF Worker than fetch)
+    try {
+      const xr = await infiniXhr('DELETE', url, {}, null);
+      lastStatus = xr.status;
+      lastBody = xr.responseText || '';
+      console.log('[Infini] DELETE xhr', xr.status);
+      if (xr.ok || xr.status === 204 || xr.status === 404) {
+        try { await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(fileName)), null); } catch (e) {}
+        return;
+      }
+    } catch (e) {
+      console.warn('[Infini] DELETE xhr err', e);
     }
-    if (!res.ok && res.status !== 404) {
-      // XHR fallback
-      try {
-        const xr = await infiniXhr('DELETE', url, {}, null);
-        if (xr.ok || xr.status === 404) {
+    // 2) fetch DELETE
+    try {
+      let res = await infiniFetch(url, { method: 'DELETE' });
+      lastStatus = res.status;
+      lastBody = await res.text().catch(() => '');
+      console.log('[Infini] DELETE fetch', res.status);
+      if (res.ok || res.status === 204 || res.status === 404) {
+        try { await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(fileName)), null); } catch (e) {}
+        return;
+      }
+      // try without trailing slash
+      if (url.endsWith('/')) {
+        res = await infiniFetch(url.replace(/\/$/, ''), { method: 'DELETE' });
+        lastStatus = res.status;
+        if (res.ok || res.status === 204 || res.status === 404) {
           try { await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(fileName)), null); } catch (e) {}
           return;
         }
-      } catch (e) {}
-      const t = await res.text().catch(() => '');
-      throw new Error('Infini delete failed: ' + explainInfiniHttp(res.status, t));
+      }
+    } catch (e) {
+      console.warn('[Infini] DELETE fetch err', e);
     }
-    try { await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(fileName)), null); } catch (e) {}
+    throw new Error('Infini delete failed: ' + explainInfiniHttp(lastStatus, lastBody));
   }
 
   async function downloadInfiniFile(fileName) {
@@ -12626,23 +12649,24 @@ function explainFetchError(e) {
       if (!name) { setStatus('Nothing to copy', false); return; }
       let url = '';
       if (getActiveCloudProvider() === 'infini') {
-        // Infini: share the direct WebDAV path (proxy URL so it opens in browser)
         const rel = (name.indexOf('/') >= 0) ? name : cloudJoinPath(cloudCwd(), name);
         const target = cloudPathUrl(rel);
         const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
+        // Capability URL: embed Basic auth so anyone with the link can view (Worker must apply `a`)
+        const authB64 = btoa(unescape(encodeURIComponent((infini.user || '') + ':' + (infini.pass || ''))));
         if (proxy) {
-          url = proxy + (proxy.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(target);
+          url = proxy + '?url=' + encodeURIComponent(target) + '&a=' + encodeURIComponent(authB64);
         } else {
           url = target;
         }
-        // Note: needs Auth header to download — also copy path for reference
-        const text = url + '\n# Infini path: ' + rel;
         try {
-          await navigator.clipboard.writeText(text);
-          setStatus('Infini link copied (open via proxy; auth required for private files).', true);
+          await navigator.clipboard.writeText(url);
+          setStatus('Public Infini link copied (anyone with link can open).', true);
         } catch (clipErr) {
-          window.prompt('Copy Infini link:', text);
+          window.prompt('Copy public Infini link:', url);
         }
+        return;
+      }
         return;
       }
       await authorizeB2();
@@ -12682,12 +12706,11 @@ function explainFetchError(e) {
   function setupCloudNameHoldToCopy(box) {
     if (!box || box.dataset.holdCopyBound === '1') return;
     box.dataset.holdCopyBound = '1';
-    const HOLD_MS = 550;
-    const DRAG_PX = 10;
-    let timer = null, target = null, row = null, longPressed = false;
+    const HOLD_MS = 420;
+    const DRAG_PX = 8;
+    let timer = null, target = null, row = null, longPressed = false, armed = false;
     let startX = 0, startY = 0, dragging = false, dragGhost = null;
     let dragInfo = null;
-    let docMove = null, docUp = null;
 
     function removeGhost() {
       if (dragGhost && dragGhost.parentNode) dragGhost.parentNode.removeChild(dragGhost);
@@ -12698,103 +12721,92 @@ function explainFetchError(e) {
       if (sbtn) sbtn.classList.remove('drop-hot');
       if (row) row.classList.remove('cloud-dragging');
     }
-
-    function unbindDoc() {
-      if (docMove) { document.removeEventListener('pointermove', docMove, true); docMove = null; }
-      if (docUp) {
-        document.removeEventListener('pointerup', docUp, true);
-        document.removeEventListener('pointercancel', docUp, true);
-        docUp = null;
-      }
-    }
-
-    function clear() {
+    function clearAll() {
       if (timer) { clearTimeout(timer); timer = null; }
       if (target) target.classList.remove('name-holding');
-      target = null;
-      row = null;
-      dragging = false;
-      dragInfo = null;
-      removeGhost();
-      unbindDoc();
+      target = null; row = null; dragging = false; armed = false;
+      dragInfo = null; removeGhost();
+      document.removeEventListener('pointermove', onMove, true);
+      document.removeEventListener('pointerup', onUp, true);
+      document.removeEventListener('pointercancel', onUp, true);
+      document.removeEventListener('touchmove', onTouchMove, { capture: true });
+      document.removeEventListener('touchend', onTouchEnd, { capture: true });
     }
-
-    function pointOverEl(id, clientX, clientY) {
+    function pointOver(id, x, y) {
       const el = document.getElementById(id);
       if (!el) return false;
       const r = el.getBoundingClientRect();
-      return clientX >= r.left - 14 && clientX <= r.right + 14 && clientY >= r.top - 14 && clientY <= r.bottom + 14;
+      return x >= r.left - 16 && x <= r.right + 16 && y >= r.top - 16 && y <= r.bottom + 16;
     }
-    function pointOverTrash(x, y) { return pointOverEl('cloudTrashBtn', x, y); }
-    function pointOverStar(x, y) { return pointOverEl('cloudStarredFilterBtn', x, y); }
-
-    function doDeleteDragged(info) {
-      if (!info || !info.name) return;
-      if (typeof window.moveCloudToTrash === 'function') {
-        window.moveCloudToTrash(info.name, info.id || '', info.rel || info.name);
-      } else if (typeof window.deleteCloudFile === 'function') {
-        window.deleteCloudFile(info.name, info.id || '');
-      }
-    }
-    function doStarDragged(info) {
+    function doDrop(info, x, y) {
       if (!info) return;
-      const rel = info.rel || info.name;
-      if (!rel) return;
-      if (typeof window.toggleCloudStar === 'function') {
-        window.toggleCloudStar(rel);
-        setStatus('Star toggled: ' + (info.name || rel), true);
+      if (pointOver('cloudTrashBtn', x, y)) {
+        if (window.softDeleteCloudFile) window.softDeleteCloudFile(info.name, info.id, info.rel);
+        else if (window.deleteCloudFile) window.deleteCloudFile(info.name, info.id, info.rel);
+      } else if (pointOver('cloudStarredFilterBtn', x, y)) {
+        if (window.toggleCloudStar) window.toggleCloudStar(info.rel || info.name);
       }
     }
-
-    function onDocMove(e) {
+    function ensureGhost(info) {
+      if (dragGhost) return;
+      dragGhost = document.createElement('div');
+      dragGhost.id = 'cloudDragGhost';
+      dragGhost.textContent = (info.isFolder ? '📁 ' : '') + (info.name || 'file');
+      document.body.appendChild(dragGhost);
+      if (row) row.classList.add('cloud-dragging');
+    }
+    function onMove(e) {
       if (!dragInfo) return;
       const x = e.clientX, y = e.clientY;
       const dx = x - startX, dy = y - startY;
-      if (!dragging && (Math.abs(dx) > DRAG_PX || Math.abs(dy) > DRAG_PX)) {
-        dragging = true;
-        if (timer) { clearTimeout(timer); timer = null; }
-        if (target) target.classList.remove('name-holding');
-        longPressed = true;
-        if (row) row.classList.add('cloud-dragging');
-        dragGhost = document.createElement('div');
-        dragGhost.id = 'cloudDragGhost';
-        dragGhost.textContent = (dragInfo.isFolder ? '📁 ' : '') + (dragInfo.name || 'file');
-        document.body.appendChild(dragGhost);
-      }
-      if (dragging) {
-        try { e.preventDefault(); } catch (err) {}
-        if (dragGhost) {
-          dragGhost.style.left = x + 'px';
-          dragGhost.style.top = y + 'px';
+      if (!armed && !dragging) {
+        if (Math.abs(dx) > DRAG_PX || Math.abs(dy) > DRAG_PX) {
+          // moved before hold completed → cancel hold (scroll)
+          if (timer) { clearTimeout(timer); timer = null; }
+          if (target) target.classList.remove('name-holding');
+          return;
         }
+        return;
+      }
+      if (armed || dragging) {
+        dragging = true;
+        longPressed = true;
+        try { e.preventDefault(); } catch (err) {}
+        ensureGhost(dragInfo);
+        if (dragGhost) { dragGhost.style.left = x + 'px'; dragGhost.style.top = y + 'px'; }
         const tbtn = document.getElementById('cloudTrashBtn');
         const sbtn = document.getElementById('cloudStarredFilterBtn');
-        if (tbtn) tbtn.classList.toggle('drop-hot', pointOverTrash(x, y));
-        if (sbtn) sbtn.classList.toggle('drop-hot', pointOverStar(x, y));
+        if (tbtn) tbtn.classList.toggle('drop-hot', pointOver('cloudTrashBtn', x, y));
+        if (sbtn) sbtn.classList.toggle('drop-hot', pointOver('cloudStarredFilterBtn', x, y));
       }
     }
-
-    function onDocUp(e) {
+    function onUp(e) {
       const x = e.clientX, y = e.clientY;
-      const wasDragging = dragging;
       const info = dragInfo;
-      const overTrash = wasDragging && pointOverTrash(x, y);
-      const overStar = wasDragging && pointOverStar(x, y);
-      clear();
-      if (wasDragging && info) {
-        if (overTrash) doDeleteDragged(info);
-        else if (overStar) doStarDragged(info);
+      const wasDrag = dragging;
+      const wasArmed = armed;
+      clearAll();
+      if (wasDrag && info) doDrop(info, x, y);
+      else if (wasArmed && info && !wasDrag) {
+        // held without drag → copy link
+        if (info.name && typeof copyCloudFileLink === 'function') copyCloudFileLink(info.name);
       }
     }
-
-    function startHold(nameEl, e) {
-      clear();
+    function onTouchMove(e) {
+      if (!e.touches || !e.touches[0]) return;
+      const t = e.touches[0];
+      onMove({ clientX: t.clientX, clientY: t.clientY, preventDefault: function() { e.preventDefault(); } });
+    }
+    function onTouchEnd(e) {
+      const t = (e.changedTouches && e.changedTouches[0]) || {};
+      onUp({ clientX: t.clientX || 0, clientY: t.clientY || 0 });
+    }
+    function startHold(nameEl, x, y) {
+      clearAll();
       target = nameEl;
       row = nameEl.closest('.cloud-file-row');
-      longPressed = false;
-      dragging = false;
-      startX = e.clientX || 0;
-      startY = e.clientY || 0;
+      longPressed = false; armed = false; dragging = false;
+      startX = x; startY = y;
       const rel = nameEl.getAttribute('data-rel') || nameEl.getAttribute('data-name') || '';
       const name = nameEl.getAttribute('data-name') || nameEl.getAttribute('data-exp-name') || '';
       const isFolder = nameEl.getAttribute('data-folder') === '1';
@@ -12805,39 +12817,32 @@ function explainFetchError(e) {
       }
       dragInfo = { name: name, id: id, rel: rel, isFolder: isFolder };
       target.classList.add('name-holding');
-      // Document-level so drag works outside the list (to TRASH / STAR)
-      docMove = onDocMove;
-      docUp = onDocUp;
-      document.addEventListener('pointermove', docMove, true);
-      document.addEventListener('pointerup', docUp, true);
-      document.addEventListener('pointercancel', docUp, true);
+      document.addEventListener('pointermove', onMove, true);
+      document.addEventListener('pointerup', onUp, true);
+      document.addEventListener('pointercancel', onUp, true);
+      document.addEventListener('touchmove', onTouchMove, { capture: true, passive: false });
+      document.addEventListener('touchend', onTouchEnd, { capture: true });
       timer = setTimeout(function() {
+        if (!dragInfo || !target) return;
+        armed = true;
         longPressed = true;
-        if (!target || dragging) return;
         target.classList.remove('name-holding');
         target.classList.add('name-hold-flash');
-        setTimeout(function() { if (target) target.classList.remove('name-hold-flash'); }, 260);
-        const fileName = target.getAttribute('data-name') || target.getAttribute('data-exp-name') || '';
-        if (fileName && typeof copyCloudFileLink === 'function') copyCloudFileLink(fileName);
+        setTimeout(function() { if (target) target.classList.remove('name-hold-flash'); }, 280);
+        // haptic if available
+        try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
+        setStatus('Drag to TRASH or ⭐ · release to drop', null);
       }, HOLD_MS);
     }
-
     box.addEventListener('pointerdown', function(e) {
       if (e.button != null && e.button !== 0) return;
       const nameEl = e.target.closest('.cloud-file-row .name');
-      if (!nameEl) return;
-      if (e.target.closest('button')) return;
-      e.stopPropagation();
+      if (!nameEl || e.target.closest('button')) return;
       try { nameEl.setPointerCapture && nameEl.setPointerCapture(e.pointerId); } catch (err) {}
-      startHold(nameEl, e);
+      startHold(nameEl, e.clientX, e.clientY);
     }, { passive: true });
-
     box.addEventListener('click', function(e) {
-      if (longPressed) {
-        e.stopPropagation();
-        e.preventDefault();
-        longPressed = false;
-      }
+      if (longPressed) { e.stopPropagation(); e.preventDefault(); longPressed = false; }
     }, true);
   }
 
