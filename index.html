@@ -5053,41 +5053,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         }
 
         let adminUnlocked = sessionStorage.getItem('dgxen_admin_unlocked') === '1';
-        let __webauthnBusy = false;
-        let __webauthnAbort = null;
-        function isEnrollUiOpen() {
-            try {
-                const steps = ['enrollStepRequest', 'enrollStepOtp', 'enrollStepRegister'];
-                for (let i = 0; i < steps.length; i++) {
-                    const el = document.getElementById(steps[i]);
-                    if (el && el.style && el.style.display && el.style.display !== 'none') return true;
-                }
-            } catch (e) {}
-            return !!__enrollOtpVerified;
-        }
-        async function withWebAuthnExclusive(fn) {
-            if (__webauthnBusy) {
-                const err = new Error('A request is already pending. Close any fingerprint dialog, wait 2 seconds, then try again.');
-                err.name = 'InvalidStateError';
-                throw err;
-            }
-            __webauthnBusy = true;
-            try {
-                if (__webauthnAbort) {
-                    try { __webauthnAbort.abort(); } catch (e) {}
-                    __webauthnAbort = null;
-                    await new Promise(function(r) { setTimeout(r, 450); });
-                }
-                if (typeof AbortController !== 'undefined') {
-                    __webauthnAbort = new AbortController();
-                }
-                return await fn(__webauthnAbort ? __webauthnAbort.signal : undefined);
-            } finally {
-                __webauthnBusy = false;
-                __webauthnAbort = null;
-            }
-        }
-
         // Rehydrate primary flag from session
         window.__adminIsPrimary = sessionStorage.getItem('dgxen_admin_is_primary') === '1';
         window.__adminSessionFpId = sessionStorage.getItem('dgxen_admin_fp_id') || '';
@@ -5483,14 +5448,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 }
                 await set(ref(db, 'settings/adminOtp'), null);
                 __enrollOtpVerified = true;
-                try { window.__enrollOtpVerified = true; } catch (e) {}
                 showEnrollStep('enrollStepRegister');
                 setGateStatus('OTP verified. Register fingerprint now.', true);
-                // Cancel any auto-login WebAuthn still pending so REGISTER can start cleanly
-                try {
-                    if (__webauthnAbort) { __webauthnAbort.abort(); __webauthnAbort = null; }
-                    __webauthnBusy = false;
-                } catch (e) {}
             } catch (e) {
                 setGateStatus('Verify failed: ' + (e.message || e), false);
             }
@@ -5505,65 +5464,74 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 setGateStatus('WebAuthn not supported on this browser.', false);
                 return;
             }
-            if (__webauthnBusy) {
-                setGateStatus('Fingerprint dialog already open — finish or cancel it, wait 2s, then tap REGISTER again.', false);
-                return;
-            }
-            const regBtn = document.getElementById('gateRegisterFpBtn');
-            if (regBtn) { regBtn.disabled = true; regBtn.textContent = 'WAITING…'; }
+            // Keep Chrome in foreground. Do NOT switch apps during the prompt.
+            // If a sheet appears: choose "This device" (not USB / another device).
             setGateStatus('Tap “This device” if asked, then use fingerprint / PIN…', true);
+
+            const rpId = (location.hostname || '').replace(/^www\./, '') || 'localhost';
+            const userId = crypto.getRandomValues(new Uint8Array(16));
+            const challenge = crypto.getRandomValues(new Uint8Array(32));
+            const base = {
+                challenge: challenge,
+                rp: { name: 'DGXEN Admin', id: rpId },
+                user: {
+                    id: userId,
+                    name: 'admin@' + rpId,
+                    displayName: 'DGXEN Admin'
+                },
+                pubKeyCredParams: [
+                    { type: 'public-key', alg: -7 },
+                    { type: 'public-key', alg: -257 }
+                ],
+                timeout: 120000
+            };
+
+            // Platform only. preferred = phone FP OR phone PIN/pattern (NOT Google/site password).
+            const attempts = [
+                {
+                    authenticatorSelection: {
+                        authenticatorAttachment: 'platform',
+                        userVerification: 'preferred',
+                        residentKey: 'discouraged',
+                        requireResidentKey: false
+                    },
+                    attestation: 'none',
+                    hints: ['client-device']
+                },
+                {
+                    authenticatorSelection: {
+                        authenticatorAttachment: 'platform',
+                        userVerification: 'discouraged',
+                        residentKey: 'discouraged'
+                    },
+                    attestation: 'none'
+                }
+            ];
 
             let cred = null;
             let lastErr = null;
-            try {
-                cred = await withWebAuthnExclusive(async function(signal) {
-                    const rpId = (location.hostname || '').replace(/^www\./, '') || 'localhost';
-                    const userId = crypto.getRandomValues(new Uint8Array(16));
-                    const challenge = crypto.getRandomValues(new Uint8Array(32));
-                    // Single create call only — sequential retries caused "already pending"
-                    const publicKey = {
-                        challenge: challenge,
-                        rp: { name: 'DGXEN Admin', id: rpId },
-                        user: {
-                            id: userId,
-                            name: 'admin@' + rpId,
-                            displayName: 'DGXEN Admin'
-                        },
-                        pubKeyCredParams: [
-                            { type: 'public-key', alg: -7 },
-                            { type: 'public-key', alg: -257 }
-                        ],
-                        timeout: 120000,
-                        authenticatorSelection: {
-                            authenticatorAttachment: 'platform',
-                            userVerification: 'preferred',
-                            residentKey: 'discouraged',
-                            requireResidentKey: false
-                        },
-                        attestation: 'none'
-                    };
-                    const createOpts = { publicKey: publicKey };
-                    if (signal) createOpts.signal = signal;
-                    return await navigator.credentials.create(createOpts);
-                });
-            } catch (e) {
-                lastErr = e;
-            } finally {
-                if (regBtn) { regBtn.disabled = false; regBtn.textContent = 'REGISTER FINGERPRINT'; }
+            for (let i = 0; i < attempts.length; i++) {
+                try {
+                    const opts = Object.assign({}, base, attempts[i]);
+                    cred = await navigator.credentials.create({ publicKey: opts });
+                    if (cred) break;
+                } catch (e) {
+                    lastErr = e;
+                    const name = (e && e.name) || '';
+                    if (name === 'NotAllowedError' || name === 'AbortError') break;
+                }
             }
 
             if (!cred) {
                 const name = (lastErr && lastErr.name) || '';
                 const msg = String((lastErr && lastErr.message) || lastErr || 'cancelled');
-                if (/already pending/i.test(msg)) {
-                    setGateStatus('Previous fingerprint dialog still open. Wait 2–3 seconds (or close it), then tap REGISTER once.', false);
-                } else if (name === 'NotAllowedError' || name === 'AbortError' || /not allowed|timed out|Abort|verify/i.test(msg)) {
+                if (name === 'NotAllowedError' || name === 'AbortError' || /not allowed|timed out|Abort|verify/i.test(msg)) {
                     setGateStatus(
-                        'Screen-lock failed. Use the SAME fingerprint/PIN that unlocks THIS phone. Stay in Chrome, wait 2s, tap REGISTER once. OTP still valid.',
+                        'Screen-lock failed. Use the SAME fingerprint/PIN that unlocks THIS phone (not Google password). Unlock phone once, stay in Chrome, tap REGISTER again. OTP still valid.',
                         false
                     );
                 } else if (name === 'InvalidStateError') {
-                    setGateStatus('Passkey conflict or pending request. Wait 3s and tap REGISTER once. Or clear site data for this host and OTP again.', false);
+                    setGateStatus('Passkey may already exist. Try FINGERPRINT, or Chrome site settings → Clear data for this site, then OTP again.', false);
                 } else if (name === 'NotSupportedError') {
                     setGateStatus('No platform authenticator. Use Chrome + phone with screen lock + fingerprint.', false);
                 } else {
@@ -5572,7 +5540,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 return;
             }
 
-                        try {
+            try {
                 const id = bufferToBase64(cred.rawId);
                 const safe = String(id).split('').map(function(ch) {
                     return ('.$[]#/'.indexOf(ch) >= 0) ? '_' : ch;
@@ -5895,17 +5863,13 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     try { allow.push({ type: 'public-key', id: base64ToBuffer(ids[i]) }); } catch (e) {}
                 }
                 if (!allow.length) { setGateStatus('Invalid fingerprint data in Firebase.'); return; }
-                const assertion = await withWebAuthnExclusive(async function(signal) {
-                    const getOpts = {
-                        publicKey: {
-                            challenge: crypto.getRandomValues(new Uint8Array(32)),
-                            timeout: 60000,
-                            userVerification: 'required',
-                            allowCredentials: allow
-                        }
-                    };
-                    if (signal) getOpts.signal = signal;
-                    return await navigator.credentials.get(getOpts);
+                const assertion = await navigator.credentials.get({
+                    publicKey: {
+                        challenge: crypto.getRandomValues(new Uint8Array(32)),
+                        timeout: 60000,
+                        userVerification: 'required',
+                        allowCredentials: allow
+                    }
                 });
                 if (!assertion) { setGateStatus('Fingerprint failed.'); return; }
                 let usedId = '';
@@ -5919,9 +5883,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 unlockAdmin('fingerprint', usedId);
             } catch (e) {
                 const msg = String((e && e.message) || e || '');
-                if (/already pending/i.test(msg)) {
-                    setGateStatus('Fingerprint dialog already open. Wait 2s then try again.', false);
-                } else if (/not allowed|no authenticator|no credentials|credential|abort|NotAllowed/i.test(msg) || (e && e.name === 'NotAllowedError')) {
+                // Typical when this browser/device has no passkey for the site
+                if (/not allowed|no authenticator|no credentials|credential|abort|NotAllowed/i.test(msg) || (e && e.name === 'NotAllowedError')) {
                     setGateStatus('No passkey on this device for this site.');
                     await offerEnrollmentIfAllowed();
                 } else {
@@ -6260,19 +6223,17 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         function autoTriggerFingerprintIfRegistered() {
             getFirebaseFpIds().then(ids => {
                 if (adminUnlocked) return;
-                // Never start credentials.get while new-admin enrollment is in progress
-                // (causes "A request is already pending" on REGISTER FINGERPRINT)
-                if (typeof isEnrollUiOpen === 'function' && isEnrollUiOpen()) {
-                    return;
-                }
                 if (ids && ids.length) {
                     setGateStatus('🔐 Fingerprint found — opening scanner…', true);
+                    // The gate UI is already visible by the time we get here
+                    // (this only runs after DOMContentLoaded + the Firebase
+                    // round-trip), so WebAuthn's "page must be visible"
+                    // requirement is already satisfied — this just needs to
+                    // be enough for the status text above to actually paint
+                    // before the OS fingerprint dialog takes over the screen.
                     setTimeout(function() {
-                        if (adminUnlocked) return;
-                        if (typeof isEnrollUiOpen === 'function' && isEnrollUiOpen()) return;
-                        if (__webauthnBusy) return;
-                        tryFingerprintLogin();
-                    }, 200);
+                        if (!adminUnlocked) tryFingerprintLogin();
+                    }, 150);
                 } else {
                     offerEnrollmentIfAllowed();
                 }
@@ -9640,19 +9601,27 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   window.softDeleteCloudFile = async function(fileName, fileId, relPath) {
     const name = String(fileName || '').trim();
     const rel = String(relPath || name).trim();
-    setStatus('Deleting: ' + name + '…', null);
+    const B = window.__cloudBridge;
+    console.log('[DELETE-TRACE] softDeleteCloudFile', { name: name, rel: rel, bridge: !!B });
+    if (!B) {
+      // Should never happen; but never fail silently again.
+      try { window.__cloudToast && window.__cloudToast('Delete unavailable: cloud module not ready. Reload the page.', false); } catch (e) {}
+      console.error('[Cloud] delete: __cloudBridge missing');
+      return;
+    }
+    B.setStatus('Deleting: ' + name + '…', null);
     try {
-      if (getActiveCloudProvider() === 'infini') {
-        const path = (rel && rel.indexOf('/') >= 0) ? rel : cloudJoinPath(cloudCwd(), name || rel);
-        await deleteInfiniFile(path);
-        setStatus('Deleted: ' + (name || path), true);
+      if (B.getActiveCloudProvider() === 'infini') {
+        const path = (rel && rel.indexOf('/') >= 0) ? rel : B.cloudJoinPath(B.cloudCwd(), name || rel);
+        await B.deleteInfiniFile(path);
+        B.setStatus('Deleted: ' + (name || path), true);
       } else if (window.deleteCloudFile) {
         await window.deleteCloudFile(name, fileId, rel);
       } else {
-        setStatus('Delete unavailable', false);
+        B.setStatus('Delete unavailable', false);
       }
     } catch (e) {
-      setStatus('Delete failed: ' + (e.message || e), false);
+      B.setStatus('Delete failed: ' + (e && e.message || e), false);
       console.error('[Cloud] delete', e);
     }
     try { if (window.refreshCloudFiles) await window.refreshCloudFiles(); } catch (e2) {}
@@ -11066,6 +11035,23 @@ window.__dgxenInitVideoControls = function(vId) {
     throw new Error('Infini delete failed: ' + explainInfiniHttp(status, body));
   }
 
+  // ------------------------------------------------------------------
+  // SCOPE BRIDGE (the actual cause of "delete does nothing")
+  // softDeleteCloudFile lives in an EARLIER (function(){ ... })() block than
+  // setStatus / getActiveCloudProvider / cloudCwd / cloudJoinPath /
+  // deleteInfiniFile. Function declarations are private to their own IIFE, so the
+  // first line of softDeleteCloudFile threw "ReferenceError: setStatus is not
+  // defined" before any network request was made (=> nothing in Worker logs).
+  // Expose what it needs on window so both blocks can see them.
+  // ------------------------------------------------------------------
+  window.__cloudBridge = {
+    setStatus: function(m, ok) { return setStatus(m, ok); },
+    getActiveCloudProvider: function() { return getActiveCloudProvider(); },
+    cloudCwd: function() { return cloudCwd(); },
+    cloudJoinPath: function() { return cloudJoinPath.apply(null, arguments); },
+    deleteInfiniFile: function(p, isFolder) { return deleteInfiniFile(p, isFolder); }
+  };
+
   async function downloadInfiniFile(fileName) {
     // Immediate UI feedback — avoids 3–4s "frozen" feel while proxy connects
     window.__cloudDownloading = true;
@@ -11209,15 +11195,36 @@ window.__dgxenInitVideoControls = function(vId) {
 
   function setStatus(msg, ok) {
     const el = document.getElementById('cloudConnStatus');
-    if (!el) return;
-
-    el.textContent = msg || '';
-
-    el.style.color =
-      ok === false ? 'var(--error)' :
-      ok ? 'var(--accent)' :
-      'var(--text-dim)';
+    if (el) {
+      el.textContent = msg || '';
+      el.style.color =
+        ok === false ? 'var(--error)' :
+        ok ? 'var(--accent)' :
+        'var(--text-dim)';
+    }
+    // cloudConnStatus lives inside the B2 settings <details>, which is display:none
+    // whenever Infini is the active provider — so the user never saw ANY delete /
+    // upload / rename message. Mirror every status to a toast that is always visible.
+    try { if (msg) window.__cloudToast(msg, ok); } catch (e) {}
   }
+
+  window.__cloudToast = function(msg, ok) {
+    let t = document.getElementById('cloudToast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'cloudToast';
+      t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);max-width:92vw;' +
+        'padding:12px 16px;border-radius:12px;font:700 13px/1.4 system-ui,sans-serif;z-index:2147483647;' +
+        'box-shadow:0 8px 30px rgba(0,0,0,.5);pointer-events:none;transition:opacity .25s;word-break:break-word;';
+      document.body.appendChild(t);
+    }
+    t.textContent = String(msg);
+    t.style.background = ok === false ? '#b3261e' : (ok ? '#0f7b4d' : '#2a3542');
+    t.style.color = '#fff';
+    t.style.opacity = '1';
+    clearTimeout(t.__h);
+    t.__h = setTimeout(function() { t.style.opacity = '0'; }, ok === false ? 9000 : 3200);
+  };
 
   // =========================================================
   // FORMAT BYTES
@@ -12807,6 +12814,7 @@ function explainFetchError(e) {
       return x >= r.left - 16 && x <= r.right + 16 && y >= r.top - 16 && y <= r.bottom + 16;
     }
     function doDrop(info, x, y) {
+      console.log('[DELETE-TRACE] drop at', x, y, 'info=', info, 'overTrash=', pointOver('cloudTrashBtn', x, y));
       if (!info) return;
       if (pointOver('cloudTrashBtn', x, y)) {
         if (window.softDeleteCloudFile) window.softDeleteCloudFile(info.name, info.id, info.rel);
