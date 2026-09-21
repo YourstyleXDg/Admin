@@ -2390,6 +2390,52 @@
             border-bottom: 1px solid var(--glass-border);
             font-size: 12px;
             min-height: 44px;
+            position: relative;
+        }
+        .cloud-star-badge {
+            flex-shrink: 0;
+            font-size: 13px;
+        }
+        .cloud-more-btn {
+            flex-shrink: 0;
+            padding: 8px 10px !important;
+            font-size: 15px !important;
+            line-height: 1;
+            background: rgba(255,255,255,.05) !important;
+            color: var(--text-dim) !important;
+        }
+        #cloudStarredFilterBtn.active {
+            background: rgba(255,205,60,.18) !important;
+            box-shadow: 0 0 0 1px rgba(255,205,60,.5) inset;
+        }
+        .cloud-more-menu {
+            min-width: 180px;
+            background: rgba(20,20,26,.98);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            box-shadow: 0 12px 32px rgba(0,0,0,.5);
+            backdrop-filter: blur(14px);
+            padding: 6px;
+            z-index: 90000;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .cloud-more-menu-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: none;
+            border: none;
+            color: var(--text-main);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .cloud-more-menu-item:hover, .cloud-more-menu-item:active {
+            background: rgba(255,255,255,.08);
         }
 
         .cloud-preview-drawer {
@@ -4315,9 +4361,17 @@ body.cat-world-active .cat-mode-bar{display:block}
                     <option value="name_asc">Name A–Z</option>
                     <option value="size_desc">Largest first</option>
                 </select>
+                <button class="btn" type="button" id="cloudStarredFilterBtn" style="padding:8px 12px;font-size:11px;" onclick="toggleCloudStarredFilter()" title="Show only starred">⭐</button>
+                <button class="btn" type="button" style="padding:8px 12px;font-size:11px;" onclick="toggleCloudStorageBreakdown()" title="Storage breakdown by file type">📊</button>
+                <button class="btn" type="button" style="padding:8px 14px;font-size:11px;" onclick="toggleCloudTrash()" id="cloudTrashBtn">TRASH</button>
                 <button class="btn" type="button" style="padding:8px 14px;font-size:11px;" onclick="refreshCloudFiles()">REFRESH</button>
             </div>
         </div>
+        <div style="position:relative;margin:0 0 10px;">
+            <input type="text" id="cloudSearchInput" placeholder="Search files and folders…" autocomplete="off" oninput="filterCloudFiles(this.value)" style="width:100%;padding:10px 36px 10px 14px;border-radius:12px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);font-weight:600;font-size:13px;">
+            <button type="button" id="cloudSearchClearBtn" onclick="document.getElementById('cloudSearchInput').value='';filterCloudFiles('');" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer;padding:4px 6px;">✕</button>
+        </div>
+        <div id="cloudStorageBreakdown" style="display:none;margin:0 0 12px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid var(--glass-border);"></div>
         <div id="cloudPathBar" aria-label="Current folder"></div>
         <div id="cloudFileList" class="mk-list" style="overflow:auto;min-height:42vh;flex:1;"></div>
     </div>
@@ -4855,6 +4909,21 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 <button class="btn-confirm" style="background:#8ea0ff;color:#0a0a14;" onclick="backupSuggestDownloadAndContinue()">DOWNLOAD BACKUP, THEN CONTINUE</button>
                 <button class="btn-cancel" style="background:rgba(150,150,150,.2);" onclick="backupSuggestSkip()">SKIP — CONTINUE WITHOUT BACKUP</button>
                 <button class="btn-cancel" onclick="closeModals()">CANCEL RESET</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="newFolderModal">
+        <div class="modal">
+            <h2 style="color:var(--accent);display:flex;align-items:center;gap:10px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span id="newFolderModalTitle">New Folder</span>
+            </h2>
+            <input type="text" id="newFolderNameInput" placeholder="Folder name" autocomplete="off" style="width:100%;margin:4px 0 4px;" maxlength="120">
+            <p id="newFolderModalHint" style="font-size:12px;color:var(--text-dim);margin:0 0 4px;min-height:16px;"></p>
+            <div class="modal-btns">
+                <button class="btn-confirm" id="newFolderConfirmBtn" onclick="confirmCreateCloudFolder()">CREATE</button>
+                <button class="btn-cancel" onclick="closeModals()">CANCEL</button>
             </div>
         </div>
     </div>
@@ -7017,7 +7086,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
 
         window.closeModals = () => {
             const modals = ['banModal', 'resetModal', 'keyBanModal', 'guideModal', 'confirmActionModal',
-                'unbindInfoModal', 'backupSuggestModal'
+                'unbindInfoModal', 'backupSuggestModal', 'newFolderModal'
             ];
             modals.forEach(id => {
                 const el = document.getElementById(id);
@@ -9372,15 +9441,15 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
 // ===== Cloud delete pop (near click) + background upload UI =====
 (function(){
   let pendingDel = null;
-  window.openCloudDeletePop = function(anchorEl, fileName, fileId) {
+  window.openCloudDeletePop = function(anchorEl, fileName, fileId, relPath) {
     const pop = document.getElementById('cloudDelPop');
     const msg = document.getElementById('cloudDelPopMsg');
     if (!pop) {
-      if (window.deleteCloudFile) window.deleteCloudFile(fileName, fileId);
+      if (window.softDeleteCloudFile) window.softDeleteCloudFile(fileName, fileId, relPath);
       return;
     }
-    pendingDel = { fileName: fileName, fileId: fileId };
-    if (msg) msg.textContent = 'Delete "' + fileName + '"? This cannot be undone.';
+    pendingDel = { fileName: fileName, fileId: fileId, relPath: relPath };
+    if (msg) msg.textContent = 'Move "' + fileName + '" to Trash?';
     const r = (anchorEl && anchorEl.getBoundingClientRect) ? anchorEl.getBoundingClientRect() : { left: 24, top: 24, bottom: 48, width: 40, height: 24 };
     pop.classList.add('show');
     const pw = pop.offsetWidth || 260;
@@ -9411,15 +9480,39 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     const cancel = document.getElementById('cloudDelCancel');
     if (cancel) cancel.onclick = closeDel;
     if (ok) ok.onclick = function() {
-      if (pendingDel && window.deleteCloudFile) {
-        var fn = pendingDel.fileName, fid = pendingDel.fileId;
+      if (pendingDel && window.softDeleteCloudFile) {
+        var fn = pendingDel.fileName, fid = pendingDel.fileId, rp = pendingDel.relPath;
         closeDel();
-        window.deleteCloudFile(fn, fid);
+        window.softDeleteCloudFile(fn, fid, rp);
       } else closeDel();
     };
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindDelBtns);
   else bindDelBtns();
+
+  // Moves a file to .trash/ (Infini, via native WebDAV MOVE) instead of
+  // permanently deleting it — the row-level Delete action now does this,
+  // matching how Drive/Dropbox protect against accidental deletion.
+  // permanentlyDeleteCloudItem (Trash view) still calls the real
+  // deleteCloudFile for an actual, irreversible removal. B2 has no native
+  // move, so for B2 this still hard-deletes immediately (with a note) —
+  // building a safe download/reupload/delete cycle for B2 is a larger,
+  // separate piece of work, not something to bolt on here.
+  window.softDeleteCloudFile = async function(fileName, fileId, relPath) {
+    if (getActiveCloudProvider() === 'infini' && relPath && !String(relPath).startsWith('.trash/')) {
+      try {
+        const fromUrl = cloudPathUrl(relPath);
+        const toUrl = cloudPathUrl(cloudJoinPath('.trash', relPath));
+        const res = await infiniFetch(fromUrl, { method: 'MOVE', headers: { Destination: toUrl, Overwrite: 'T' } });
+        if (!res.ok) throw new Error('Move to Trash failed (' + res.status + ')');
+        setStatus('Moved to Trash: ' + fileName, true);
+        if (window.refreshCloudFiles) await window.refreshCloudFiles();
+        return;
+      } catch (e) { setStatus('Trash: ' + (e.message || e), false); return; }
+    }
+    // B2, or no relPath available — fall back to a real, immediate delete.
+    if (window.deleteCloudFile) await window.deleteCloudFile(fileName, fileId);
+  };
 
   (function bindCancelBtn() {
     function wire() {
@@ -9788,6 +9881,256 @@ window.__dgxenInitVideoControls = function(vId) {
     return p;
   }
 
+  // ===== STARRED / FAVORITES =====
+  // Stored in Firebase (settings/cloudStarred), keyed by relative path —
+  // provider-agnostic, since it's just a marker, not a file operation.
+  window.__cloudStarredSet = new Set();
+  async function loadCloudStarred() {
+    try {
+      const snap = await get(ref(db, 'settings/cloudStarred'));
+      window.__cloudStarredSet = new Set(snap.exists() ? Object.keys(snap.val() || {}) : []);
+    } catch (e) { window.__cloudStarredSet = new Set(); }
+  }
+  window.toggleCloudStar = async function(relPath) {
+    const key = String(relPath || '').replace(/[.#$\[\]]/g, '_');
+    if (!key) return;
+    const starred = window.__cloudStarredSet.has(relPath);
+    try {
+      await set(ref(db, 'settings/cloudStarred/' + key), starred ? null : true);
+      if (starred) window.__cloudStarredSet.delete(relPath); else window.__cloudStarredSet.add(relPath);
+      if (window.refreshCloudFiles) await window.refreshCloudFiles();
+    } catch (e) { setStatus('Star: ' + (e.message || e), false); }
+  };
+  window.toggleCloudStarredFilter = function() {
+    window.__cloudStarredFilterOn = !window.__cloudStarredFilterOn;
+    const btn = document.getElementById('cloudStarredFilterBtn');
+    if (btn) btn.classList.toggle('active', window.__cloudStarredFilterOn);
+    if (window.refreshCloudFiles) window.refreshCloudFiles();
+  };
+
+  // ===== SEARCH =====
+  // Pure client-side filter over the already-rendered rows — no extra
+  // network calls, filters by the name already shown.
+  window.filterCloudFiles = function(q) {
+    const box = document.getElementById('cloudFileList');
+    const clearBtn = document.getElementById('cloudSearchClearBtn');
+    if (!box) return;
+    const needle = String(q || '').trim().toLowerCase();
+    if (clearBtn) clearBtn.style.display = needle ? 'block' : 'none';
+    box.querySelectorAll('.cloud-file-row').forEach(function(row) {
+      const name = row.getAttribute('data-search-name') || '';
+      row.style.display = (!needle || name.indexOf(needle) !== -1) ? '' : 'none';
+    });
+  };
+
+  // ===== TRASH (soft delete + restore) =====
+  // Deleting now moves a file under a ".trash/" prefix instead of
+  // permanently removing it immediately — mirrors how Drive/Dropbox
+  // protect against accidental deletion. Only actually removed from
+  // storage when explicitly emptied from Trash.
+  window.__cloudTrashView = false;
+  window.toggleCloudTrash = function() {
+    window.__cloudTrashView = !window.__cloudTrashView;
+    const btn = document.getElementById('cloudTrashBtn');
+    if (btn) btn.textContent = window.__cloudTrashView ? 'BACK TO FILES' : 'TRASH';
+    window.__cloudCwd = window.__cloudTrashView ? '.trash' : '';
+    if (window.refreshCloudFiles) window.refreshCloudFiles();
+  };
+  window.restoreCloudItem = async function(relPath) {
+    const rel = String(relPath || '');
+    if (!rel.startsWith('.trash/')) return;
+    const restoredPath = rel.slice('.trash/'.length);
+    try {
+      if (getActiveCloudProvider() === 'infini') {
+        const fromUrl = cloudPathUrl(rel);
+        const toUrl = cloudPathUrl(restoredPath);
+        const res = await infiniFetch(fromUrl, { method: 'MOVE', headers: { Destination: toUrl } });
+        if (!res.ok) throw new Error('Restore failed (' + res.status + ')');
+        setStatus('Restored: ' + restoredPath, true);
+        if (window.refreshCloudFiles) await window.refreshCloudFiles();
+      } else {
+        setStatus('Restore is only available for Infini Cloud right now — B2 has no native move/rename.', false);
+      }
+    } catch (e) { setStatus('Restore: ' + (e.message || e), false); }
+  };
+  window.permanentlyDeleteCloudItem = function(fileName, fileId, relPath) {
+    showConfirm('Delete permanently?', '"' + fileName + '" will be permanently deleted and cannot be restored. Continue?', async () => {
+      await deleteCloudFile(fileName, fileId);
+    });
+  };
+
+  // ===== RENAME (Infini only — B2 has no native rename, see note below) =====
+  window.promptRenameCloudItem = function(relPath, currentName, isFolder) {
+    const modal = document.getElementById('newFolderModal');
+    const input = document.getElementById('newFolderNameInput');
+    const hint = document.getElementById('newFolderModalHint');
+    const title = document.getElementById('newFolderModalTitle');
+    const btn = document.getElementById('newFolderConfirmBtn');
+    if (!modal || !input || !btn) return;
+    if (getActiveCloudProvider() !== 'infini') {
+      setStatus('Rename is only available for Infini Cloud right now — B2 has no native rename.', false);
+      return;
+    }
+    if (title) title.textContent = 'Rename';
+    input.value = currentName;
+    if (hint) hint.textContent = '';
+    btn.textContent = 'RENAME';
+    btn.onclick = () => confirmRenameCloudItem(relPath, isFolder);
+    modal.style.display = 'flex';
+    setTimeout(() => { input.focus(); input.select(); }, 50);
+  };
+  async function confirmRenameCloudItem(relPath, isFolder) {
+    const input = document.getElementById('newFolderNameInput');
+    const hint = document.getElementById('newFolderModalHint');
+    const btn = document.getElementById('newFolderConfirmBtn');
+    const newName = input ? String(input.value || '').trim() : '';
+    if (!newName) {
+      if (hint) { hint.textContent = 'Enter a name.'; hint.style.color = 'var(--error)'; }
+      return;
+    }
+    const safeName = newName.replace(/[\\/]/g, '_');
+    const parts = String(relPath).split('/');
+    parts[parts.length - 1] = safeName;
+    const newRelPath = parts.join('/');
+    if (btn) { btn.disabled = true; btn.textContent = 'RENAMING…'; }
+    try {
+      const fromUrl = cloudPathUrl(relPath) + (isFolder ? '/' : '');
+      const toUrl = cloudPathUrl(newRelPath) + (isFolder ? '/' : '');
+      const res = await infiniFetch(fromUrl, { method: 'MOVE', headers: { Destination: toUrl } });
+      if (!res.ok) {
+        if (res.status === 412 || res.status === 409) throw new Error('A file/folder named "' + safeName + '" already exists here.');
+        throw new Error('Rename failed (' + res.status + ')');
+      }
+      setStatus('Renamed to ' + safeName, true);
+      closeModals();
+      resetNewFolderModalToCreateMode();
+      if (window.refreshCloudFiles) await window.refreshCloudFiles();
+    } catch (e) {
+      if (hint) { hint.textContent = e.message || String(e); hint.style.color = 'var(--error)'; }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'RENAME'; }
+    }
+  }
+  function resetNewFolderModalToCreateMode() {
+    const title = document.getElementById('newFolderModalTitle');
+    const btn = document.getElementById('newFolderConfirmBtn');
+    if (title) title.textContent = 'New Folder';
+    if (btn) btn.onclick = () => window.confirmCreateCloudFolder();
+  }
+
+  // ===== MOVE TO FOLDER (Infini only) =====
+  window.promptMoveCloudItem = async function(relPath, currentName, isFolder) {
+    if (getActiveCloudProvider() !== 'infini') {
+      setStatus('Move is only available for Infini Cloud right now — B2 has no native move.', false);
+      return;
+    }
+    let folders = [];
+    try {
+      const all = await listAllFiles();
+      const set = new Set();
+      all.forEach(f => { if (f._isFolder) set.add(f._relPath || f.fileName); });
+      folders = Array.from(set).sort();
+    } catch (e) {}
+    const options = ['(Root)'].concat(folders).filter(f => f !== relPath);
+    const choice = prompt('Move "' + currentName + '" to which folder?\n\n' + options.map((o, i) => (i + 1) + '. ' + o).join('\n') + '\n\nEnter a number:');
+    if (!choice) return;
+    const idx = parseInt(choice, 10) - 1;
+    if (!Number.isFinite(idx) || idx < 0 || idx >= options.length) return;
+    const destFolder = options[idx] === '(Root)' ? '' : options[idx];
+    const newRelPath = cloudJoinPath(destFolder, currentName);
+    try {
+      const fromUrl = cloudPathUrl(relPath) + (isFolder ? '/' : '');
+      const toUrl = cloudPathUrl(newRelPath) + (isFolder ? '/' : '');
+      const res = await infiniFetch(fromUrl, { method: 'MOVE', headers: { Destination: toUrl } });
+      if (!res.ok) throw new Error('Move failed (' + res.status + ')');
+      setStatus('Moved to ' + (destFolder || 'Root'), true);
+      if (window.refreshCloudFiles) await window.refreshCloudFiles();
+    } catch (e) { setStatus('Move: ' + (e.message || e), false); }
+  };
+
+  // ===== "⋮" OVERFLOW MENU =====
+  window.openCloudMoreMenu = function(btn) {
+    document.querySelectorAll('.cloud-more-menu').forEach(m => m.remove());
+    const name = btn.getAttribute('data-more-name');
+    const rel = btn.getAttribute('data-more-rel');
+    const isFolder = btn.getAttribute('data-more-folder') === '1';
+    const isStarred = btn.getAttribute('data-more-starred') === '1';
+    const inTrash = String(rel || '').startsWith('.trash/');
+    const menu = document.createElement('div');
+    menu.className = 'cloud-more-menu';
+    const items = [];
+    if (inTrash) {
+      items.push(['↩️ Restore', () => window.restoreCloudItem(rel)]);
+      items.push(['🗑️ Delete permanently', () => window.permanentlyDeleteCloudItem(name, btn.closest('.cloud-file-row').querySelector('[data-dl-id]') ? btn.closest('.cloud-file-row').querySelector('[data-dl-id]').getAttribute('data-dl-id') : '', rel)]);
+    } else {
+      items.push([isStarred ? '⭐ Unstar' : '☆ Star', () => window.toggleCloudStar(rel)]);
+      items.push(['✏️ Rename', () => window.promptRenameCloudItem(rel, name, isFolder)]);
+      items.push(['📂 Move to…', () => window.promptMoveCloudItem(rel, name, isFolder)]);
+      items.push(['🗑️ Delete', () => {
+        const row = btn.closest('.cloud-file-row');
+        const dlBtn = row && row.querySelector('[data-dl-id]');
+        openCloudDeletePop(btn, name, dlBtn ? dlBtn.getAttribute('data-dl-id') : '', rel);
+      }]);
+    }
+    items.forEach(([label, fn]) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'cloud-more-menu-item';
+      item.textContent = label;
+      item.onclick = (e) => { e.stopPropagation(); menu.remove(); fn(); };
+      menu.appendChild(item);
+    });
+    document.body.appendChild(menu);
+    const r = btn.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.top = Math.min(r.bottom + 4, window.innerHeight - (items.length * 42 + 16)) + 'px';
+    menu.style.left = Math.max(8, r.right - 180) + 'px';
+    setTimeout(() => {
+      document.addEventListener('click', function closeIt(e) {
+        if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', closeIt); }
+      });
+    }, 10);
+  };
+
+  // ===== STORAGE BREAKDOWN BY FILE TYPE =====
+  window.toggleCloudStorageBreakdown = async function() {
+    const box = document.getElementById('cloudStorageBreakdown');
+    if (!box) return;
+    if (box.style.display === 'block') { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    box.innerHTML = '<span style="color:var(--text-dim);font-size:12px;">Calculating…</span>';
+    try {
+      const all = await listAllFiles();
+      const groups = {};
+      let total = 0;
+      all.forEach(f => {
+        if (f._isFolder) return;
+        const size = Number(f.contentLength || f.size || 0);
+        total += size;
+        const name = (f._relPath || f.fileName || '').split('/').pop();
+        const ext = (name.split('.').pop() || 'other').toLowerCase();
+        const cat = ['jpg','jpeg','png','gif','webp','svg','heic','heif'].includes(ext) ? 'Images' :
+                    ['mp4','webm','mov','mkv','m4v'].includes(ext) ? 'Video' :
+                    ['mp3','wav','ogg','m4a'].includes(ext) ? 'Audio' :
+                    ['pdf','doc','docx','txt','md'].includes(ext) ? 'Documents' :
+                    ['zip','rar','7z','tar','gz'].includes(ext) ? 'Archives' : 'Other';
+        groups[cat] = (groups[cat] || 0) + size;
+      });
+      const fmtSize = (b) => b > 1073741824 ? (b/1073741824).toFixed(2)+' GB' : b > 1048576 ? (b/1048576).toFixed(1)+' MB' : (b/1024).toFixed(0)+' KB';
+      const rows = Object.entries(groups).sort((a,b) => b[1]-a[1]).map(([cat, size]) => {
+        const pct = total ? (size/total*100) : 0;
+        return '<div style="display:flex;align-items:center;gap:10px;margin:6px 0;">' +
+          '<span style="width:80px;font-size:12px;font-weight:700;color:var(--text-dim);">' + cat + '</span>' +
+          '<div style="flex:1;height:6px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden;"><div style="width:' + pct.toFixed(1) + '%;height:100%;background:var(--accent);"></div></div>' +
+          '<span style="width:70px;text-align:right;font-size:11px;color:var(--text-dim);">' + fmtSize(size) + '</span>' +
+          '</div>';
+      }).join('');
+      box.innerHTML = '<div style="font-size:12px;font-weight:800;color:var(--text-main);margin-bottom:8px;">Storage by type — ' + fmtSize(total) + ' total</div>' + (rows || '<span style="color:var(--text-dim);font-size:12px;">No files yet.</span>');
+    } catch (e) {
+      box.innerHTML = '<span style="color:var(--error);font-size:12px;">Failed to calculate: ' + (e.message || e) + '</span>';
+    }
+  };
+
   function setInfiniStatus(msg, ok) {
     const el = document.getElementById('cloudInfiniStatus');
     if (!el) return;
@@ -10016,41 +10359,84 @@ window.__dgxenInitVideoControls = function(vId) {
     return parseWebDavPropfind(await res.text(), base);
   }
 
-  window.cloudCreateFolder = async function() {
-    const name = prompt('New folder name');
-    if (!name || !String(name).trim()) return;
-    const safe = String(name).trim().replace(/[\\/]/g, '_').replace(/^\.+/, '');
-    if (!safe) return;
+  window.cloudCreateFolder = function() {
+    resetNewFolderModalToCreateMode();
+    const input = document.getElementById('newFolderNameInput');
+    const hint = document.getElementById('newFolderModalHint');
+    if (input) input.value = '';
+    if (hint) hint.textContent = '';
+    const modal = document.getElementById('newFolderModal');
+    if (modal) modal.style.display = 'flex';
+    setTimeout(() => { if (input) input.focus(); }, 50);
+  };
+
+  // Confirm on Enter, same as most cloud apps' new-folder dialogs.
+  document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('newFolderNameInput');
+    if (input) {
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); window.confirmCreateCloudFolder(); }
+      });
+    }
+  });
+
+  window.confirmCreateCloudFolder = async function() {
+    const input = document.getElementById('newFolderNameInput');
+    const hint = document.getElementById('newFolderModalHint');
+    const btn = document.getElementById('newFolderConfirmBtn');
+    const raw = input ? input.value : '';
+    if (!raw || !String(raw).trim()) {
+      if (hint) { hint.textContent = 'Enter a folder name.'; hint.style.color = 'var(--error)'; }
+      return;
+    }
+    const safe = String(raw).trim().replace(/[\\/]/g, '_').replace(/^\.+/, '');
+    if (!safe) {
+      if (hint) { hint.textContent = 'That name isn\'t valid.'; hint.style.color = 'var(--error)'; }
+      return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = 'CREATING…'; }
+    if (hint) { hint.textContent = ''; }
     try {
+      let alreadyExists = false;
       if (getActiveCloudProvider() === 'infini') {
         const rel = cloudJoinPath(cloudCwd(), safe);
         const url = cloudPathUrl(rel) + '/';
         const res = await infiniFetch(url, { method: 'MKCOL' });
-        // 201 created, 405 already exists
-        if (!res.ok && res.status !== 405) {
+        // 201 created, 405 already exists (Infini/WebDAV convention)
+        if (res.status === 405) {
+          alreadyExists = true;
+        } else if (!res.ok) {
           const t = await res.text().catch(() => '');
           throw new Error('Create folder failed (' + res.status + ') ' + (t.slice(0, 80) || ''));
         }
       } else {
-        // B2 has no real folders — create a marker object so prefix shows up
+        // B2 has no real folders — create a marker object so prefix shows up.
+        // Check for an existing marker first so a duplicate name is
+        // reported clearly instead of silently overwriting nothing (a
+        // repeat .keep upload is harmless but shouldn't claim success
+        // over an existing folder without saying so).
         await authorizeB2();
         const prefix = cloudJoinPath(cloudCwd(), safe) + '/.keep';
-        // small empty placeholder via small upload path if available
-        const blob = new Blob([''], { type: 'text/plain' });
-        const fake = new File([blob], prefix.split('/').pop(), { type: 'text/plain' });
-        // store with full path as name
-        const startName = prefix;
-        // Use b2 upload of empty keep file
-        if (typeof uploadOne === 'function') {
-          // direct path: upload keep file with full relative path
-          window.__cloudForceName = startName;
+        try {
+          const existing = await listAllFiles();
+          if (existing.some(f => f.fileName === prefix)) alreadyExists = true;
+        } catch (e) { /* listing failed — proceed, worst case a harmless duplicate .keep upload */ }
+        if (!alreadyExists) {
+          await uploadPlaceholderB2(prefix);
         }
-        await uploadPlaceholderB2(prefix);
+      }
+      if (alreadyExists) {
+        if (hint) { hint.textContent = 'A folder named "' + safe + '" already exists here.'; hint.style.color = 'var(--error)'; }
+        if (btn) { btn.disabled = false; btn.textContent = 'CREATE'; }
+        return;
       }
       setStatus('Folder ready: ' + safe, true);
       if (window.refreshCloudFiles) await window.refreshCloudFiles();
+      closeModals();
     } catch (e) {
-      setStatus('Folder: ' + (e.message || e), false);
+      if (hint) { hint.textContent = e.message || String(e); hint.style.color = 'var(--error)'; }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'CREATE'; }
     }
   };
 
@@ -11385,6 +11771,7 @@ function explainFetchError(e) {
       try {
 
         await loadSettingsFromFirebase();
+        await loadCloudStarred();
 
         if (getActiveCloudProvider() === 'infini') {
           if (!infini.user || !infini.pass) {
@@ -11441,17 +11828,32 @@ function explainFetchError(e) {
           return 0;
         });
 
-        if (!files.length) {
+        // Hide the .trash folder itself from the normal root listing —
+        // it's reached only via the TRASH button, not by browsing into it
+        // like a regular folder. Storage totals above still count
+        // trashed files' size, since they're still consuming space until
+        // permanently deleted. When actually viewing the Trash (cwd ===
+        // '.trash'), this filter has nothing to remove and does nothing.
+        const visibleFiles = (!window.__cloudTrashView) ? files.filter(function(f) {
+          const rel = f._relPath || f.fileName || '';
+          return rel !== '.trash' && !String(rel).startsWith('.trash/');
+        }) : files;
+
+        const finalFiles = window.__cloudStarredFilterOn
+          ? visibleFiles.filter(f => f._isFolder || window.__cloudStarredSet.has(f._relPath || f.fileName))
+          : visibleFiles;
+
+        if (!finalFiles.length) {
 
           box.innerHTML =
-            '<div style="padding:14px;color:var(--text-dim);font-weight:700;">Empty folder. Upload files or create a subfolder.</div>';
+            '<div style="padding:14px;color:var(--text-dim);font-weight:700;">' + (window.__cloudTrashView ? 'Trash is empty.' : (window.__cloudStarredFilterOn ? 'No starred files.' : 'Empty folder. Upload files or create a subfolder.')) + '</div>';
 
           return;
         }
 
         // ===== FILE LIST WITH PREVIEW BUTTON =====
         box.innerHTML =
-          files
+          finalFiles
             .map(
               f => {
 
@@ -11487,10 +11889,12 @@ function explainFetchError(e) {
                 const isFolder = !!f._isFolder;
                 const hasPreview = !isFolder && ['jpg','jpeg','png','gif','webp','svg','heic','heif','mp3','wav','ogg','m4a','mp4','webm','mov','mkv','m4v','pdf','txt','md','json','csv','log','html','js','css'].includes(ext);
                 const relPath = String(f._relPath || name).replace(/"/g, '&quot;');
+                const isStarred = !!(window.__cloudStarredSet && window.__cloudStarredSet.has(f._relPath || name));
 
                 return (
-                  '<div class="cloud-file-row' + (isFolder ? ' is-folder' : '') + '">' +
+                  '<div class="cloud-file-row' + (isFolder ? ' is-folder' : '') + '" data-search-name="' + name.toLowerCase().replace(/"/g,'&quot;') + '">' +
 
+                  (isStarred ? '<span class="cloud-star-badge" title="Starred">⭐</span>' : '') +
                   '<div class="name" data-name="' + name + '" data-rel="' + relPath + '"' + (isFolder ? ' data-folder="1" role="button" tabindex="0" title="Open folder"' : (hasPreview ? ' data-exp-id="' + fid + '" data-exp-name="' + name + '" role="button" tabindex="0" aria-expanded="false" title="Tap to preview"' : '')) + '>' +
                   (isFolder ? '<span class="folder-ico">📁</span>' : '') +
                   name +
@@ -11522,13 +11926,9 @@ function explainFetchError(e) {
                   name +
                   '" data-dl-id="' +
                   fid +
-                  '">DL</button>' +
+                  '">DL</button>')) +
 
-                  '<button class="btn" type="button" style="background:rgba(255,59,48,.15);color:var(--error);" data-del-name="' +
-                  name +
-                  '" data-del-id="' +
-                  fid +
-                  '">DEL</button>')) +
+                  '<button class="btn cloud-more-btn" type="button" data-more-name="' + name + '" data-more-rel="' + relPath + '" data-more-folder="' + (isFolder ? '1' : '0') + '" data-more-starred="' + (isStarred ? '1' : '0') + '" title="More actions">⋮</button>' +
 
                   '</div>'
                 );
@@ -11571,23 +11971,17 @@ function explainFetchError(e) {
             }
           );
 
-        // ===== DELETE BUTTONS (with confirmation) =====
-        box
-          .querySelectorAll('[data-del-name]')
-          .forEach(
-            btn => {
-              btn.addEventListener(
-                'click',
-                function(e) {
-                  const fileName = this.getAttribute('data-del-name');
-                  const fileId = this.getAttribute('data-del-id');
-                  
-                  // Show confirm dialog
-                  openCloudDeletePop(this, fileName, fileId);
-                }
-              );
-            }
-          );
+        // (Row-level Delete now lives in the "⋮" overflow menu — see
+        // data-more-name handler below — which is what actually renders
+        // per row now, replacing the old inline DEL button.)
+
+        // ===== "⋮" OVERFLOW MENU (Rename / Star / Move / Delete or Restore) =====
+        box.querySelectorAll('[data-more-name]').forEach(function(btn) {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            openCloudMoreMenu(btn);
+          });
+        });
 
         // ===== HOLD FILE NAME TO COPY SHARE LINK =====
         setupCloudNameHoldToCopy(box);
