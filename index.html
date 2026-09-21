@@ -905,7 +905,42 @@
         /* ============================================================
            STREAK ELITE — card, badges, flow-chart popup, settings modal
            ============================================================ */
+        .streak-stat-card {
+            position: relative;
+            padding: 26px 24px 24px;
+            border-radius: 22px;
+            overflow: hidden;
+        }
+        .streak-stat-top-bar {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+        }
+        .streak-stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+        }
+        .streak-stat-label {
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .05em;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .streak-stat-num {
+            font-size: 42px;
+            font-weight: 900;
+            line-height: 1.05;
+        }
         .streak-card {
+            padding: 32px 22px 22px;
+            border-radius: 22px;
             border-color: rgba(255, 160, 40, 0.28) !important;
             background: linear-gradient(150deg, rgba(255, 160, 40, 0.07), transparent 60%);
         }
@@ -915,46 +950,66 @@
         }
         .streak-day-badge {
             position: absolute;
-            top: 14px;
-            right: 14px;
+            top: 16px;
+            right: 16px;
             display: flex;
             align-items: center;
-            gap: 5px;
-            padding: 5px 11px 5px 9px;
+            gap: 6px;
+            padding: 8px 15px 8px 12px;
             border-radius: 999px;
             background: linear-gradient(135deg, #ffd23c, #ff7a1a);
-            box-shadow: 0 6px 16px rgba(255, 130, 20, 0.35);
-            font-size: 13px;
+            box-shadow: 0 8px 22px rgba(255, 130, 20, 0.4);
+            font-size: 17px;
             font-weight: 900;
             color: #1a0f00;
             letter-spacing: .01em;
             z-index: 3;
+            animation: streakBadgeGlow 2.4s ease-in-out infinite;
         }
-        .streak-day-badge svg { width: 12px; height: 12px; flex: none; }
+        @keyframes streakBadgeGlow {
+            0%, 100% { box-shadow: 0 8px 22px rgba(255, 130, 20, 0.4); }
+            50% { box-shadow: 0 8px 30px rgba(255, 160, 40, 0.7); }
+        }
+        .streak-day-badge svg { width: 16px; height: 16px; flex: none; }
         .streak-master-tag {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            font-size: 10.5px;
+            gap: 6px;
+            font-size: 11.5px;
             font-weight: 900;
             letter-spacing: .04em;
             color: #5b9dff;
             background: rgba(91, 157, 255, 0.14);
             border: 1px solid rgba(91, 157, 255, 0.3);
-            padding: 3px 9px;
-            border-radius: 7px;
+            padding: 5px 11px;
+            border-radius: 8px;
             text-transform: uppercase;
-            margin: 0 0 8px;
+            margin: 0 0 10px;
+        }
+        .user-card.streak-card .user-name {
+            font-size: 18px;
+            padding-right: 64px;
+        }
+        .user-card.streak-card .user-id {
+            font-size: 11.5px;
+            margin-bottom: 4px;
         }
         .streak-bonus-line {
-            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
             font-weight: 700;
             color: var(--text-dim);
-            margin: 2px 0 12px;
+            margin: 6px 0 16px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
         }
-        .streak-bonus-line b { color: var(--accent); font-weight: 900; }
-        .streak-card-actions { display: flex; gap: 8px; margin-top: auto; }
-        .streak-card-actions .btn { flex: 1; padding: 11px 10px; font-size: 11.5px; }
+        .streak-bonus-line b { color: var(--accent); font-weight: 900; font-size: 13.5px; }
+        .streak-card-actions { display: flex; gap: 10px; margin-top: auto; }
+        .streak-card-actions .btn { flex: 1; padding: 13px 10px; font-size: 12.5px; font-weight: 800; border-radius: 12px; }
 
         /* --- Per-user flow-chart / biodata modal --- */
         .modal.streak-modal { max-width: 560px; text-align: left; padding: 40px; }
@@ -4088,15 +4143,17 @@ body.cat-world-active .cat-mode-bar{display:block}
 
         <div id="streak-elite" class="tab-section">
             <div class="section-box" style="padding: 0; background: transparent; border: none; box-shadow: none;">
-                <h2 style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:22px;">
-                    <span style="display:flex;align-items:center;gap:10px;font-size:28px;">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="url(#streakFlameGrad)" stroke="none"><defs><linearGradient id="streakFlameGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffd23c"/><stop offset="100%" stop-color="#ff7a1a"/></linearGradient></defs><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                <h2 style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:26px;">
+                    <span style="display:flex;align-items:center;gap:14px;font-size:32px;">
+                        <span style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,rgba(255,210,60,.18),rgba(255,122,26,.1));box-shadow:0 0 24px rgba(255,150,30,.25);">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="url(#streakFlameGrad)" stroke="none"><defs><linearGradient id="streakFlameGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffd23c"/><stop offset="100%" stop-color="#ff7a1a"/></linearGradient></defs><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                        </span>
                         Streak Elite
                     </span>
                     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                        <span id="streakSystemStateBadge" style="font-size:11px;font-weight:900;letter-spacing:.04em;padding:6px 12px;border-radius:10px;background:rgba(150,150,150,.12);color:var(--text-dim);">LOADING…</span>
-                        <button class="btn" style="background:rgba(0,255,136,.12);color:var(--accent);padding:10px 16px;font-size:12px;border:1px solid rgba(0,255,136,.3);" onclick="openStreakSettingsModal()">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <span id="streakSystemStateBadge" style="font-size:12px;font-weight:900;letter-spacing:.04em;padding:8px 14px;border-radius:11px;background:rgba(150,150,150,.12);color:var(--text-dim);">LOADING…</span>
+                        <button class="btn" style="background:rgba(0,255,136,.12);color:var(--accent);padding:13px 20px;font-size:13px;font-weight:800;border-radius:12px;border:1px solid rgba(0,255,136,.3);" onclick="openStreakSettingsModal()">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                             STREAK SETTINGS
                         </button>
                     </div>
@@ -4105,22 +4162,38 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <!-- Legend strip: quick-glance stats for the whole streak
                      population, in the same visual language as the
                      top-of-dashboard stat cards elsewhere in this panel. -->
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:26px;">
-                    <div class="glass-panel float-anim" style="padding:18px 20px;border-radius:20px;border-color:rgba(255,180,60,.25);">
-                        <div style="font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">Active Streakers</div>
-                        <div id="streakStatActive" style="font-size:30px;font-weight:900;background:linear-gradient(135deg,#ffd23c,#ff7a1a);-webkit-background-clip:text;background-clip:text;color:transparent;">0</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:18px;margin-bottom:30px;">
+                    <div class="glass-panel float-anim streak-stat-card" style="border-color:rgba(255,180,60,.3);">
+                        <div class="streak-stat-top-bar" style="background:linear-gradient(90deg,#ffd23c,#ff7a1a);"></div>
+                        <div class="streak-stat-icon" style="background:linear-gradient(135deg,rgba(255,210,60,.18),rgba(255,122,26,.1));">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="url(#streakFlameGrad)" stroke="none"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                        </div>
+                        <div class="streak-stat-label">Active Streakers</div>
+                        <div id="streakStatActive" class="streak-stat-num" style="background:linear-gradient(135deg,#ffd23c,#ff7a1a);-webkit-background-clip:text;background-clip:text;color:transparent;">0</div>
                     </div>
-                    <div class="glass-panel float-anim" style="padding:18px 20px;border-radius:20px;border-color:rgba(0,255,136,.25);">
-                        <div style="font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">Longest Streak</div>
-                        <div id="streakStatLongest" style="font-size:30px;font-weight:900;color:var(--accent);">0</div>
+                    <div class="glass-panel float-anim streak-stat-card" style="border-color:rgba(0,255,136,.3);">
+                        <div class="streak-stat-top-bar" style="background:linear-gradient(90deg,var(--accent),rgba(0,255,136,.4));"></div>
+                        <div class="streak-stat-icon" style="background:rgba(0,255,136,.14);">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 5H4a2 2 0 0 0 0 4h1M17 5h3a2 2 0 0 1 0 4h-1"/></svg>
+                        </div>
+                        <div class="streak-stat-label">Longest Streak</div>
+                        <div id="streakStatLongest" class="streak-stat-num" style="color:var(--accent);">0</div>
                     </div>
-                    <div class="glass-panel float-anim" style="padding:18px 20px;border-radius:20px;border-color:rgba(91,157,255,.25);">
-                        <div style="font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">Master Streakers</div>
-                        <div id="streakStatMaster" style="font-size:30px;font-weight:900;color:#5b9dff;">0</div>
+                    <div class="glass-panel float-anim streak-stat-card" style="border-color:rgba(91,157,255,.32);">
+                        <div class="streak-stat-top-bar" style="background:linear-gradient(90deg,#5b9dff,rgba(91,157,255,.4));"></div>
+                        <div class="streak-stat-icon" style="background:rgba(91,157,255,.14);">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5b9dff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 5-4-7-4 7-6-5zM4.5 19h15"/></svg>
+                        </div>
+                        <div class="streak-stat-label">Master Streakers</div>
+                        <div id="streakStatMaster" class="streak-stat-num" style="color:#5b9dff;">0</div>
                     </div>
-                    <div class="glass-panel float-anim" style="padding:18px 20px;border-radius:20px;border-color:rgba(255,80,80,.2);">
-                        <div style="font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">Reset Hour</div>
-                        <div id="streakStatResetHour" style="font-size:30px;font-weight:900;color:var(--text-main);">4<span style="font-size:15px;font-weight:700;color:var(--text-dim);">:00</span></div>
+                    <div class="glass-panel float-anim streak-stat-card" style="border-color:rgba(255,80,80,.25);">
+                        <div class="streak-stat-top-bar" style="background:linear-gradient(90deg,var(--error),rgba(255,80,80,.4));"></div>
+                        <div class="streak-stat-icon" style="background:rgba(255,80,80,.12);">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+                        </div>
+                        <div class="streak-stat-label">Reset Time</div>
+                        <div id="streakStatResetHour" class="streak-stat-num" style="color:var(--text-main);">4<span style="font-size:19px;font-weight:700;color:var(--text-dim);">:00</span></div>
                     </div>
                 </div>
 
@@ -5059,8 +5132,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
 
             <div style="display:flex;gap:14px;margin-top:18px;flex-wrap:wrap;">
                 <div style="flex:1;min-width:140px;">
-                    <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Reset Hour (0-23)</div>
-                    <input type="number" id="streakSysResetHour" min="0" max="23" step="1" style="width:100%;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.25);border:1px solid var(--glass-border);color:var(--text-main);font-weight:800;">
+                    <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Reset Time <span style="text-transform:none;font-weight:600;color:var(--text-dim);opacity:.8;">(exact hour &amp; minute)</span></div>
+                    <input type="time" id="streakSysResetTime" step="60" style="width:100%;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.25);border:1px solid var(--glass-border);color:var(--text-main);font-weight:800;color-scheme:dark;">
                 </div>
                 <div style="flex:1;min-width:140px;">
                     <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Reminder — Hours Before Reset</div>
@@ -8168,6 +8241,9 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         // panel's established settings/ and users/<id>/ conventions):
         //   settings/streakSystem/enabled                 boolean
         //   settings/streakSystem/resetHour                number 0-23 (default 4)
+        //   settings/streakSystem/resetMinute              number 0-59 (default 0) —
+        //     together with resetHour this gives an exact HH:MM reset time
+        //     (e.g. hour 15, minute 10 = 3:10 PM), for precise testing.
         //   settings/streakSystem/reminderHoursBefore      number (default 2)
         //   settings/streakSystem/includeMasterKeyLogins   boolean
         //   settings/streakBonusMinutes/"1".."7"           number — extra
@@ -8198,7 +8274,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         // of the key-generation/login flow, not here.
         // ============================================================
 
-        let streakSettingsCache = { enabled: false, resetHour: 4, reminderHoursBefore: 2, includeMasterKeyLogins: true };
+        let streakSettingsCache = { enabled: false, resetHour: 4, resetMinute: 0, reminderHoursBefore: 2, includeMasterKeyLogins: true };
         let streakBonusMinutesCache = { 1: 0, 2: 20, 3: 40, 4: 60, 5: 80, 6: 120, 7: 180 };
 
         function streakGetBonusMinutes(day) {
@@ -8212,6 +8288,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             streakSettingsCache = {
                 enabled: !!v.enabled,
                 resetHour: Number.isFinite(v.resetHour) ? v.resetHour : 4,
+                resetMinute: Number.isFinite(v.resetMinute) ? v.resetMinute : 0,
                 reminderHoursBefore: Number.isFinite(v.reminderHoursBefore) ? v.reminderHoursBefore : 2,
                 includeMasterKeyLogins: v.includeMasterKeyLogins !== false
             };
@@ -8230,7 +8307,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             const offNotice = document.getElementById('streakOffNotice');
             if (offNotice) offNotice.style.display = streakSettingsCache.enabled ? 'none' : 'block';
             const resetStat = document.getElementById('streakStatResetHour');
-            if (resetStat) resetStat.innerHTML = String(streakSettingsCache.resetHour) + '<span style="font-size:15px;font-weight:700;color:var(--text-dim);">:00</span>';
+            if (resetStat) resetStat.innerHTML = String(streakSettingsCache.resetHour) + '<span style="font-size:19px;font-weight:700;color:var(--text-dim);">:' + String(streakSettingsCache.resetMinute).padStart(2, '0') + '</span>';
             // Re-render the list so master-tag visibility (which depends
             // on includeMasterKeyLogins) and the on/off empty-state stay
             // in sync with whatever settings just changed.
@@ -8383,7 +8460,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         window.openStreakSettingsModal = function() {
             document.getElementById('streakSysEnabledToggle').checked = streakSettingsCache.enabled;
             document.getElementById('streakSysMasterToggle').checked = streakSettingsCache.includeMasterKeyLogins;
-            document.getElementById('streakSysResetHour').value = streakSettingsCache.resetHour;
+            document.getElementById('streakSysResetTime').value =
+                String(streakSettingsCache.resetHour).padStart(2, '0') + ':' + String(streakSettingsCache.resetMinute).padStart(2, '0');
             document.getElementById('streakSysReminderHours').value = streakSettingsCache.reminderHoursBefore;
 
             const editor = document.getElementById('streakBonusDayEditor');
@@ -8399,9 +8477,13 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         window.saveStreakSettings = async function() {
             const enabled = document.getElementById('streakSysEnabledToggle').checked;
             const includeMaster = document.getElementById('streakSysMasterToggle').checked;
-            let resetHour = Math.round(Number(document.getElementById('streakSysResetHour').value));
+            const timeVal = document.getElementById('streakSysResetTime').value || '04:00'; // "HH:MM"
+            const [hPart, mPart] = timeVal.split(':');
+            let resetHour = Math.round(Number(hPart));
+            let resetMinute = Math.round(Number(mPart));
             let reminderHours = Math.round(Number(document.getElementById('streakSysReminderHours').value));
             if (!Number.isFinite(resetHour) || resetHour < 0 || resetHour > 23) resetHour = 4;
+            if (!Number.isFinite(resetMinute) || resetMinute < 0 || resetMinute > 59) resetMinute = 0;
             if (!Number.isFinite(reminderHours) || reminderHours < 0) reminderHours = 2;
 
             const bonusMinutes = {};
@@ -8412,7 +8494,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
 
             try {
                 await set(ref(db, 'settings/streakSystem'), {
-                    enabled, resetHour, reminderHoursBefore: reminderHours, includeMasterKeyLogins: includeMaster
+                    enabled, resetHour, resetMinute, reminderHoursBefore: reminderHours, includeMasterKeyLogins: includeMaster
                 });
                 await set(ref(db, 'settings/streakBonusMinutes'), bonusMinutes);
                 closeModals();
