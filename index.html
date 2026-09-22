@@ -5501,22 +5501,40 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         }
       },
       remove: async function (item) {
-        var r = await B.infiniFetch(url(item.rel, false), { method: 'DELETE' });
-        if (!(r.ok || r.status === 404)) throw new Error('Delete failed (' + r.status + ')');
+        // Nested paths: use full rel. Try file URL; on 301/409 retry alternate slash form.
+        var u0 = url(item.rel, false);
+        var r = await B.infiniFetch(u0, { method: 'DELETE' });
+        if (r.status === 301 || r.status === 302 || r.status === 409) {
+          r = await B.infiniFetch(url(item.rel, true).replace(/\/$/, ''), { method: 'DELETE' });
+        }
+        if (!(r.ok || r.status === 204 || r.status === 200 || r.status === 404))
+          throw new Error('Delete failed (' + r.status + ')');
       },
       removeTree: async function (folderRel) {
         var r = await B.infiniFetch(url(folderRel, true), { method: 'DELETE' });
-        if (!(r.ok || r.status === 404)) throw new Error('Folder delete failed (' + r.status + ')');
+        if (r.status === 301 || r.status === 302) {
+          r = await B.infiniFetch(url(folderRel, false), { method: 'DELETE' });
+        }
+        if (!(r.ok || r.status === 204 || r.status === 200 || r.status === 404))
+          throw new Error('Folder delete failed (' + r.status + ')');
       },
       move: async function (from, to) {
         await A.ensureDir(C.parentOf(to));
-        var r = await B.infiniFetch(url(from, false), { method: 'MOVE', headers: { Destination: url(to, false), Overwrite: 'F' } });
-        if (!r.ok) throw new Error('Move failed (' + r.status + ')');
+        var dest = url(to, false);
+        // WebDAV requires absolute Destination; force absolute if relative slipped through
+        try { if (!/^https?:/i.test(dest)) dest = new URL(dest, B.cloudPathUrl('')).href; } catch (e) {}
+        var r = await B.infiniFetch(url(from, false), { method: 'MOVE', headers: { Destination: dest, Overwrite: 'T' } });
+        // 201 Created, 204 No Content, 200 OK, 404 already gone — all fine; 301/302 after follow also ok
+        if (!(r.ok || r.status === 201 || r.status === 204 || r.status === 200 || r.status === 404 || r.status === 301 || r.status === 302))
+          throw new Error('Move failed (' + r.status + ')');
       },
       copy: async function (from, to) {
         await A.ensureDir(C.parentOf(to));
-        var r = await B.infiniFetch(url(from, false), { method: 'COPY', headers: { Destination: url(to, false), Overwrite: 'F' } });
-        if (!r.ok) throw new Error('Copy failed (' + r.status + ')');
+        var dest = url(to, false);
+        try { if (!/^https?:/i.test(dest)) dest = new URL(dest, B.cloudPathUrl('')).href; } catch (e) {}
+        var r = await B.infiniFetch(url(from, false), { method: 'COPY', headers: { Destination: dest, Overwrite: 'T' } });
+        if (!(r.ok || r.status === 201 || r.status === 204 || r.status === 200 || r.status === 301 || r.status === 302))
+          throw new Error('Copy failed (' + r.status + ')');
       }
     };
     return A;
@@ -5579,11 +5597,23 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       ensureDir: async function () { /* prefixes exist implicitly */ },
       remove: async function (item) {
         var id = item.id;
+        var name = item.rel || item.name || '';
+        // Always resolve the live fileId from B2 — stale/missing ids are why nested deletes failed
+        try {
+          var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: name, maxFileCount: 20 });
+          var m = (d.files || []).filter(function (f) { return f.fileName === name; })[0];
+          if (m) { id = m.fileId; name = m.fileName; }
+        } catch (eList) {}
         if (!id || String(id).indexOf('folder:') === 0) {
-          var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: item.rel, maxFileCount: 5 });
-          var m = (d.files || []).filter(function (f) { return f.fileName === item.rel; })[0]; if (!m) return; id = m.fileId;
+          // try versions API for hidden/latest
+          try {
+            var vs = await call('b2_list_file_versions', { bucketId: B.b2().bucketId, prefix: name, maxFileCount: 20 });
+            var m2 = (vs.files || []).filter(function (f) { return f.fileName === name && f.action === 'upload'; })[0];
+            if (m2) { id = m2.fileId; name = m2.fileName; }
+          } catch (e2) {}
         }
-        await call('b2_delete_file_version', { fileName: item.rel, fileId: id });
+        if (!id || String(id).indexOf('folder:') === 0) throw new Error('B2 file not found: ' + name);
+        await call('b2_delete_file_version', { fileName: name, fileId: id });
       },
       removeTree: async function (folderRel) {
         var all = await versionsUnder(C.joinPath(folderRel) + '/');           // ALL versions, incl. .keep + hidden
@@ -6039,19 +6069,50 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       var ext = extOf(info.name), u = await urlFor(info); if (!openPreviews[key]) { if (u.blob) URL.revokeObjectURL(u.url); return; }
       if (u.blob) openPreviews[key].urls.push(u.url);
       var closeBtn = '<button type="button" class="cp-x" aria-label="Close preview">✕</button>', pid = 'cpP_' + Date.now() + '_' + Math.floor(Math.random() * 1e5);
-      if (ext === 'heic' || ext === 'heif' || ext === 'hevc') drawer.innerHTML = closeBtn + '<div class="cp-load">HEIC/HEVC preview not supported in this browser. Use <b>DL</b> to download.</div>';
-      else if (IMG_EXT.indexOf(ext) >= 0) drawer.innerHTML = closeBtn + '<div class="media-wrap"><img src="' + u.url + '" alt="" loading="lazy" onerror="this.parentNode.innerHTML=\'Preview unavailable. Use DL.\'"></div>';
-      else if (AUDIO_EXT.indexOf(ext) >= 0) drawer.innerHTML = closeBtn + playerHtml('audio', pid, u.url);
-      else if (VIDEO_EXT.indexOf(ext) >= 0) drawer.innerHTML = closeBtn + playerHtml('video', pid, u.url);
-      else if (ext === 'pdf') drawer.innerHTML = closeBtn + '<iframe src="' + u.url + '#toolbar=1&navpanes=0" title="PDF"></iframe>';
-      else if (TXT_EXT.indexOf(ext) >= 0) { var txt = await (await fetch(u.url)).text(); drawer.innerHTML = closeBtn + '<pre>' + esc(txt.length > 200000 ? txt.slice(0, 200000) + '\n…(truncated)' : txt) + '</pre>'; }
-      else drawer.innerHTML = closeBtn + '<div class="cp-load">No preview for this type. Use DL.</div>';
-      var pl = drawer.querySelector('.cp-player'); if (pl) { wirePlayer(pl); var m = pl.querySelector('video,audio'); if (m) {
-        m.addEventListener('error', function() {
-          drawer.innerHTML = closeBtn + '<div class="cp-err">Preview unavailable. Use DL to download the file.</div>';
-        });
-        m.play().catch(function () {});
-      } }
+      if (ext === 'heic' || ext === 'heif' || ext === 'hevc') {
+        drawer.innerHTML = closeBtn + '<div class="cp-load">HEIC/HEVC cannot be previewed in this browser. Use <b>DL</b>.</div>';
+      } else if (IMG_EXT.indexOf(ext) >= 0) {
+        drawer.innerHTML = closeBtn + '<div class="media-wrap"><img src="' + u.url + '" alt="" loading="lazy"></div>';
+      } else if (AUDIO_EXT.indexOf(ext) >= 0) {
+        drawer.innerHTML = closeBtn + playerHtml('audio', pid, u.url);
+      } else if (VIDEO_EXT.indexOf(ext) >= 0) {
+        drawer.innerHTML = closeBtn + playerHtml('video', pid, u.url);
+      } else if (ext === 'pdf') {
+        drawer.innerHTML = closeBtn + '<iframe src="' + u.url + '#toolbar=1&navpanes=0" title="PDF"></iframe>';
+      } else if (TXT_EXT.indexOf(ext) >= 0) {
+        var txt = await (await fetch(u.url)).text();
+        drawer.innerHTML = closeBtn + '<pre>' + esc(txt.length > 200000 ? txt.slice(0, 200000) + '\n…(truncated)' : txt) + '</pre>';
+      } else {
+        drawer.innerHTML = closeBtn + '<div class="cp-load">No preview for this type. Use DL.</div>';
+      }
+      var pl = drawer.querySelector('.cp-player');
+      if (pl) {
+        wirePlayer(pl);
+        var m = pl.querySelector('video,audio');
+        if (m) {
+          // Only treat as failed after a real media error AND element has no usable data
+          // (avoids the "opens then instantly Preview unavailable" flash on slow loads)
+          var errOnce = false;
+          m.addEventListener('error', function() {
+            if (errOnce) return;
+            // MEDIA_ERR_SRC_NOT_SUPPORTED / decode — wait a tick so transient aborts don't wipe UI
+            setTimeout(function() {
+              if (errOnce) return;
+              var code = (m.error && m.error.code) || 0;
+              // 1=aborted — ignore; only hard-fail on network/decode/src
+              if (code === 1) return;
+              if (m.readyState >= 2) return; // already has data
+              errOnce = true;
+              var msg = closeBtn + '<div class="cp-err">Preview unavailable. Use DL to download the file.</div>';
+              drawer.innerHTML = msg;
+              var x3 = drawer.querySelector('.cp-x');
+              if (x3) x3.onclick = function(e) { e.stopPropagation(); closePreview(key); };
+            }, 600);
+          });
+          var p = m.play();
+          if (p && p.catch) p.catch(function(){});
+        }
+      }
       var x = drawer.querySelector('.cp-x'); if (x) x.onclick = function (e) { e.stopPropagation(); closePreview(key); var nm = row.querySelector('.name'); if (nm) nm.setAttribute('aria-expanded', 'false'); };
     } catch (e) { drawer.innerHTML = '<button type="button" class="cp-x">✕</button><div class="cp-load" style="color:var(--error)">❌ ' + esc((e && e.message) || 'Preview failed') + '</div>'; var x2 = drawer.querySelector('.cp-x'); if (x2) x2.onclick = function () { closePreview(key); }; }
   }
@@ -11108,6 +11169,17 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     const b2 = prog.b2 || {};
     const inf = prog.infini || {};
     const any = !!(b2.active || inf.active || window.__cloudDownloading);
+    try {
+      if (any) {
+        var parts = [];
+        if (b2.active) parts.push('B2 ' + Math.round(b2.pct||0) + '%');
+        if (inf.active) parts.push('Infini ' + Math.round(inf.pct||0) + '%');
+        if (window.__cloudDownloading) parts.push('Downloading');
+        if (window.updateCloudUploadNotif) window.updateCloudUploadNotif('DGXEN Cloud', parts.join(' · ') || 'Transfer in progress…');
+      } else if (window.clearCloudUploadNotif) {
+        window.clearCloudUploadNotif();
+      }
+    } catch (eN) {}
 
     const el = document.getElementById('cloudBgUpload');
     const tx = document.getElementById('cloudBgUploadText');
@@ -11219,7 +11291,11 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     try {
       if (window.__cloudNotif && window.__cloudNotif.close) try { window.__cloudNotif.close(); } catch (e) {}
       window.__cloudNotif = new Notification(title || 'DGXEN Cloud', {
-        body: body || 'Uploading…', tag: 'dgxen-cloud-upload', silent: true, renotify: false
+        body: body || 'Uploading…',
+        tag: 'dgxen-cloud-upload',
+        renotify: true,
+        silent: false,
+        requireInteraction: false
       });
     } catch (e) {}
   };
