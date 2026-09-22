@@ -2528,10 +2528,64 @@
 
         .cloud-preview-drawer {
             width: 100% !important;
-            padding: 12px 0 16px;
+            max-width: 100%;
+            padding: 10px 0 14px;
             display: block;
             clear: both;
             box-sizing: border-box;
+            overflow: hidden;
+        }
+        .cloud-preview-drawer .cp-player {
+            width: 100%;
+            max-width: 100%;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #000;
+            border: 1px solid var(--glass-border);
+        }
+        .cloud-preview-drawer .cp-player video {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            max-height: min(40vh, 360px);
+            object-fit: contain;
+            background: #000;
+            margin: 0 auto;
+        }
+        .cloud-preview-drawer .cp-ctl {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            width: 100%;
+            box-sizing: border-box;
+            background: rgba(8,10,14,0.95);
+        }
+        .cloud-preview-drawer .cp-seek {
+            flex: 1;
+            min-width: 0;
+        }
+        .cloud-preview-drawer .cp-x {
+            float: right;
+            margin: 0 0 8px 8px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid var(--glass-border);
+            background: rgba(0,0,0,0.55);
+            color: #fff;
+            cursor: pointer;
+        }
+        .cloud-preview-drawer .cp-err {
+            padding: 16px;
+            text-align: center;
+            color: #ff8e8e;
+            font-weight: 700;
+            font-size: 13px;
+            background: rgba(255,80,80,0.08);
+            border-radius: 12px;
+            border: 1px solid rgba(255,80,80,0.25);
         }
         .cloud-preview-drawer .media-wrap {
             width: 100%;
@@ -6010,7 +6064,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       else if (ext === 'pdf') drawer.innerHTML = closeBtn + '<iframe src="' + u.url + '#toolbar=1&navpanes=0" title="PDF"></iframe>';
       else if (TXT_EXT.indexOf(ext) >= 0) { var txt = await (await fetch(u.url)).text(); drawer.innerHTML = closeBtn + '<pre>' + esc(txt.length > 200000 ? txt.slice(0, 200000) + '\n…(truncated)' : txt) + '</pre>'; }
       else drawer.innerHTML = closeBtn + '<div class="cp-load">No preview for this type. Use DL.</div>';
-      var pl = drawer.querySelector('.cp-player'); if (pl) { wirePlayer(pl); if (ext !== 'flac' || true) { var m = pl.querySelector('video,audio'); m.play().catch(function () {}); } }
+      var pl = drawer.querySelector('.cp-player'); if (pl) { wirePlayer(pl); var m = pl.querySelector('video,audio'); if (m) {
+        m.addEventListener('error', function() {
+          drawer.innerHTML = closeBtn + '<div class="cp-err">File corrupted or unreadable. Use DL to save, or re-upload.</div>';
+        });
+        m.play().catch(function () {});
+      } }
       var x = drawer.querySelector('.cp-x'); if (x) x.onclick = function (e) { e.stopPropagation(); closePreview(key); var nm = row.querySelector('.name'); if (nm) nm.setAttribute('aria-expanded', 'false'); };
     } catch (e) { drawer.innerHTML = '<button type="button" class="cp-x">✕</button><div class="cp-load" style="color:var(--error)">❌ ' + esc((e && e.message) || 'Preview failed') + '</div>'; var x2 = drawer.querySelector('.cp-x'); if (x2) x2.onclick = function () { closePreview(key); }; }
   }
@@ -10770,6 +10829,24 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   // building a safe download/reupload/delete cycle for B2 is a larger,
   // separate piece of work, not something to bolt on here.
   window.softDeleteCloudFile = async function(fileName, fileId, relPath) {
+    // Multi-select: deleting one selected file deletes all selected
+    try {
+      if (window.__cpSelected && typeof window.__cpSelected.list === 'function' && !window.__cpBulkDeleting) {
+        var sel = window.__cpSelected.list();
+        if (sel && sel.length > 1) {
+          window.__cpBulkDeleting = true;
+          try {
+            for (var i = 0; i < sel.length; i++) {
+              await window.softDeleteCloudFile(sel[i].name || sel[i].rel, sel[i].id, sel[i].rel);
+            }
+          } finally {
+            window.__cpBulkDeleting = false;
+            try { window.__cpSelected.clear && window.__cpSelected.clear(); } catch (e) {}
+          }
+          return;
+        }
+      }
+    } catch (e) {}
     const name = String(fileName || '').trim();
     const rel = String(relPath || name).trim();
     const B = window.__cloudBridge;
@@ -11809,23 +11886,8 @@ window.__dgxenInitVideoControls = function(vId) {
     if (!res.ok) {
       // Trash / deep folder 404 → bounce to root once
       if (res.status === 404 && cloudCwd()) {
-        console.warn('[Infini] path 404, resetting cwd from', cloudCwd());
-        window.__cloudCwd = '';
-        window.__cloudTrashView = false;
-        const tbtn = document.getElementById('cloudTrashBtn');
-        if (tbtn) tbtn.textContent = 'TRASH';
-        // Retry root
-        base = infiniBaseUrl();
-        if (!base.endsWith('/')) base += '/';
-        res = await infiniFetch(base, {
-          method: 'PROPFIND',
-          headers: {
-            'Depth': '1',
-            'Content-Type': 'application/xml; charset=utf-8'
-          },
-          body: '<?xml version="1.0" encoding="utf-8" ?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/><d:getcontentlength/><d:getlastmodified/><d:resourcetype/></d:prop></d:propfind>'
-        });
-        text = await res.text().catch(() => '');
+        console.warn('[Infini] path 404 at', cloudCwd(), '- stay put, use path bar to go up');
+        return [];
       }
       if (!res.ok) {
         throw new Error('Infini list failed: ' + explainInfiniHttp(res.status, text));
@@ -13386,15 +13448,18 @@ async function listAllFiles(forcedProvider) {
       const folderSeen = {};
       function addFolder(name, fullPath) {
         if (!name || name.indexOf('/') >= 0 || folderSeen[name]) return;
+        var normFull = String(fullPath || name).replace(/^\/+/, '').replace(/\/+$/, '');
+        var normCwd = String(cwd || '').replace(/^\/+/, '').replace(/\/+$/, '');
+        if (normFull && normCwd && normFull === normCwd) return;
         folderSeen[name] = 1;
         files.push({
           fileName: name,
-          fileId: 'folder:' + fullPath,
+          fileId: 'folder:' + normFull,
           contentLength: 0,
           uploadTimestamp: 0,
           fileInfo: {},
           _isFolder: true,
-          _relPath: fullPath
+          _relPath: normFull
         });
       }
       (data.files || []).forEach(function(f) {
@@ -13444,7 +13509,12 @@ async function listAllFiles(forcedProvider) {
 
     } while (start);
 
-    return files;
+    var _cwdNorm = String(cwd || '').replace(/^\/+/, '').replace(/\/+$/, '');
+    return files.filter(function(f) {
+      if (!f || !f._isFolder) return true;
+      var rp = String(f._relPath || f.fileName || '').replace(/^\/+/, '').replace(/\/+$/, '');
+      return !(_cwdNorm && rp === _cwdNorm);
+    });
   }
 
   // =========================================================
@@ -13681,6 +13751,7 @@ async function listAllFiles(forcedProvider) {
             var path = el.getAttribute('data-rel') || el.getAttribute('data-name') || '';
             path = String(path).replace(/^\/+/, '').replace(/\/+$/, '');
             if (!path) return;
+            if (typeof cloudCwd === 'function' && path === cloudCwd()) return;
             window.__cloudCwd = path;
             if (window.refreshCloudFiles) window.refreshCloudFiles();
           });
@@ -13695,6 +13766,49 @@ async function listAllFiles(forcedProvider) {
             if (window.refreshCloudFiles) window.refreshCloudFiles();
           });
         });
+
+
+        // Folder sizes (async, non-blocking)
+        (function fillFolderSizes() {
+          var rows = box.querySelectorAll('.cloud-file-row.is-folder');
+          rows.forEach(function(row) {
+            var nameEl = row.querySelector('.name[data-folder]');
+            if (!nameEl) return;
+            var rel = nameEl.getAttribute('data-rel') || '';
+            var meta = row.querySelector('.meta');
+            if (!meta || !rel) return;
+            meta.textContent = 'Folder · …';
+            (async function(r, m, path) {
+              try {
+                var bytes = 0;
+                if (getActiveCloudProvider() === 'b2') {
+                  await authorizeB2();
+                  var start = null, pref = path + '/';
+                  do {
+                    var body = { bucketId: b2.bucketId, maxFileCount: 1000, prefix: pref };
+                    if (start) body.startFileName = start;
+                    var res = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_list_file_names', {
+                      method: 'POST',
+                      headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
+                      body: JSON.stringify(body)
+                    });
+                    var data = await res.json().catch(function(){ return {}; });
+                    if (!res.ok) break;
+                    (data.files || []).forEach(function(f) {
+                      var n = String(f.fileName || '');
+                      if (/\/\.keep$/i.test(n) || /\/\.bzEmpty$/i.test(n) || /\/$/.test(n)) return;
+                      bytes += Number(f.contentLength) || 0;
+                    });
+                    start = data.nextFileName || null;
+                  } while (start);
+                }
+                if (m && m.isConnected) m.textContent = 'Folder · ' + formatBytes(bytes);
+              } catch (e) {
+                if (m && m.isConnected) m.textContent = 'Folder';
+              }
+            })(row, meta, rel);
+          });
+        })();
 
         // ===== DOWNLOAD BUTTONS =====
         box.querySelectorAll('[data-dl-name]').forEach(function(btn) {
