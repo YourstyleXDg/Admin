@@ -3255,7 +3255,16 @@ body.cat-world-active .cat-mode-bar{display:block}
 
 
         /* Background upload chip (stays while panel closed) */
+        
+        /* Consolidate to ONE upload progress chip; hide floating live-pill */
+        body.uploading-cloud #cloudLivePill,
+        #cloudBgUpload.show ~ #cloudLivePill { display: none !important; }
+        #cloudLivePill { display: none !important; }
         #cloudBgUpload {
+            bottom: 96px !important;
+            z-index: 12050 !important;
+        }
+#cloudBgUpload {
             position: fixed;
             left: 50%;
             bottom: 28px;
@@ -3717,7 +3726,7 @@ body.cat-world-active .cat-mode-bar{display:block}
        including the standard 2-finger pinch-zoom, not just the horizontal select-swipe
        (which is handled entirely in JS via preventDefault and never needed the CSS lock). --- */
 .cloud-file-row .name { touch-action: pan-y pinch-zoom !important; }
-#cloudFileList { touch-action: pan-y pinch-zoom; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+#cloudFileList { touch-action: pan-x pan-y pinch-zoom; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 #cloudPanel { touch-action: manipulation; }
 #cloudPanel.open { touch-action: pan-x pan-y pinch-zoom; }
 
@@ -3768,7 +3777,76 @@ body.cat-world-active .cat-mode-bar{display:block}
 @media (max-width: 520px) { .cp-ctl .cp-seek { flex: 1 1 auto; width: auto; } }
 .cp-player:fullscreen { display: flex; flex-direction: column; justify-content: center; width: 100vw; height: 100vh; border-radius: 0; }
 .cp-player:fullscreen video { max-height: none; height: 100%; flex: 1 1 auto; }
+        /* --- Mini horizontal cycle strip (used inside the biodata view) --- */
+    
+#cloudDragGhost {
+  position: fixed; z-index: 20000; pointer-events: none;
+  padding: 10px 14px; border-radius: 14px; font-size: 13px; font-weight: 700;
+  background: rgba(10,14,20,.94); color: #fff; border: 1px solid rgba(255,255,255,.16);
+  box-shadow: 0 14px 40px rgba(0,0,0,.5); max-width: 260px;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+#cloudDragGhost.cloud-drag-ghost-stack { display: flex; flex-direction: column; gap: 3px; }
+#cloudDragGhost.cloud-drag-ghost-stack .g-item {
+  font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 230px;
+}
+#cloudDragGhost.cloud-drag-ghost-stack .g-more { font-size: 11px; color: var(--accent,#00ff88); font-weight: 800; }
+/* cp-player-fixed-v2 */
 
+/* Preview controls: FIXED size independent of zoom / viewport scale */
+.cp-drawer .cp-player,
+.cloud-preview-drawer .cp-player {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+.cp-drawer .cp-ctl,
+.cloud-preview-drawer .cp-ctl {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 10px !important;
+  flex-wrap: nowrap !important;
+}
+.cp-drawer .cp-ctl button,
+.cloud-preview-drawer .cp-ctl button,
+.cp-drawer .cp-x,
+.cloud-preview-drawer .cp-x {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+  flex: 0 0 36px !important;
+  padding: 0 !important;
+  font-size: 14px !important;
+  box-sizing: border-box !important;
+  transform: none !important;
+}
+.cp-drawer .cp-ctl .cp-seek,
+.cloud-preview-drawer .cp-ctl .cp-seek {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 60px !important;
+  height: 6px !important;
+  transform: none !important;
+}
+.cp-drawer .cp-ctl .cp-time,
+.cloud-preview-drawer .cp-ctl .cp-time {
+  font-size: 12px !important;
+  white-space: nowrap !important;
+  flex: 0 0 auto !important;
+  transform: none !important;
+}
+.cp-drawer audio, .cloud-preview-drawer audio,
+.cp-drawer video, .cloud-preview-drawer video {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: 50vh !important;
+}
 </style>
 </head>
 <body>
@@ -5204,7 +5282,14 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             </div>
         </div>
     </div>
-<!-- Suggested once, right when Factory Reset is tapped — a chance to
+inclusion, reminder lead time, and the per-day bonus-minutes
+         table (matching the chart: days 1-7, minutes on top of the
+         4-hour base, reused for both the climb and the cooldown side
+         below for why one table covers both directions). -->
+    
+
+    
+    <!-- Suggested once, right when Factory Reset is tapped — a chance to
          grab a full backup before anything is wiped. -->
     <div class="modal-overlay" id="backupSuggestModal">
         <div class="modal">
@@ -5700,13 +5785,33 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
   root.cpEmptyTrash = async function () { if (!bridge()) return; var n = await T.emptyAll(); status('Trash emptied (' + n + ')', true); if (root.refreshCloudFiles) await root.refreshCloudFiles(); await refreshTrashBytes(); };
 
   // Generic Move-or-Copy picker, reused by the drop-on-folder bulk flow.
-  root.showActionSheet = function (title, actions) {
+  root.showActionSheet = function (title, actions, atX, atY) {
     var modal = doc.getElementById('cpMoveCopyModal'); if (!modal) return;
     var t = doc.getElementById('cpMoveCopyTitle'); if (t) t.textContent = title || 'Choose an action';
     var moveBtn = doc.getElementById('cpMoveCopyMoveBtn'), copyBtn = doc.getElementById('cpMoveCopyCopyBtn');
     if (moveBtn && actions[0]) { moveBtn.textContent = actions[0].label; moveBtn.onclick = function () { if (root.closeModals) root.closeModals(); actions[0].action(); }; }
     if (copyBtn && actions[1]) { copyBtn.textContent = actions[1].label; copyBtn.onclick = function () { if (root.closeModals) root.closeModals(); actions[1].action(); }; }
     modal.style.display = 'flex';
+    try {
+      var modalBox = modal.querySelector('.modal') || modal;
+      if (typeof atX === 'number' && typeof atY === 'number' && modalBox) {
+        modal.style.alignItems = 'flex-start';
+        modal.style.justifyContent = 'flex-start';
+        var mw = 300, mh = 180;
+        var left = Math.max(12, Math.min(atX - mw/2, (window.innerWidth||360) - mw - 12));
+        var top = Math.max(12, Math.min(atY - 24, (window.innerHeight||640) - mh - 12));
+        modalBox.style.position = 'fixed';
+        modalBox.style.left = left + 'px';
+        modalBox.style.top = top + 'px';
+        modalBox.style.margin = '0';
+        modalBox.style.transform = 'none';
+      } else if (modalBox) {
+        modal.style.alignItems = ''; modal.style.justifyContent = '';
+        modalBox.style.position = ''; modalBox.style.left = ''; modalBox.style.top = '';
+        modalBox.style.margin = ''; modalBox.style.transform = '';
+      }
+    } catch (ePos) {}
+
   };
 
   // Bulk move/copy into a target folder — used by drop-on-folder. Works for
@@ -5943,7 +6048,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       var ext = extOf(info.name), u = await urlFor(info); if (!openPreviews[key]) { if (u.blob) URL.revokeObjectURL(u.url); return; }
       if (u.blob) openPreviews[key].urls.push(u.url);
       var closeBtn = '<button type="button" class="cp-x" aria-label="Close preview">✕</button>', pid = 'cpP_' + Date.now() + '_' + Math.floor(Math.random() * 1e5);
-      if (IMG_EXT.indexOf(ext) >= 0) drawer.innerHTML = closeBtn + '<div class="media-wrap"><img src="' + u.url + '" alt="" loading="lazy"></div>';
+      if (ext === 'heic' || ext === 'heif' || ext === 'hevc') drawer.innerHTML = closeBtn + '<div class="cp-load">HEIC/HEVC preview not supported in this browser. Use <b>DL</b> to download.</div>';
+      else if (IMG_EXT.indexOf(ext) >= 0) drawer.innerHTML = closeBtn + '<div class="media-wrap"><img src="' + u.url + '" alt="" loading="lazy" onerror="this.parentNode.innerHTML=\'Preview unavailable. Use DL.\'"></div>';
       else if (AUDIO_EXT.indexOf(ext) >= 0) drawer.innerHTML = closeBtn + playerHtml('audio', pid, u.url);
       else if (VIDEO_EXT.indexOf(ext) >= 0) drawer.innerHTML = closeBtn + playerHtml('video', pid, u.url);
       else if (ext === 'pdf') drawer.innerHTML = closeBtn + '<iframe src="' + u.url + '#toolbar=1&navpanes=0" title="PDF"></iframe>';
@@ -9217,7 +9323,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         try { bindBanButtons(document); } catch (e) {}
         try { setupPinHoldToReveal(document.getElementById('activeUserList')); } catch (e) {}
         try { setupDeviceInfoToggle(document.getElementById('activeUserList')); } catch (e) {}
-}
+        }
 
         window.togglePinUser = async function(userId, currentlyPinned) {
             try {
@@ -10726,6 +10832,18 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   // building a safe download/reupload/delete cycle for B2 is a larger,
   // separate piece of work, not something to bolt on here.
   window.softDeleteCloudFile = async function(fileName, fileId, relPath) {
+    // Normalize path: always use full relative path under current folder
+    try {
+      var _cwd = (typeof window.cloudCwd === 'function' ? window.cloudCwd() : (window.__cloudCwd || '')) || '';
+      var _name = String(fileName || '').trim();
+      var _rel = String(relPath || _name).trim();
+      if (_rel && _rel.indexOf('/') < 0 && _cwd) {
+        _rel = String(_cwd).replace(/\/+$/,'') + '/' + _name;
+      }
+      fileName = _name;
+      relPath = _rel;
+    } catch (eNorm) {}
+
     // Multi-select bulk: one action → all selected (with status animation)
     try {
       if (window.__cpSelected && typeof window.__cpSelected.list === 'function' && !window.__cpBulkDeleting) {
@@ -10770,6 +10888,21 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     // Delete action silently failed while a B2 file's Delete worked fine.
     const name = String(fileName || '').trim();
     const rel = String(relPath || name).trim();
+
+    var isFolder = false;
+    try {
+      var box = document.getElementById('cloudFileList');
+      if (box) {
+        box.querySelectorAll('.cloud-file-row .name').forEach(function(n) {
+          var r = n.getAttribute('data-rel') || n.getAttribute('data-name') || '';
+          if (r === rel || r === name || (n.getAttribute('data-name') === name)) {
+            isFolder = n.getAttribute('data-folder') === '1' || (n.closest('.cloud-file-row') && n.closest('.cloud-file-row').classList.contains('is-folder'));
+          }
+        });
+      }
+      if (!isFolder && /\/$/.test(rel)) isFolder = true;
+    } catch (eF) {}
+
     const B = window.__cloudBridge;
     console.log('[DELETE-TRACE] softDeleteCloudFile', { name: name, rel: rel, bridge: !!B });
     if (!B) {
@@ -10788,7 +10921,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
           }
         });
       } catch (e) {}
-      await window.cpTrashItems([{ rel: rel, name: name, isFolder: isFolder, id: fileId, size: 0 }]);
+      await window.cpTrashItems([{ rel: rel, name: name, isFolder: !!isFolder, id: fileId, size: 0 }]);
       return;
     }
     B.setStatus('Deleting: ' + name + '…', null);
@@ -10925,6 +11058,9 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   };
 
   window.cancelCloudTransfer = function() {
+    try{window.clearCloudUploadNotif&&window.clearCloudUploadNotif();}catch(e){}
+    try{document.body.classList.remove('uploading-cloud');}catch(e){}
+
     window.__cloudCancelFlag = true;
     try {
       var list = (window.__cloudXhrs || []).slice();
@@ -11078,6 +11214,29 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
   };
 
   // Back-compat wrapper used by older call sites
+  
+  window.__cloudNotif = null;
+  window.__cloudNotifSupported = (typeof Notification !== 'undefined');
+  window.ensureCloudNotifPerm = async function() {
+    if (!window.__cloudNotifSupported) return false;
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'denied') return false;
+    try { return (await Notification.requestPermission()) === 'granted'; } catch (e) { return false; }
+  };
+  window.updateCloudUploadNotif = function(title, body) {
+    if (!window.__cloudNotifSupported || Notification.permission !== 'granted') return;
+    try {
+      if (window.__cloudNotif && window.__cloudNotif.close) try { window.__cloudNotif.close(); } catch (e) {}
+      window.__cloudNotif = new Notification(title || 'DGXEN Cloud', {
+        body: body || 'Uploading…', tag: 'dgxen-cloud-upload', silent: true, renotify: false
+      });
+    } catch (e) {}
+  };
+  window.clearCloudUploadNotif = function() {
+    try { if (window.__cloudNotif && window.__cloudNotif.close) window.__cloudNotif.close(); } catch (e) {}
+    window.__cloudNotif = null;
+  };
+
   window.setCloudBgUpload = function(show, text, percent, provider) {
     if (provider === 'b2' || provider === 'infini') {
       window.setCloudProviderProgress(provider, show, text, percent);
@@ -11090,7 +11249,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     if (show) {
       window.__cloudDownloading = true;
       if (percent != null && !isNaN(Number(percent))) window.__cloudDownloadPct = Math.max(0, Math.min(100, Number(percent)));
-      if (el) el.classList.add('show');
+      if (el) el.classList.add('show');try{document.body.classList.add('uploading-cloud');}catch(e){};try{window.updateCloudUploadNotif&&window.updateCloudUploadNotif('DGXEN · Uploading',(typeof text==='string'?text:'Uploading…'));}catch(e){};
       if (tx && text) tx.textContent = text;
       if (bar && percent != null) bar.style.width = Math.max(0, Math.min(100, Number(percent) || 0)) + '%';
       window.paintCloudTransferUI();
@@ -11397,6 +11556,35 @@ window.__dgxenInitVideoControls = function(vId) {
       return;
     }
     const safeName = newName.replace(/[\\/]/g, '_');
+      // B2 rename = server-side copy to new key + delete old (no bandwidth if same bucket)
+      if (getActiveCloudProvider() === 'b2') {
+        try {
+          if (!window.CloudProAdapters || !window.__cloudBridge) throw new Error('Cloud module not ready');
+          const A = window.CloudProAdapters.makeB2(window.__cloudBridge);
+          const parent = relPath.indexOf('/') >= 0 ? relPath.replace(/\/[^\/]+\/?$/, '') : '';
+          const dest = parent ? (parent + '/' + safeName) : safeName;
+          if (isFolder) {
+            const files = await A.walk(relPath);
+            for (const f of files) {
+              const destFile = dest + f.rel.slice(relPath.length);
+              await A.move(f.rel, destFile);
+            }
+            // remove leftover .keep if any
+            try { await A.remove({ rel: relPath.replace(/\/+$/,'') + '/.keep', id: null }); } catch (e) {}
+          } else {
+            await A.move(relPath, dest);
+          }
+          setStatus('Renamed to ' + safeName, true);
+          if (window.refreshCloudFiles) await window.refreshCloudFiles();
+          closeModals();
+          return;
+        } catch (e) {
+          setStatus('Rename failed: ' + (e && e.message || e), false);
+          if (btn) { btn.disabled = false; btn.textContent = 'RENAME'; }
+          return;
+        }
+      }
+
     const parts = String(relPath).split('/');
     parts[parts.length - 1] = safeName;
     const newRelPath = parts.join('/');
@@ -14185,7 +14373,7 @@ async function listAllFiles(forcedProvider) {
       }
       return null;
     }
-    async function dropOntoFolder(info, folderRel) {
+    async function dropOntoFolder(info, folderRel, atX, atY) {
       // If 2+ files are selected, the WHOLE selection moves/copies together —
       // not just the single item that happened to be dragged.
       const multi = (window.__cpSelected && window.__cpSelected.size && window.__cpSelected.size() > 1);
@@ -14200,7 +14388,7 @@ async function listAllFiles(forcedProvider) {
       window.showActionSheet('Move or copy ' + label + ' into this folder?', [
         { label: '✂ MOVE here', action: function () { window.__cpBulkMoveOrCopy && window.__cpBulkMoveOrCopy(items, folderRel, 'move'); } },
         { label: '⧉ COPY here', action: function () { window.__cpBulkMoveOrCopy && window.__cpBulkMoveOrCopy(items, folderRel, 'copy'); } }
-      ]);
+      ]], atX, atY);
     }
     function doDrop(info, x, y) {
       console.log('[DELETE-TRACE] drop at', x, y, 'info=', info, 'overTrash=', pointOver('cloudTrashBtn', x, y));
@@ -14219,7 +14407,7 @@ async function listAllFiles(forcedProvider) {
         } else if (window.toggleCloudStar) window.toggleCloudStar(info.rel || info.name);
       } else {
         const folder = findFolderRowUnder(x, y, row);
-        if (folder) dropOntoFolder(info, folder.rel);
+        if (folder) dropOntoFolder(info, folder.rel, x, y);
       }
     }
     function ensureGhost(info) {
@@ -14233,8 +14421,10 @@ async function listAllFiles(forcedProvider) {
       if (multi) {
         const items = window.__cpSelected.list();
         dragGhost.classList.add('cloud-drag-ghost-stack');
-        dragGhost.innerHTML = items.slice(0, 4).map(function(it, i) {
-          return '<div class="ghost-chip" style="--i:' + i + '">' + (it.isFolder ? '📁 ' : '') + String(it.name || '').replace(/</g, '&lt;') + '</div>';
+        dragGhost.innerHTML = items.slice(0, 5).map(function(it) {
+          var nm = String((it && (it.name || it.rel)) || 'file').split('/').pop();
+          return '<div class="g-item">' + ((it && it.isFolder) ? '▣ ' : '') + nm + '</div>';
+        }).join('') + (items.length > 5 ? ('<div class="g-more">+' + (items.length - 5) + ' more</div>') : '');') + '</div>';
         }).join('') + (items.length > 4 ? '<div class="ghost-chip ghost-more">+' + (items.length - 4) + ' more</div>' : '') +
         '<div class="ghost-count-badge">' + items.length + '</div>';
       } else {
@@ -17161,6 +17351,50 @@ async function listAllFiles(forcedProvider) {
   }
 
 })();
+
+(function cloudTwoFingerPan(){
+  function bind() {
+    var box = document.getElementById('cloudFileList');
+    var panel = document.getElementById('cloudPanel');
+    if (!box || box.__twoFingerBound) return;
+    box.__twoFingerBound = true;
+    var lastY = null, lastX = null;
+    function onTouchStart(e) {
+      if (e.touches && e.touches.length >= 2) {
+        lastY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        lastX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      } else { lastY = lastX = null; }
+    }
+    function onTouchMove(e) {
+      if (!e.touches || e.touches.length < 2) { lastY = lastX = null; return; }
+      var y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      var x = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      if (lastY != null) {
+        var dy = lastY - y;
+        var dx = lastX - x;
+        box.scrollTop += dy;
+        box.scrollLeft += dx;
+        if (panel) { panel.scrollTop += dy * 0.15; }
+        e.preventDefault();
+      }
+      lastY = y; lastX = x;
+    }
+    function onTouchEnd() { lastY = lastX = null; }
+    box.addEventListener('touchstart', onTouchStart, { passive: true });
+    box.addEventListener('touchmove', onTouchMove, { passive: false });
+    box.addEventListener('touchend', onTouchEnd, { passive: true });
+    box.addEventListener('touchcancel', onTouchEnd, { passive: true });
+    // CSS assist
+    try {
+      box.style.touchAction = 'pan-x pan-y pinch-zoom';
+      if (panel) panel.style.touchAction = 'pan-x pan-y pinch-zoom';
+    } catch (e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+  setInterval(bind, 2000); // re-bind if list re-rendered
+})();
+
 </script>
 </body>
 </html>
