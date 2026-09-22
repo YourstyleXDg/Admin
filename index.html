@@ -14388,7 +14388,7 @@ async function listAllFiles(forcedProvider) {
       window.showActionSheet('Move or copy ' + label + ' into this folder?', [
         { label: '✂ MOVE here', action: function () { window.__cpBulkMoveOrCopy && window.__cpBulkMoveOrCopy(items, folderRel, 'move'); } },
         { label: '⧉ COPY here', action: function () { window.__cpBulkMoveOrCopy && window.__cpBulkMoveOrCopy(items, folderRel, 'copy'); } }
-      ]], atX, atY);
+      ], atX, atY);
     }
     function doDrop(info, x, y) {
       console.log('[DELETE-TRACE] drop at', x, y, 'info=', info, 'overTrash=', pointOver('cloudTrashBtn', x, y));
