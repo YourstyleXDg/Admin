@@ -2553,19 +2553,6 @@
             background: #000;
             margin: 0 auto;
         }
-        .cloud-preview-drawer .cp-ctl {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            width: 100%;
-            box-sizing: border-box;
-            background: rgba(8,10,14,0.95);
-        }
-        .cloud-preview-drawer .cp-seek {
-            flex: 1;
-            min-width: 0;
-        }
         .cloud-preview-drawer .cp-x {
             float: right;
             margin: 0 0 8px 8px;
@@ -3691,15 +3678,14 @@ body.cat-world-active .cat-mode-bar{display:block}
 
 /* ===================== CLOUD PRO — styles ===================== */
 
-/* --- (5) 1-finger control: the file NAME used to be touch-action:none, which froze scrolling/pinch
-       for the biggest part of every row. pan-y = vertical scroll works with 1 finger; horizontal
-       swipe stays ours; pinch-zoom is NOT blocked. --- */
-.cloud-file-row .name { touch-action: pan-y !important; }
+/* --- 1-finger scroll AND 2-finger pinch-zoom both work throughout the cloud section.
+       The file NAME must not use touch-action:none — that blocks every native gesture,
+       including the standard 2-finger pinch-zoom, not just the horizontal select-swipe
+       (which is handled entirely in JS via preventDefault and never needed the CSS lock). --- */
+.cloud-file-row .name { touch-action: pan-y pinch-zoom !important; }
 #cloudFileList { touch-action: pan-y pinch-zoom; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 #cloudPanel { touch-action: manipulation; }
-        #cloudPanel.open { touch-action: pan-x pan-y pinch-zoom; }
-        #cloudFileList { touch-action: pan-y pinch-zoom; }
-        #cloudFileList .cloud-file-row .name { touch-action: none; } /* hold-drag select */
+#cloudPanel.open { touch-action: pan-x pan-y pinch-zoom; }
 
 .cloud-file-row { transition: transform .12s ease, background .15s ease; }
 .cloud-file-row.cp-swiping { background: rgba(92,200,255,.10); }
@@ -12594,7 +12580,20 @@ window.__dgxenInitVideoControls = function(vId) {
     const res = await infiniFetch(cloudPathUrl(rel), { method: 'GET' });
     if (!res.ok) throw new Error('Preview fetch failed (' + res.status + ')');
     const hdrCt = (res.headers.get('content-type') || '').split(';')[0].trim();
+    const declaredLen = Number(res.headers.get('content-length'));
     const buf = await res.arrayBuffer();
+    // A response can report ok:true and a plausible Content-Length yet still hand back
+    // a truncated/empty body — a Worker hitting its own memory/CPU limit on a large file
+    // does exactly this. That used to silently become a 0-byte (or partial) blob that
+    // the <img>/<video>/<audio> element would then fail to decode, always surfacing the
+    // same generic "Preview unavailable" no matter what the real cause was. Catching it
+    // here gives a specific, fixable reason instead.
+    if (buf.byteLength === 0) {
+      throw new Error('Preview failed: server returned an empty file (0 bytes). This usually means the upload proxy/Worker could not deliver this file — try Download instead.');
+    }
+    if (declaredLen > 0 && buf.byteLength !== declaredLen) {
+      throw new Error('Preview failed: got ' + buf.byteLength + ' of ' + declaredLen + ' expected bytes (connection cut short, likely by the proxy). Try Download instead.');
+    }
     const type = (hdrCt && hdrCt !== 'application/octet-stream' && hdrCt !== 'text/plain')
       ? hdrCt
       : guessMimeFromName(fileName);
@@ -13998,142 +13997,13 @@ async function listAllFiles(forcedProvider) {
         // ===== HOLD FILE NAME TO COPY SHARE LINK =====
         setupCloudNameHoldToCopy(box);
 
-        // ===== PREVIEW (click any file row to open — toggle same file = close) =====
-        box.querySelectorAll('[data-exp-id]').forEach(nameEl => {
-          const openPreview = async function(e) {
-            if (e) e.stopPropagation();
-
-            const fileId = nameEl.getAttribute('data-exp-id');
-            const fileName = nameEl.getAttribute('data-exp-name');
-            const row = nameEl.closest('.cloud-file-row');
-            if (!row) return;
-
-            // Drawer is inserted as next sibling of the row (not a child)
-            const next = row.nextElementSibling;
-            const isOpenHere = next && next.classList && next.classList.contains('cloud-preview-drawer')
-              && next.getAttribute('data-preview-for') === fileId;
-
-            // Close all open previews first
-            document.querySelectorAll('.cloud-preview-drawer').forEach(d => d.remove());
-            document.querySelectorAll('.cloud-file-row .name[aria-expanded="true"]').forEach(n => n.setAttribute('aria-expanded', 'false'));
-
-            // Same file tapped again → only hide (toggle off)
-            if (isOpenHere) {
-              nameEl.setAttribute('aria-expanded', 'false');
-              return;
-            }
-            nameEl.setAttribute('aria-expanded', 'true');
-            
-            const drawer = document.createElement('div');
-            drawer.className = 'cloud-preview-drawer';
-            drawer.setAttribute('data-preview-for', fileId || fileName || '');
-            drawer.style.cssText = 'width:100%;padding:12px 0;border-top:1px solid var(--glass-border);';
-            drawer.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">Loading preview...</div>';
-            row.after(drawer);
-            
-            try {
-              let fileUrl;
-              if (getActiveCloudProvider() === 'infini') {
-                fileUrl = await getInfiniPreviewUrl(fileName);
-              } else {
-              await authorizeB2();
-              const authRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_download_authorization', {
-                method: 'POST',
-                headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bucketId: b2.bucketId, fileNamePrefix: fileName, validDurationInSeconds: 3600 })
-              });
-              const authData = await authRes.json().catch(() => ({}));
-              if (!authRes.ok) throw new Error(authData.message || 'Auth failed');
-              const path = fileName.split('/').map(encodeURIComponent).join('/');
-              fileUrl = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path + '?Authorization=' + encodeURIComponent(authData.authorizationToken);
-              }
-              const ext = fileName.split('.').pop().toLowerCase();
-              // Shown when the browser itself can't decode a format we do have a preview
-              // slot for (HEIC/HEIF stills, or HEVC-coded video inside mp4/mov/mkv/m4v) —
-              // support varies by browser/OS, so this never blocks the actual file, it
-              // just falls back to an open/download link instead of a broken player.
-              window.__cloudPreviewFallback = function(el, url, label){
-                const d = el.closest('.cloud-preview-drawer');
-                if (!d) return;
-                const nm = (el && el.getAttribute && (el.getAttribute('data-fname') || el.getAttribute('src') || '')) || '';
-                d.innerHTML = '<div style="color:var(--text-dim);font-size:12px;line-height:1.5;">' +
-                  '⚠ This browser can\'t preview this ' + label + ' inline (codec/device limit).<br>' +
-                  '<button type="button" class="btn" style="display:inline-block;margin-top:8px;padding:8px 14px;font-size:12px;" id="cloudPrevDlBtn">Download instead</button>' +
-                  '</div>';
-                const b = d.querySelector('#cloudPrevDlBtn');
-                if (b) b.addEventListener('click', function() {
-                  const row = d.previousElementSibling;
-                  const n = row && row.querySelector('[data-name]') ? row.querySelector('[data-name]').getAttribute('data-name') : '';
-                  if (n && typeof downloadCloudFile === 'function') downloadCloudFile(n, '');
-                });
-              }
-
-              if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) {
-                drawer.innerHTML = '<div class="media-wrap"><img src="' + fileUrl + '" alt="Preview" loading="lazy" onerror="window.__cloudPreviewFallback(this,\'' + fileUrl + '\',\'image\')"></div>';
-              } else if (['heic','heif'].includes(ext)) {
-                // Safari/iOS WebViews can render HEIC directly in <img>; others generally
-                // can't decode it — try it live and fall back gracefully if it fails.
-                drawer.innerHTML = '<div class="media-wrap"><img src="' + fileUrl + '" alt="Preview" loading="lazy" onerror="window.__cloudPreviewFallback(this,\'' + fileUrl + '\',\'HEIC image\')"></div>';
-              } else if (['mp3','wav','ogg','m4a'].includes(ext)) {
-                drawer.innerHTML = '<audio id="cloudAud_' + Date.now() + '" controls preload="auto" autoplay src="' + fileUrl + '"></audio>';
-                setTimeout(function() {
-                  const a = drawer.querySelector('audio');
-                  if (a) { const p = a.play(); if (p && p.catch) p.catch(function(){}); }
-                }, 80);
-              } else if (['mp4','webm','mov','mkv','m4v'].includes(ext)) {
-                // Container is supported, but the codec inside (e.g. HEVC/H.265) may not
-                // be decodable on this browser — same graceful fallback if playback fails.
-                // Custom fixed-layout controls (not the native <video controls> bar) so the
-                // control layout never rearranges/collapses at different browser zoom levels.
-                const vId = 'dgxenVid_' + Date.now();
-                drawer.innerHTML =
-                  '<div class="media-wrap">' +
-                  '<div class="dgxen-video-wrap" id="' + vId + '_wrap">' +
-                  '<video id="' + vId + '" playsinline webkit-playsinline preload="auto" src="' + fileUrl + '" type="' + (guessMimeFromName(fileName) || 'video/mp4') + '" onerror="window.__cloudPreviewFallback(this,\'' + fileUrl + '\',\'video\')"></video>' +
-                  '<div class="dgxen-video-controls">' +
-                  '<button type="button" id="' + vId + '_play" aria-label="Play/Pause">▶</button>' +
-                  '<span class="dgxen-time" id="' + vId + '_time">0:00 / 0:00</span>' +
-                  '<input type="range" id="' + vId + '_seek" min="0" max="100" value="0" step="0.1">' +
-                  '<button type="button" id="' + vId + '_mute" aria-label="Mute/Unmute">🔊</button>' +
-                  '<button type="button" id="' + vId + '_full" aria-label="Fullscreen">⛶</button>' +
-                  '</div>' +
-                  '</div>' +
-                  '</div>';
-                if (window.__dgxenInitVideoControls) window.__dgxenInitVideoControls(vId);
-                // Auto-start playback when admin opens the preview (no extra Play tap)
-                setTimeout(function() {
-                  try {
-                    const v = document.getElementById(vId);
-                    if (v) {
-                      const p = v.play();
-                      if (p && p.catch) p.catch(function(){ /* autoplay policy — user gesture already happened on row tap */ });
-                    }
-                  } catch (e) {}
-                }, 120);
-              } else if (['pdf'].includes(ext)) {
-                drawer.innerHTML =
-                  '<iframe src="' + fileUrl + '#toolbar=1&navpanes=0" title="PDF"></iframe>' +
-                  '<div style="margin-top:8px;"><a class="btn" href="' + fileUrl + '" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;font-size:12px;">Open PDF</a></div>';
-              } else if (['txt','md','json','csv','log','html','js','css'].includes(ext)) {
-                drawer.innerHTML = '<div style="color:var(--text-dim);font-size:11px;margin-bottom:6px;">📄 Reading…</div>';
-                const textRes = await fetch(fileUrl);
-                const textData = await textRes.text();
-                const safeText = textData.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                drawer.innerHTML = '<pre>' + safeText + '</pre>';
-              } else {
-                drawer.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">No preview for this type. Use DL.</div>';
-              }
-            } catch (e) {
-              drawer.innerHTML = '<div style="color:var(--error);font-size:13px;">❌ ' + (e.message || 'Preview failed') + '</div>';
-            }
-          };
-          // Admin-friendly: tap/click the file itself to open it (mouse + touch),
-          // plus keyboard support (Enter/Space) since the row is a role="button".
-          nameEl.addEventListener('click', openPreview);
-          nameEl.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPreview(e); }
-          });
-        });
+        // ===== PREVIEW =====
+        // Handled entirely by the Cloud Pro module (multi-preview, blob validation,
+        // zoom-proof player controls) via its own capture-phase listener on
+        // #cloudFileList — see bindPreview()/openPreview() above. Do not attach a
+        // second listener here: two independent preview systems on the same
+        // [data-exp-id] element used to race each other and was the source of
+        // inconsistent "preview unavailable" behavior.
 
         setStatus(
           'Files synced.',
