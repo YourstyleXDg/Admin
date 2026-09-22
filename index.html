@@ -3847,6 +3847,12 @@ body.cat-world-active .cat-mode-bar{display:block}
   height: auto !important;
   max-height: 50vh !important;
 }
+
+.cloud-file-row.drop-folder-hot {
+  outline: 2px solid var(--accent, #00ff88) !important;
+  background: rgba(0,255,136,0.12) !important;
+  border-radius: 12px;
+}
 </style>
 </head>
 <body>
@@ -5596,23 +5602,19 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       },
       ensureDir: async function () { /* prefixes exist implicitly */ },
       remove: async function (item) {
+        var name = String(item.rel || item.name || '').replace(/^\/+/, '');
         var id = item.id;
-        var name = item.rel || item.name || '';
-        // Always resolve the live fileId from B2 — stale/missing ids are why nested deletes failed
-        try {
-          var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: name, maxFileCount: 20 });
-          var m = (d.files || []).filter(function (f) { return f.fileName === name; })[0];
-          if (m) { id = m.fileId; name = m.fileName; }
-        } catch (eList) {}
+        // Prefer live fileId from the row; only list (Class C) if missing — NEVER download (Class B)
         if (!id || String(id).indexOf('folder:') === 0) {
-          // try versions API for hidden/latest
-          try {
-            var vs = await call('b2_list_file_versions', { bucketId: B.b2().bucketId, prefix: name, maxFileCount: 20 });
-            var m2 = (vs.files || []).filter(function (f) { return f.fileName === name && f.action === 'upload'; })[0];
-            if (m2) { id = m2.fileId; name = m2.fileName; }
-          } catch (e2) {}
+          var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: name, maxFileCount: 25 });
+          var m = (d.files || []).filter(function (f) { return f.fileName === name; })[0];
+          if (!m) {
+            // try as if name is only basename under current prefix
+            m = (d.files || []).filter(function (f) { return f.fileName === name || f.fileName.endsWith('/' + name); })[0];
+          }
+          if (!m) throw new Error('B2 file not found: ' + name);
+          id = m.fileId; name = m.fileName;
         }
-        if (!id || String(id).indexOf('folder:') === 0) throw new Error('B2 file not found: ' + name);
         await call('b2_delete_file_version', { fileName: name, fileId: id });
       },
       removeTree: async function (folderRel) {
@@ -5623,11 +5625,18 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         }
         if (fails) throw new Error(fails + ' file(s) inside the folder could not be deleted');
       },
-      move: async function (from, to) { await A.copy(from, to); var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: from, maxFileCount: 1 });
-        var m = (d.files || []).filter(function (f) { return f.fileName === from; })[0]; if (m) await call('b2_delete_file_version', { fileName: from, fileId: m.fileId }); },
+      move: async function (from, to) {
+        // Server-side copy + delete — Class C + Class A only (NO Class B download)
+        var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: from, maxFileCount: 10 });
+        var m = (d.files || []).filter(function (f) { return f.fileName === from; })[0];
+        if (!m) throw new Error('Source not found: ' + from);
+        await call('b2_copy_file', { sourceFileId: m.fileId, fileName: to, metadataDirective: 'COPY' });
+        await call('b2_delete_file_version', { fileName: from, fileId: m.fileId });
+      },
       copy: async function (from, to) {
-        var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: from, maxFileCount: 1 });
-        var m = (d.files || []).filter(function (f) { return f.fileName === from; })[0]; if (!m) throw new Error('Source not found: ' + from);
+        var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: from, maxFileCount: 10 });
+        var m = (d.files || []).filter(function (f) { return f.fileName === from; })[0];
+        if (!m) throw new Error('Source not found: ' + from);
         await call('b2_copy_file', { sourceFileId: m.fileId, fileName: to, metadataDirective: 'COPY' });
       }
     };
@@ -6183,7 +6192,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     root.refreshCloudFiles = async function () {
       sel.clear(); closeAllPreviews();
       if (root.__cloudTrashView) { await renderTrashView(); return; }
-      var r = await origRefresh.apply(this, arguments); decorateRows(); paintBulkBar(); refreshTrashBytes(); return r;
+      var r = await origRefresh.apply(this, arguments); decorateRows(); paintBulkBar(); try{document.dispatchEvent(new Event('cloud-list-updated'));}catch(e){} refreshTrashBytes(); return r;
     };
   }
   function init() {
@@ -11598,7 +11607,9 @@ window.__dgxenInitVideoControls = function(vId) {
   };
 
   // ===== RENAME (Infini only — B2 has no native rename, see note below) =====
-  window.promptRenameCloudItem = function(relPath, currentName, isFolder) {
+  window.promptRenameCloudItem = function(relPath, currentName, isFolder, fileId) {
+    window.__renameFileId = fileId || null;
+
     const modal = document.getElementById('newFolderModal');
     const input = document.getElementById('newFolderNameInput');
     const hint = document.getElementById('newFolderModalHint');
@@ -11623,30 +11634,52 @@ window.__dgxenInitVideoControls = function(vId) {
       return;
     }
     const safeName = newName.replace(/[\\/]/g, '_');
-      // B2 rename = server-side copy to new key + delete old (no bandwidth if same bucket)
+      // B2 rename: b2_copy_file (Class C) + b2_delete_file_version (Class A) — NEVER download
       if (getActiveCloudProvider() === 'b2') {
         try {
-          if (!window.CloudProAdapters || !window.__cloudBridge) throw new Error('Cloud module not ready');
-          const A = window.CloudProAdapters.makeB2(window.__cloudBridge);
+          await authorizeB2(false);
+          const b2c = b2;
           const parent = relPath.indexOf('/') >= 0 ? relPath.replace(/\/[^\/]+\/?$/, '') : '';
           const dest = parent ? (parent + '/' + safeName) : safeName;
-          if (isFolder) {
-            const files = await A.walk(relPath);
-            for (const f of files) {
-              const destFile = dest + f.rel.slice(relPath.length);
-              await A.move(f.rel, destFile);
-            }
-            // remove leftover .keep if any
-            try { await A.remove({ rel: relPath.replace(/\/+$/,'') + '/.keep', id: null }); } catch (e) {}
-          } else {
-            await A.move(relPath, dest);
+          if (dest === relPath) { setStatus('Same name', false); return; }
+          // Resolve source fileId (list is Class C, not Class B)
+          let srcId = window.__renameFileId;
+          if (!srcId || String(srcId).indexOf('folder:') === 0) {
+            const listRes = await b2Fetch(b2c.apiUrl + '/b2api/v2/b2_list_file_names', {
+              method: 'POST',
+              headers: { Authorization: b2c.authToken, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ bucketId: b2c.bucketId, prefix: relPath, maxFileCount: 20 })
+            });
+            const listData = await listRes.json().catch(function(){ return {}; });
+            if (!listRes.ok) throw new Error(listData.message || ('List failed ' + listRes.status));
+            const match = (listData.files || []).filter(function(f){ return f.fileName === relPath; })[0];
+            if (!match) throw new Error('File not found on B2: ' + relPath);
+            srcId = match.fileId;
           }
+          const copyRes = await b2Fetch(b2c.apiUrl + '/b2api/v2/b2_copy_file', {
+            method: 'POST',
+            headers: { Authorization: b2c.authToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sourceFileId: srcId, fileName: dest, metadataDirective: 'COPY' })
+          });
+          const copyData = await copyRes.json().catch(function(){ return {}; });
+          if (!copyRes.ok) throw new Error(copyData.message || ('Copy failed ' + copyRes.status));
+          const delRes = await b2Fetch(b2c.apiUrl + '/b2api/v2/b2_delete_file_version', {
+            method: 'POST',
+            headers: { Authorization: b2c.authToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fileName: relPath, fileId: srcId })
+          });
+          const delData = await delRes.json().catch(function(){ return {}; });
+          if (!delRes.ok) throw new Error(delData.message || ('Delete-old failed ' + delRes.status));
           setStatus('Renamed to ' + safeName, true);
           if (window.refreshCloudFiles) await window.refreshCloudFiles();
           closeModals();
           return;
         } catch (e) {
-          setStatus('Rename failed: ' + (e && e.message || e), false);
+          var msg = (e && e.message) || String(e);
+          if (/Class B|bandwidth|download/i.test(msg)) {
+            msg = 'B2 daily free download limit hit (from previews/downloads). Rename itself does not download — wait until limit resets, or avoid previewing large files first. Details: ' + msg;
+          }
+          setStatus('Rename failed: ' + msg, false);
           if (btn) { btn.disabled = false; btn.textContent = 'RENAME'; }
           return;
         }
@@ -11768,17 +11801,46 @@ window.__dgxenInitVideoControls = function(vId) {
       items.push(['↩️ Restore', () => window.restoreCloudItem(rel)]);
       items.push(['🗑️ Delete permanently', () => window.permanentlyDeleteCloudItem(name, (btn.closest('.cloud-file-row') && btn.closest('.cloud-file-row').querySelector('[data-dl-id]')) ? btn.closest('.cloud-file-row').querySelector('[data-dl-id]').getAttribute('data-dl-id') : '', rel)]);
     } else {
-      items.push([isStarred ? '⭐ Unstar' : '☆ Star', () => window.toggleCloudStar(rel)]);
-      items.push(['✏️ Rename', () => window.promptRenameCloudItem(rel, name, isFolder)]);
-      items.push(['📂 Move to…', () => window.promptMoveCloudItem(rel, name, isFolder)]);
-      items.push(['🗑️ Delete', () => {
-        const row = btn.closest('.cloud-file-row');
-        const dlBtn = row && row.querySelector('[data-dl-id]');
-        const fid = dlBtn ? dlBtn.getAttribute('data-dl-id') : '';
-        showConfirm('Delete file?', 'Delete "' + name + '" permanently?', function() {
-          if (window.softDeleteCloudFile) window.softDeleteCloudFile(name, fid, rel);
-          else if (window.deleteCloudFile) window.deleteCloudFile(name, fid, rel);
-        });
+      var selCount = 0; try { if (window.__cpSelected && window.__cpSelected.size) selCount = window.__cpSelected.size(); } catch(e){}
+      var multi = selCount > 1;
+      var bulkLabel = multi ? (' (' + selCount + ' selected)') : '';
+      items.push([isStarred ? '⭐ Unstar' : '☆ Star', function() {
+        if (multi && window.__cpSelected) {
+          window.__cpSelected.list().forEach(function(it){ if (window.toggleCloudStar) window.toggleCloudStar(it.rel || it.name); });
+        } else if (window.toggleCloudStar) window.toggleCloudStar(rel);
+      }]);
+      if (!multi) {
+        items.push(['✏️ Rename', function() { window.promptRenameCloudItem(rel, name, isFolder, (btn.closest('.cloud-file-row') && btn.closest('.cloud-file-row').querySelector('[data-dl-id]')) ? btn.closest('.cloud-file-row').querySelector('[data-dl-id]').getAttribute('data-dl-id') : null); }]);
+      }
+      items.push(['📂 Move to…' + bulkLabel, function() {
+        if (multi && window.__cpSelected) {
+          var many = window.__cpSelected.list();
+          window.promptMoveCloudItem(many[0].rel || many[0].name, many[0].name, !!many[0].isFolder);
+          // store bulk for move picker
+          window.__cpPendingBulkMove = many;
+        } else {
+          window.__cpPendingBulkMove = null;
+          window.promptMoveCloudItem(rel, name, isFolder);
+        }
+      }]);
+      items.push(['🗑️ Delete' + bulkLabel, function() {
+        var row = btn.closest('.cloud-file-row');
+        var dlBtn = row && row.querySelector('[data-dl-id]');
+        var fid = dlBtn ? dlBtn.getAttribute('data-dl-id') : '';
+        if (multi && window.__cpSelected) {
+          var many = window.__cpSelected.list();
+          showConfirm('Delete ' + many.length + ' items?', 'Move ' + many.length + ' selected items to trash?', function() {
+            if (window.cpTrashItems) window.cpTrashItems(many);
+            else if (window.softDeleteCloudFile) {
+              many.forEach(function(it){ window.softDeleteCloudFile(it.name, it.id, it.rel); });
+            }
+          });
+        } else {
+          showConfirm('Delete file?', 'Delete "' + name + '" permanently?', function() {
+            if (window.softDeleteCloudFile) window.softDeleteCloudFile(name, fid, rel);
+            else if (window.deleteCloudFile) window.deleteCloudFile(name, fid, rel);
+          });
+        }
       }]);
     }
     items.forEach(([label, fn]) => {
@@ -14434,8 +14496,13 @@ async function listAllFiles(forcedProvider) {
         const nm = r.querySelector('.name[data-folder="1"]');
         if (!nm) continue;
         const rect = r.getBoundingClientRect();
-        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        // Expanded hit area (~48px padding) so drop doesn't need pixel-perfect aim
+        const pad = 48;
+        if (x >= rect.left - pad && x <= rect.right + pad && y >= rect.top - pad && y <= rect.bottom + pad) {
+          r.classList.add('drop-folder-hot');
           return { rel: nm.getAttribute('data-rel') || nm.getAttribute('data-name') || '', row: r };
+        } else {
+          r.classList.remove('drop-folder-hot');
         }
       }
       return null;
@@ -17418,46 +17485,48 @@ async function listAllFiles(forcedProvider) {
 })();
 
 (function cloudTwoFingerPan(){
-  function bind() {
+  var lastY = null, lastX = null;
+  function onTouchStart(e) {
+    if (e.touches && e.touches.length >= 2) {
+      lastY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      lastX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    } else { lastY = lastX = null; }
+  }
+  function onTouchMove(e) {
+    if (!e.touches || e.touches.length < 2) { lastY = lastX = null; return; }
     var box = document.getElementById('cloudFileList');
     var panel = document.getElementById('cloudPanel');
-    if (!box || box.__twoFingerBound) return;
-    box.__twoFingerBound = true;
-    var lastY = null, lastX = null;
-    function onTouchStart(e) {
-      if (e.touches && e.touches.length >= 2) {
-        lastY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-        lastX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-      } else { lastY = lastX = null; }
+    var target = box || panel;
+    if (!target) return;
+    var y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    var x = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    if (lastY != null) {
+      target.scrollTop += (lastY - y);
+      target.scrollLeft += (lastX - x);
+      e.preventDefault();
+      e.stopPropagation();
     }
-    function onTouchMove(e) {
-      if (!e.touches || e.touches.length < 2) { lastY = lastX = null; return; }
-      var y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-      var x = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-      if (lastY != null) {
-        var dy = lastY - y;
-        var dx = lastX - x;
-        box.scrollTop += dy;
-        box.scrollLeft += dx;
-        if (panel) { panel.scrollTop += dy * 0.15; }
-        e.preventDefault();
-      }
-      lastY = y; lastX = x;
-    }
-    function onTouchEnd() { lastY = lastX = null; }
-    box.addEventListener('touchstart', onTouchStart, { passive: true });
-    box.addEventListener('touchmove', onTouchMove, { passive: false });
-    box.addEventListener('touchend', onTouchEnd, { passive: true });
-    box.addEventListener('touchcancel', onTouchEnd, { passive: true });
-    // CSS assist
-    try {
-      box.style.touchAction = 'pan-x pan-y pinch-zoom';
-      if (panel) panel.style.touchAction = 'pan-x pan-y pinch-zoom';
-    } catch (e) {}
+    lastY = y; lastX = x;
+  }
+  function onTouchEnd() { lastY = lastX = null; }
+  function bind() {
+    var panel = document.getElementById('cloudPanel');
+    var box = document.getElementById('cloudFileList');
+    [panel, box].forEach(function(el) {
+      if (!el || el.__twoFingerBound2) return;
+      el.__twoFingerBound2 = true;
+      el.addEventListener('touchstart', onTouchStart, { passive: true, capture: true });
+      el.addEventListener('touchmove', onTouchMove, { passive: false, capture: true });
+      el.addEventListener('touchend', onTouchEnd, { passive: true, capture: true });
+      el.addEventListener('touchcancel', onTouchEnd, { passive: true, capture: true });
+      try { el.style.touchAction = 'pan-x pan-y pinch-zoom'; } catch (e) {}
+    });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
-  setInterval(bind, 2000); // re-bind if list re-rendered
+  // Re-bind after list re-renders
+  setInterval(bind, 1500);
+  document.addEventListener('cloud-list-updated', bind);
 })();
 
 </script>
