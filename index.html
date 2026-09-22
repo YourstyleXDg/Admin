@@ -5282,14 +5282,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             </div>
         </div>
     </div>
-inclusion, reminder lead time, and the per-day bonus-minutes
-         table (matching the chart: days 1-7, minutes on top of the
-         4-hour base, reused for both the climb and the cooldown side
-         below for why one table covers both directions). -->
-    
-
-    
-    <!-- Suggested once, right when Factory Reset is tapped — a chance to
+<!-- Suggested once, right when Factory Reset is tapped — a chance to
          grab a full backup before anything is wiped. -->
     <div class="modal-overlay" id="backupSuggestModal">
         <div class="modal">
@@ -14424,10 +14417,8 @@ async function listAllFiles(forcedProvider) {
         dragGhost.innerHTML = items.slice(0, 5).map(function(it) {
           var nm = String((it && (it.name || it.rel)) || 'file').split('/').pop();
           return '<div class="g-item">' + ((it && it.isFolder) ? '▣ ' : '') + nm + '</div>';
-        }).join('') + (items.length > 5 ? ('<div class="g-more">+' + (items.length - 5) + ' more</div>') : '');') + '</div>';
-        }).join('') + (items.length > 4 ? '<div class="ghost-chip ghost-more">+' + (items.length - 4) + ' more</div>' : '') +
-        '<div class="ghost-count-badge">' + items.length + '</div>';
-      } else {
+        }).join('') + (items.length > 5 ? ('<div class="g-more">+' + (items.length - 5) + ' more</div>') : '');
+} else {
         dragGhost.textContent = (info.isFolder ? '📁 ' : '') + (info.name || 'file');
       }
       document.body.appendChild(dragGhost);
