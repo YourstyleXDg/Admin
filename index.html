@@ -2698,6 +2698,40 @@
             color: #0f172a;
             border-color: rgba(0,180,255,0.35);
         }
+        #cloudDragGhost.cloud-drag-ghost-stack {
+            white-space: normal;
+            padding: 8px 10px 8px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-width: 220px;
+        }
+        #cloudDragGhost .ghost-chip {
+            background: rgba(92,200,255,0.16);
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #cloudDragGhost .ghost-chip.ghost-more { color: var(--text-dim); background: transparent; }
+        #cloudDragGhost .ghost-count-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--accent, #00ff88);
+            color: #001018;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 900;
+        }
         #cloudTrashBtn.drop-hot {
             background: rgba(255,59,48,0.25) !important;
             color: var(--error) !important;
@@ -3735,8 +3769,7 @@ body.cat-world-active .cat-mode-bar{display:block}
 .cp-player:fullscreen { display: flex; flex-direction: column; justify-content: center; width: 100vw; height: 100vh; border-radius: 0; }
 .cp-player:fullscreen video { max-height: none; height: 100%; flex: 1 1 auto; }
 
-        /* --- Mini horizontal cycle strip (used inside the biodata view) --- */
-    </style>
+</style>
 </head>
 <body>
     <script>
@@ -3970,7 +4003,10 @@ body.cat-world-active .cat-mode-bar{display:block}
             <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>
             Banned Users
         </div>
-<div class="nav-link" onclick="switchTab('share-logs', this)" id="nav-share-logs">
+            <svg viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+        </div>
+
+        <div class="nav-link" onclick="switchTab('share-logs', this)" id="nav-share-logs">
             <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             Share/User Logs
             <span id="fastGenNavBadge" style="display:none;margin-left:6px;background:var(--error);color:#fff;font-size:10px;font-weight:900;padding:2px 6px;border-radius:8px;vertical-align:middle;">!</span>
@@ -4268,6 +4304,8 @@ body.cat-world-active .cat-mode-bar{display:block}
                 <div class="user-grid" id="bannedUserList"></div>
             </div>
         </div>
+
+        
 
         
         <div id="share-logs" class="tab-section">
@@ -4725,6 +4763,18 @@ body.cat-world-active .cat-mode-bar{display:block}
         </div>
     </div>
 
+    <!-- MOVE OR COPY (drop onto a folder) -->
+    <div class="modal-overlay" id="cpMoveCopyModal">
+        <div class="modal">
+            <h2 style="color: var(--accent);" id="cpMoveCopyTitle">Move or copy?</h2>
+            <div class="modal-btns" style="flex-direction:column; gap:10px;">
+                <button class="btn-confirm" id="cpMoveCopyMoveBtn" style="width:100%;">✂ MOVE HERE</button>
+                <button class="btn-confirm" id="cpMoveCopyCopyBtn" style="width:100%; background:rgba(92,200,255,.18); color:#5cc8ff;">⧉ COPY HERE</button>
+                <button class="btn-cancel" style="width:100%;" onclick="closeModals()">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
     <!-- UNBIND INFO MODAL -->
     <div class="modal-overlay" id="unbindInfoModal">
         <div class="modal">
@@ -5154,7 +5204,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             </div>
         </div>
     </div>
-
+<!-- Suggested once, right when Factory Reset is tapped — a chance to
+         grab a full backup before anything is wiped. -->
     <div class="modal-overlay" id="backupSuggestModal">
         <div class="modal">
             <h2 style="color:#8ea0ff;">💾 Back up first?</h2>
@@ -5647,6 +5698,57 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     if (root.refreshCloudFiles) await root.refreshCloudFiles(); await refreshTrashBytes();
   };
   root.cpEmptyTrash = async function () { if (!bridge()) return; var n = await T.emptyAll(); status('Trash emptied (' + n + ')', true); if (root.refreshCloudFiles) await root.refreshCloudFiles(); await refreshTrashBytes(); };
+
+  // Generic Move-or-Copy picker, reused by the drop-on-folder bulk flow.
+  root.showActionSheet = function (title, actions) {
+    var modal = doc.getElementById('cpMoveCopyModal'); if (!modal) return;
+    var t = doc.getElementById('cpMoveCopyTitle'); if (t) t.textContent = title || 'Choose an action';
+    var moveBtn = doc.getElementById('cpMoveCopyMoveBtn'), copyBtn = doc.getElementById('cpMoveCopyCopyBtn');
+    if (moveBtn && actions[0]) { moveBtn.textContent = actions[0].label; moveBtn.onclick = function () { if (root.closeModals) root.closeModals(); actions[0].action(); }; }
+    if (copyBtn && actions[1]) { copyBtn.textContent = actions[1].label; copyBtn.onclick = function () { if (root.closeModals) root.closeModals(); actions[1].action(); }; }
+    modal.style.display = 'flex';
+  };
+
+  // Bulk move/copy into a target folder — used by drop-on-folder. Works for
+  // both providers via the same adapter used everywhere else (trash/restore),
+  // and for folders it walks + moves/copies file-by-file (needed for B2,
+  // which has no folder object; harmless no-op extra work on Infini where a
+  // single MOVE/COPY on the directory would also work, but per-file keeps
+  // the same code path and progress reporting for both providers).
+  root.__cpBulkMoveOrCopy = async function (items, destFolderRel, mode) {
+    if (!bridge()) return;
+    var dest = C.joinPath(destFolderRel || '');
+    if (C.isInsideTrash(dest)) { status('Cannot move/copy into trash', false); return; }
+    var siblings = await A.list(dest), taken = Object.create(null);
+    siblings.forEach(function (s) { taken[s.name] = 1; });
+    var ok = 0, fail = 0, last = '';
+    status((mode === 'move' ? 'Moving ' : 'Copying ') + items.length + ' item(s)…', null);
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      try {
+        if (it.isFolder) {
+          var nm = C.uniqueName(it.name, taken); taken[nm] = 1;
+          var to = C.joinPath(dest, nm);
+          if (to === it.rel) { fail++; last = 'Already in this folder'; continue; }
+          var files = await A.walk(it.rel);
+          for (var f = 0; f < files.length; f++) {
+            var frel = to + files[f].rel.slice(it.rel.length);
+            mode === 'move' ? await A.move(files[f].rel, frel) : await A.copy(files[f].rel, frel);
+          }
+          if (mode === 'move' && A.removeTree) { try { await A.removeTree(it.rel); } catch (e) {} }
+        } else {
+          var nm2 = C.uniqueName(it.name, taken); taken[nm2] = 1;
+          var to2 = C.joinPath(dest, nm2);
+          if (to2 === it.rel) { fail++; last = 'Already in this folder'; continue; }
+          mode === 'move' ? await A.move(it.rel, to2) : await A.copy(it.rel, to2);
+        }
+        ok++;
+      } catch (e) { fail++; last = (e && e.message) || String(e); }
+    }
+    sel.clear(); paintSelection();
+    status(fail ? (ok + ' done, ' + fail + ' failed: ' + last) : ((mode === 'move' ? 'Moved ' : 'Copied ') + ok + ' item(s)'), !fail);
+    if (root.refreshCloudFiles) await root.refreshCloudFiles();
+  };
 
   /* Trash view: the original renderer cannot decode our name format, so we paint the list ourselves. */
   async function renderTrashView() {
@@ -8210,7 +8312,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
 
         window.closeModals = () => {
             const modals = ['banModal', 'resetModal', 'keyBanModal', 'guideModal', 'confirmActionModal',
-                'unbindInfoModal', 'backupSuggestModal', 'newFolderModal'
+                'unbindInfoModal', 'backupSuggestModal', 'newFolderModal',
+                'cpMoveCopyModal'
             ];
             modals.forEach(id => {
                 const el = document.getElementById(id);
@@ -10661,14 +10764,31 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         }
       }
     } catch (e) { console.warn('[bulk delete]', e); }
+    // Single item: route through the same folder-aware, provider-neutral trash
+    // engine used for bulk (cpTrashItems) instead of the old per-provider calls,
+    // which never understood isFolder — that mismatch is why a B2 FOLDER's
+    // Delete action silently failed while a B2 file's Delete worked fine.
     const name = String(fileName || '').trim();
     const rel = String(relPath || name).trim();
     const B = window.__cloudBridge;
     console.log('[DELETE-TRACE] softDeleteCloudFile', { name: name, rel: rel, bridge: !!B });
     if (!B) {
-      // Should never happen; but never fail silently again.
       try { window.__cloudToast && window.__cloudToast('Delete unavailable: cloud module not ready. Reload the page.', false); } catch (e) {}
       console.error('[Cloud] delete: __cloudBridge missing');
+      return;
+    }
+    if (typeof window.cpTrashItems === 'function') {
+      // Figure out isFolder from the row in the DOM if the caller didn't say —
+      // most call sites only pass (name, id, rel), never a folder flag.
+      let isFolder = false;
+      try {
+        document.querySelectorAll('.cloud-file-row .name').forEach(function(n) {
+          if ((n.getAttribute('data-rel') || n.getAttribute('data-name')) === (relPath || fileName)) {
+            isFolder = n.getAttribute('data-folder') === '1';
+          }
+        });
+      } catch (e) {}
+      await window.cpTrashItems([{ rel: rel, name: name, isFolder: isFolder, id: fileId, size: 0 }]);
       return;
     }
     B.setStatus('Deleting: ' + name + '…', null);
@@ -10906,7 +11026,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
       const parts = [];
       if (b2.active) parts.push({ tag: 'B2', t: b2.text, pct: b2.pct });
       if (inf.active) parts.push({ tag: 'Infini', t: inf.text, pct: inf.pct });
-      if (window.__cloudDownloading) parts.push({ tag: 'DL', t: (tx && tx.textContent) || 'Downloading…', pct: null });
+      if (window.__cloudDownloading) parts.push({ tag: 'DL', t: (tx && tx.textContent) || 'Downloading…', pct: window.__cloudDownloadPct });
 
       if (tx) {
         if (parts.length === 1) tx.textContent = parts[0].t;
@@ -10944,7 +11064,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         const parts2 = [];
         if (b2.active) parts2.push({ t: b2.text, pct: b2.pct });
         if (inf.active) parts2.push({ t: inf.text, pct: inf.pct });
-        if (window.__cloudDownloading) parts2.push({ t: 'Downloading…', pct: null });
+        if (window.__cloudDownloading) parts2.push({ t: 'Downloading…', pct: window.__cloudDownloadPct });
         if (pillTx) pillTx.textContent = (parts2.length > 1) ? (parts2.length + ' transfers') : ((parts2[0] && parts2[0].t) || 'Working…');
         const nums2 = parts2.map(function(x) { return x.pct; }).filter(function(n) { return n != null && !isNaN(n); });
         if (pillPct) {
@@ -10968,13 +11088,15 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     const tx = document.getElementById('cloudBgUploadText');
     const bar = document.getElementById('cloudBgUploadBar');
     if (show) {
-      window.__cloudDownloading = !!window.__cloudDownloading;
+      window.__cloudDownloading = true;
+      if (percent != null && !isNaN(Number(percent))) window.__cloudDownloadPct = Math.max(0, Math.min(100, Number(percent)));
       if (el) el.classList.add('show');
       if (tx && text) tx.textContent = text;
       if (bar && percent != null) bar.style.width = Math.max(0, Math.min(100, Number(percent) || 0)) + '%';
       window.paintCloudTransferUI();
     } else {
       window.__cloudDownloading = false;
+      window.__cloudDownloadPct = null;
       // Don't wipe provider uploads
       window.paintCloudTransferUI();
     }
@@ -11257,10 +11379,6 @@ window.__dgxenInitVideoControls = function(vId) {
     const title = document.getElementById('newFolderModalTitle');
     const btn = document.getElementById('newFolderConfirmBtn');
     if (!modal || !input || !btn) return;
-    if (getActiveCloudProvider() !== 'infini') {
-      setStatus('Rename is only available for Infini Cloud right now — B2 has no native rename.', false);
-      return;
-    }
     if (title) title.textContent = 'Rename';
     input.value = currentName;
     if (hint) hint.textContent = '';
@@ -11283,6 +11401,30 @@ window.__dgxenInitVideoControls = function(vId) {
     parts[parts.length - 1] = safeName;
     const newRelPath = parts.join('/');
     if (btn) { btn.disabled = true; btn.textContent = 'RENAMING…'; }
+    if (getActiveCloudProvider() !== 'infini') {
+      try {
+        if (!window.CloudProAdapters || !window.__cloudBridge) throw new Error('Cloud module not ready — reload the page');
+        const A = window.CloudProAdapters.makeB2(window.__cloudBridge);
+        if (isFolder) {
+          const files = await A.walk(relPath);
+          for (const f of files) {
+            const dest = newRelPath + f.rel.slice(relPath.length);
+            await A.move(f.rel, dest);
+          }
+        } else {
+          await A.move(relPath, newRelPath);
+        }
+        setStatus('Renamed to ' + safeName, true);
+        closeModals();
+        resetNewFolderModalToCreateMode();
+        if (window.refreshCloudFiles) await window.refreshCloudFiles();
+      } catch (e) {
+        if (hint) { hint.textContent = e.message || String(e); hint.style.color = 'var(--error)'; }
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'RENAME'; }
+      }
+      return;
+    }
     try {
       const fromUrl = cloudPathUrl(relPath) + (isFolder ? '/' : '');
       const toUrl = cloudPathUrl(newRelPath) + (isFolder ? '/' : '');
@@ -11310,10 +11452,6 @@ window.__dgxenInitVideoControls = function(vId) {
 
   // ===== MOVE TO FOLDER (Infini only) =====
   window.promptMoveCloudItem = async function(relPath, currentName, isFolder) {
-    if (getActiveCloudProvider() !== 'infini') {
-      setStatus('Move is only available for Infini Cloud right now — B2 has no native move.', false);
-      return;
-    }
     let folders = [];
     try {
       const all = await listAllFiles();
@@ -11328,6 +11466,28 @@ window.__dgxenInitVideoControls = function(vId) {
     if (!Number.isFinite(idx) || idx < 0 || idx >= options.length) return;
     const destFolder = options[idx] === '(Root)' ? '' : options[idx];
     const newRelPath = cloudJoinPath(destFolder, currentName);
+    if (getActiveCloudProvider() !== 'infini') {
+      // B2 has no folder/move primitive, but the same copy+delete adapter used
+      // by trash/restore for B2 handles this correctly (a folder is walked
+      // file-by-file since B2 only has flat object keys).
+      try {
+        if (!window.CloudProAdapters || !window.__cloudBridge) throw new Error('Cloud module not ready — reload the page');
+        const A = window.CloudProAdapters.makeB2(window.__cloudBridge);
+        setStatus('Moving…', null);
+        if (isFolder) {
+          const files = await A.walk(relPath);
+          for (const f of files) {
+            const dest = newRelPath + f.rel.slice(relPath.length);
+            await A.move(f.rel, dest);
+          }
+        } else {
+          await A.move(relPath, newRelPath);
+        }
+        setStatus('Moved to ' + (destFolder || 'Root'), true);
+        if (window.refreshCloudFiles) await window.refreshCloudFiles();
+      } catch (e) { setStatus('Move: ' + (e.message || e), false); }
+      return;
+    }
     try {
       const fromUrl = cloudPathUrl(relPath) + (isFolder ? '/' : '');
       const toUrl = cloudPathUrl(newRelPath) + (isFolder ? '/' : '');
@@ -14010,6 +14170,38 @@ async function listAllFiles(forcedProvider) {
       const r = el.getBoundingClientRect();
       return x >= r.left - 16 && x <= r.right + 16 && y >= r.top - 16 && y <= r.bottom + 16;
     }
+    // Is (x,y) over a FOLDER row (not the row being dragged itself)? Folders
+    // are drop targets for move/copy, same as the trash/star buttons above.
+    function findFolderRowUnder(x, y, excludeRow) {
+      const rows = document.querySelectorAll('.cloud-file-row');
+      for (const r of rows) {
+        if (r === excludeRow) continue;
+        const nm = r.querySelector('.name[data-folder="1"]');
+        if (!nm) continue;
+        const rect = r.getBoundingClientRect();
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          return { rel: nm.getAttribute('data-rel') || nm.getAttribute('data-name') || '', row: r };
+        }
+      }
+      return null;
+    }
+    async function dropOntoFolder(info, folderRel) {
+      // If 2+ files are selected, the WHOLE selection moves/copies together —
+      // not just the single item that happened to be dragged.
+      const multi = (window.__cpSelected && window.__cpSelected.size && window.__cpSelected.size() > 1);
+      const items = multi ? window.__cpSelected.list() : [info];
+      const count = items.length;
+      const label = count > 1 ? (count + ' items') : ('"' + (info.name || 'this') + '"');
+      if (!window.showActionSheet) {
+        // Fallback if the picker isn't available for some reason — default to move.
+        if (window.__cpBulkMoveOrCopy) await window.__cpBulkMoveOrCopy(items, folderRel, 'move');
+        return;
+      }
+      window.showActionSheet('Move or copy ' + label + ' into this folder?', [
+        { label: '✂ MOVE here', action: function () { window.__cpBulkMoveOrCopy && window.__cpBulkMoveOrCopy(items, folderRel, 'move'); } },
+        { label: '⧉ COPY here', action: function () { window.__cpBulkMoveOrCopy && window.__cpBulkMoveOrCopy(items, folderRel, 'copy'); } }
+      ]);
+    }
     function doDrop(info, x, y) {
       console.log('[DELETE-TRACE] drop at', x, y, 'info=', info, 'overTrash=', pointOver('cloudTrashBtn', x, y));
       if (!info) return;
@@ -14021,14 +14213,33 @@ async function listAllFiles(forcedProvider) {
         } else if (window.softDeleteCloudFile) window.softDeleteCloudFile(info.name, info.id, info.rel);
         else if (window.deleteCloudFile) window.deleteCloudFile(info.name, info.id, info.rel);
       } else if (pointOver('cloudStarredFilterBtn', x, y)) {
-        if (window.toggleCloudStar) window.toggleCloudStar(info.rel || info.name);
+        if (window.__cpSelected && window.__cpSelected.size && window.__cpSelected.size() > 1) {
+          var manyStar = window.__cpSelected.list();
+          manyStar.forEach(function(it) { if (window.toggleCloudStar) window.toggleCloudStar(it.rel || it.name); });
+        } else if (window.toggleCloudStar) window.toggleCloudStar(info.rel || info.name);
+      } else {
+        const folder = findFolderRowUnder(x, y, row);
+        if (folder) dropOntoFolder(info, folder.rel);
       }
     }
     function ensureGhost(info) {
       if (dragGhost) return;
       dragGhost = document.createElement('div');
       dragGhost.id = 'cloudDragGhost';
-      dragGhost.textContent = (info.isFolder ? '📁 ' : '') + (info.name || 'file');
+      // If multiple files are selected, the ghost shows all of them stacked
+      // together (not just the one finger happens to be dragging) so it's
+      // clear the whole selection is moving.
+      const multi = (window.__cpSelected && window.__cpSelected.size && window.__cpSelected.size() > 1);
+      if (multi) {
+        const items = window.__cpSelected.list();
+        dragGhost.classList.add('cloud-drag-ghost-stack');
+        dragGhost.innerHTML = items.slice(0, 4).map(function(it, i) {
+          return '<div class="ghost-chip" style="--i:' + i + '">' + (it.isFolder ? '📁 ' : '') + String(it.name || '').replace(/</g, '&lt;') + '</div>';
+        }).join('') + (items.length > 4 ? '<div class="ghost-chip ghost-more">+' + (items.length - 4) + ' more</div>' : '') +
+        '<div class="ghost-count-badge">' + items.length + '</div>';
+      } else {
+        dragGhost.textContent = (info.isFolder ? '📁 ' : '') + (info.name || 'file');
+      }
       document.body.appendChild(dragGhost);
       if (row) row.classList.add('cloud-dragging');
     }
