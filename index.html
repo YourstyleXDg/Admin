@@ -108,8 +108,6 @@
             display: flex;
             min-height: 100vh;
             overflow-x: hidden;
-            width: 100%;
-            max-width: 100vw;
             position: relative;
             transition: background-color 0.8s ease, color 0.8s ease;
             -webkit-font-smoothing: antialiased;
@@ -658,8 +656,6 @@
             width: calc(100% - 260px);
             position: relative;
             z-index: 5;
-            overflow-x: hidden;
-            min-width: 0;
         }
         .tab-section {
             display: none;
@@ -1756,75 +1752,6 @@
             stroke-linecap: round;
             stroke-linejoin: round;
         }
-        
-        /* Upload live pill — MUST be fixed+hidden or body flex shows it as a white right strip */
-        #cloudLivePill {
-            position: fixed !important;
-            left: 50%;
-            bottom: 88px;
-            transform: translateX(-50%);
-            z-index: 10051;
-            display: none !important;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 16px;
-            border-radius: 99px;
-            border: 1px solid rgba(92, 200, 255, 0.4);
-            background: rgba(12, 18, 28, 0.94);
-            color: #e8f7ff;
-            font-size: 12px;
-            font-weight: 800;
-            cursor: pointer;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-            pointer-events: auto;
-        }
-        #cloudLivePill.show {
-            display: inline-flex !important;
-        }
-        #cloudLivePill .cloud-live-spin {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            border: 2px solid rgba(92,200,255,0.25);
-            border-top-color: #5cc8ff;
-            animation: cloudLiveSpin .7s linear infinite;
-        }
-        @keyframes cloudLiveSpin {
-            to { transform: rotate(360deg); }
-        }
-        #cloudLivePillPct {
-            color: #5cc8ff;
-            font-variant-numeric: tabular-nums;
-        }
-        #cloudDelPop {
-            position: fixed;
-            z-index: 10060;
-            display: none;
-            min-width: 200px;
-            max-width: 280px;
-            padding: 14px;
-            border-radius: 16px;
-            background: rgba(18, 22, 30, 0.96);
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 16px 40px rgba(0,0,0,0.45);
-            color: var(--text-main);
-        }
-        #cloudDelPop.show { display: block; }
-
-
-        /* Body is flex — any non-fixed sibling becomes a side strip (white line bug) */
-        body > #cloudLivePill,
-        body > #cloudBgUpload,
-        body > #cloudDelPop,
-        body > #cloudPanel,
-        body > #cloudPanelBackdrop,
-        body > #securityPanel,
-        body > #securityPanelBackdrop,
-        body > #aiPanel,
-        body > #aiPanelBackdrop {
-            flex: none;
-        }
-
         #cloudPanel {
             position: fixed;
             top: 0;
@@ -1834,9 +1761,7 @@
             width: min(52vw, 720px);
             max-width: 100%;
             overflow: auto;
-            display: none !important;
-            visibility: hidden;
-            pointer-events: none;
+            display: none;
             flex-direction: column;
             padding: 28px 20px 50px;
             border-radius: 28px 0 0 28px;
@@ -1845,25 +1770,16 @@
             background: var(--glass-bg);
             backdrop-filter: blur(40px) saturate(180%);
             -webkit-backdrop-filter: blur(40px) saturate(180%);
-            transform: translateX(100%);
         }
         #cloudPanel.open {
             display: flex !important;
-            visibility: visible;
-            pointer-events: auto;
             flex-direction: column;
             animation: secPanelIn .4s cubic-bezier(.16, 1, .3, 1) forwards;
         }
         #cloudPanel.closing {
             display: flex !important;
-            visibility: visible;
-            pointer-events: none;
             flex-direction: column;
-            animation: cloudPanelOut .38s cubic-bezier(.4, 0, .2, 1) forwards;
-        }
-        @keyframes cloudPanelOut {
-            from { opacity: 1; transform: translateX(0); }
-            to { opacity: 0; transform: translateX(100%); }
+            animation: secPanelOut .4s cubic-bezier(.4, 0, .2, 1) forwards;
         }
         #cloudPanelBackdrop {
             position: fixed;
@@ -1871,12 +1787,8 @@
             z-index: 120;
             background: rgba(0,0,0,.45);
             display: none;
-            pointer-events: none;
         }
-        #cloudPanelBackdrop.open {
-            display: block;
-            pointer-events: auto;
-        }
+        #cloudPanelBackdrop.open { display: block; }
 
         /* ========================================= */
         /* 🔥 3D FLUID AI ORB & MORPHING PANEL 🔥 */
@@ -2825,10 +2737,7 @@
             width: 520px;
             max-width: 100%;
             overflow: auto;
-            display: none !important;
-            visibility: hidden;
-            pointer-events: none;
-            transform: translateX(100%);
+            display: none;
             padding: 40px 30px 50px;
             border-radius: 28px 0 0 28px;
             border-left: 1px solid var(--glass-border);
@@ -2838,15 +2747,11 @@
             -webkit-backdrop-filter: blur(40px) saturate(180%);
         }
         #securityPanel.open {
-            display: block !important;
-            visibility: visible;
-            pointer-events: auto;
+            display: block;
             animation: secPanelIn .4s cubic-bezier(.16, 1, .3, 1) forwards;
         }
         #securityPanel.closing {
-            display: block !important;
-            visibility: visible;
-            pointer-events: none;
+            display: block;
             animation: secPanelOut .4s cubic-bezier(.4, 0, .2, 1) forwards;
         }
         @keyframes secPanelOut {
@@ -2856,7 +2761,7 @@
             }
             to {
                 opacity: 0;
-                transform: translateX(100%)
+                transform: translateX(48px)
             }
         }
         @keyframes secPanelIn {
@@ -3684,112 +3589,7 @@ body.cat-world-active .cat-mode-bar{display:block}
 .cp-player:fullscreen { display: flex; flex-direction: column; justify-content: center; width: 100vw; height: 100vh; border-radius: 0; }
 .cp-player:fullscreen video { max-height: none; height: 100%; flex: 1 1 auto; }
 
-/* ============================================================
-           STREAK ELITE — card, badges, flow-chart popup, settings modal
-           ============================================================ */
-        .streak-card {
-            border-color: rgba(255, 160, 40, 0.28) !important;
-            background: linear-gradient(150deg, rgba(255, 160, 40, 0.07), transparent 60%);
-        }
-        .streak-card.streak-master {
-            border-color: rgba(91, 157, 255, 0.35) !important;
-            background: linear-gradient(150deg, rgba(91, 157, 255, 0.08), transparent 60%);
-        }
-        .streak-day-badge {
-            position: absolute;
-            top: 14px;
-            right: 14px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 5px 11px 5px 9px;
-            border-radius: 999px;
-            background: linear-gradient(135deg, #ffd23c, #ff7a1a);
-            box-shadow: 0 6px 16px rgba(255, 130, 20, 0.35);
-            font-size: 13px;
-            font-weight: 900;
-            color: #1a0f00;
-            letter-spacing: .01em;
-            z-index: 3;
-        }
-        .streak-day-badge svg { width: 12px; height: 12px; flex: none; }
-        .streak-master-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 10.5px;
-            font-weight: 900;
-            letter-spacing: .04em;
-            color: #5b9dff;
-            background: rgba(91, 157, 255, 0.14);
-            border: 1px solid rgba(91, 157, 255, 0.3);
-            padding: 3px 9px;
-            border-radius: 7px;
-            text-transform: uppercase;
-            margin: 0 0 8px;
-        }
-        .streak-bonus-line {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--text-dim);
-            margin: 2px 0 12px;
-        }
-        .streak-bonus-line b { color: var(--accent); font-weight: 900; }
-        .streak-card-actions { display: flex; gap: 8px; margin-top: auto; }
-        .streak-card-actions .btn { flex: 1; padding: 11px 10px; font-size: 11.5px; }
-
-        /* --- Per-user flow-chart / biodata modal --- */
-        .modal.streak-modal { max-width: 560px; text-align: left; padding: 40px; }
-        .streak-flow-table { width: 100%; border-collapse: separate; border-spacing: 0 6px; margin-top: 18px; }
-        .streak-flow-table th {
-            font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
-            color: var(--text-dim); text-align: left; padding: 0 12px 6px;
-        }
-        .streak-flow-table td {
-            font-size: 13.5px; font-weight: 700; color: var(--text-main);
-            background: rgba(150,150,150,.06); padding: 10px 12px;
-        }
-        .streak-flow-table tr td:first-child { border-radius: 10px 0 0 10px; }
-        .streak-flow-table tr td:last-child { border-radius: 0 10px 10px 0; }
-        .streak-flow-table tr.streak-row-done td { background: rgba(0,255,136,.08); color: var(--accent); }
-        .streak-flow-table tr.streak-row-current td {
-            background: linear-gradient(135deg, rgba(255,160,40,.22), rgba(255,120,20,.1));
-            color: #ffd23c; box-shadow: 0 0 0 1.5px rgba(255,160,40,.5) inset;
-        }
-        .streak-flow-table tr.streak-row-pending td { opacity: .55; }
-        .streak-flow-phase-label {
-            font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
-            color: var(--text-dim); margin: 16px 0 4px; padding-left: 2px;
-        }
-        .streak-biodata-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-top: 16px; }
-        .streak-biodata-item { font-size: 12.5px; }
-        .streak-biodata-item .label { color: var(--text-dim); font-weight: 700; display: block; margin-bottom: 2px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; }
-        .streak-biodata-item .value { color: var(--text-main); font-weight: 800; word-break: break-all; }
-
-        /* --- Mini horizontal cycle strip (used inside the biodata view) --- */
-        .streak-mini-strip { display: flex; gap: 4px; margin-top: 14px; overflow-x: auto; padding-bottom: 4px; }
-        .streak-mini-pip {
-            flex: none; min-width: 46px; padding: 6px 4px; border-radius: 10px; text-align: center;
-            background: rgba(150,150,150,.08); font-size: 10px; font-weight: 800; color: var(--text-dim);
-        }
-        .streak-mini-pip .n { font-size: 13px; font-weight: 900; color: var(--text-main); display: block; }
-        .streak-mini-pip.current { background: linear-gradient(135deg, rgba(255,160,40,.3), rgba(255,120,20,.15)); box-shadow: 0 0 0 1.5px rgba(255,160,40,.6) inset; }
-        .streak-mini-pip.current .n { color: #ffd23c; }
-        .streak-mini-pip.done .n { color: var(--accent); }
-
-        /* --- Streak Settings modal: per-day bonus-minute editor --- */
-        .streak-day-editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; margin: 16px 0; }
-        .streak-day-editor .day-slot {
-            background: rgba(150,150,150,.07); border: 1px solid var(--glass-border); border-radius: 14px;
-            padding: 10px 8px; text-align: center;
-        }
-        .streak-day-editor .day-slot .day-lab { font-size: 10px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
-        .streak-day-editor .day-slot input {
-            width: 100%; text-align: center; padding: 8px 4px; font-size: 13px; font-weight: 800;
-            background: rgba(0,0,0,.25); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main);
-        }
-        
-    </style>
+</style>
 </head>
 <body>
     <script>
@@ -4023,11 +3823,6 @@ body.cat-world-active .cat-mode-bar{display:block}
             <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>
             Banned Users
         </div>
-        <div class="nav-link" onclick="switchTab('streak-elite', this)" id="nav-streak-elite">
-            <svg viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-            Streak Elite
-        </div>
-
         <div class="nav-link" onclick="switchTab('share-logs', this)" id="nav-share-logs">
             <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
             Share/User Logs
@@ -4327,53 +4122,6 @@ body.cat-world-active .cat-mode-bar{display:block}
             </div>
         </div>
 
-        <div id="streak-elite" class="tab-section">
-            <div class="section-box" style="padding: 0; background: transparent; border: none; box-shadow: none;">
-                <h2 style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:22px;">
-                    <span style="display:flex;align-items:center;gap:10px;font-size:28px;">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="url(#streakFlameGrad)" stroke="none"><defs><linearGradient id="streakFlameGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffd23c"/><stop offset="100%" stop-color="#ff7a1a"/></linearGradient></defs><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-                        Streak Elite
-                    </span>
-                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                        <span id="streakSystemStateBadge" style="font-size:11px;font-weight:900;letter-spacing:.04em;padding:6px 12px;border-radius:10px;background:rgba(150,150,150,.12);color:var(--text-dim);">LOADING…</span>
-                        <button class="btn" style="background:rgba(0,255,136,.12);color:var(--accent);padding:10px 16px;font-size:12px;border:1px solid rgba(0,255,136,.3);" onclick="openStreakSettingsModal()">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                            STREAK SETTINGS
-                        </button>
-                    </div>
-                </h2>
-
-                <!-- Legend strip: quick-glance stats for the whole streak
-                     population, in the same visual language as the
-                     top-of-dashboard stat cards elsewhere in this panel. -->
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:26px;">
-                    <div class="glass-panel float-anim" style="padding:18px 20px;border-radius:20px;border-color:rgba(255,180,60,.25);">
-                        <div style="font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">Active Streakers</div>
-                        <div id="streakStatActive" style="font-size:30px;font-weight:900;background:linear-gradient(135deg,#ffd23c,#ff7a1a);-webkit-background-clip:text;background-clip:text;color:transparent;">0</div>
-                    </div>
-                    <div class="glass-panel float-anim" style="padding:18px 20px;border-radius:20px;border-color:rgba(0,255,136,.25);">
-                        <div style="font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">Longest Streak</div>
-                        <div id="streakStatLongest" style="font-size:30px;font-weight:900;color:var(--accent);">0</div>
-                    </div>
-                    <div class="glass-panel float-anim" style="padding:18px 20px;border-radius:20px;border-color:rgba(91,157,255,.25);">
-                        <div style="font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">Master Streakers</div>
-                        <div id="streakStatMaster" style="font-size:30px;font-weight:900;color:#5b9dff;">0</div>
-                    </div>
-                    <div class="glass-panel float-anim" style="padding:18px 20px;border-radius:20px;border-color:rgba(255,80,80,.2);">
-                        <div style="font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--text-dim);text-transform:uppercase;margin-bottom:8px;">Reset Hour</div>
-                        <div id="streakStatResetHour" style="font-size:30px;font-weight:900;color:var(--text-main);">4<span style="font-size:15px;font-weight:700;color:var(--text-dim);">:00</span></div>
-                    </div>
-                </div>
-
-                <div id="streakOffNotice" style="display:none;margin-bottom:22px;padding:16px 20px;border-radius:16px;background:rgba(150,150,150,.08);border:1px dashed var(--glass-border);color:var(--text-dim);font-size:13px;font-weight:600;text-align:center;">
-                    Streak system is currently <b style="color:var(--error);">OFF</b> — no streaks are being tracked and no reminders are sent. Turn it on from STREAK SETTINGS above.
-                </div>
-
-                <div class="user-grid" id="streakEliteList"></div>
-            </div>
-        </div>
-
-        
         <div id="share-logs" class="tab-section">
             <div class="section-box glass-panel float-anim">
                 <h2 style="color: var(--accent); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
@@ -4735,7 +4483,7 @@ body.cat-world-active .cat-mode-bar{display:block}
         </div>
         <div class="job-lines" id="cloudBgJobLines"></div>
     </div>
-    <button type="button" id="cloudLivePill" aria-live="polite" onclick="toggleCloudPanel(true)" style="display:none" title="Upload in progress — tap to open">
+    <button type="button" id="cloudLivePill" aria-live="polite" onclick="toggleCloudPanel(true)" title="Upload in progress — tap to open">
         <span class="cloud-live-spin"></span>
         <span id="cloudLivePillText">Uploading…</span>
         <span id="cloudLivePillPct">0%</span>
@@ -5255,85 +5003,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         </div>
     </div>
 
-    <!-- Streak Elite: tapping a streaker's card opens this — a flow
-         chart of their progress through the cycle (how many days
-         completed vs. how many remain before the next bonus tier), plus
-         a "View Biodata" button that swaps this same modal into a full
-         detail view (device/key/master info) without needing a second
-         popup. Only one of the two inner views is visible at a time,
-         toggled by streakModalShowBiodata() below. -->
-    <div class="modal-overlay" id="streakUserModal">
-        <div class="modal streak-modal">
-            <div id="streakModalFlowView">
-                <h2 style="color:#ffd23c;display:flex;align-items:center;gap:10px;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="url(#streakFlameGrad)" stroke="none"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-                    <span id="streakModalUserName">—</span>
-                </h2>
-                <p style="margin:4px 0 0;color:var(--text-dim);font-size:13px;">Cycle progress — completed days, current tier, and what's still ahead before the streak resets.</p>
-                <div class="streak-flow-phase-label">Progress</div>
-                <table class="streak-flow-table" id="streakModalFlowTable"><tbody></tbody></table>
-                <div class="modal-btns" style="margin-top:24px;">
-                    <button class="btn-confirm" style="background:#5b9dff;" onclick="streakModalShowBiodata()">VIEW BIODATA</button>
-                    <button class="btn-cancel" onclick="closeModals()">CLOSE</button>
-                </div>
-            </div>
-            <div id="streakModalBiodataView" style="display:none;">
-                <h2 style="color:#5b9dff;">Streaker Biodata</h2>
-                <p style="margin:4px 0 0;color:var(--text-dim);font-size:13px;">Full record for this device's streak history.</p>
-                <div class="streak-biodata-grid" id="streakModalBiodataGrid"></div>
-                <div class="streak-flow-phase-label">Cycle at a glance</div>
-                <div class="streak-mini-strip" id="streakModalMiniStrip"></div>
-                <div class="modal-btns" style="margin-top:24px;">
-                    <button class="btn-confirm" style="background:#ffd23c;color:#1a0f00;" onclick="streakModalShowFlow()">BACK TO CHART</button>
-                    <button class="btn-cancel" onclick="closeModals()">CLOSE</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Streak Elite: global settings — on/off, reset hour, master-key
-         inclusion, reminder lead time, and the per-day bonus-minutes
-         table (matching the chart: days 1-7, minutes on top of the
-         4-hour base, reused for both the climb and the cooldown side
-         of the cycle — see the schema note in streakGetBonusMinutes()
-         below for why one table covers both directions). -->
-    <div class="modal-overlay" id="streakSettingsModal">
-        <div class="modal streak-modal">
-            <h2 style="color:var(--accent);">Streak Settings</h2>
-            <p style="margin:4px 0 0;color:var(--text-dim);font-size:13px;">Changes apply the next time a device checks in — no redeploy needed.</p>
-
-            <div class="ios-row" style="margin-top:22px;">
-                <label>Streak System <span style="display:block;font-size:11px;font-weight:600;color:var(--text-dim);margin-top:2px;">Master switch — off means no tracking and no reminders at all.</span></label>
-                <label class="ios-toggle"><input type="checkbox" id="streakSysEnabledToggle"><span></span></label>
-            </div>
-
-            <div class="ios-row">
-                <label>Include Master-Key Logins <span style="display:block;font-size:11px;font-weight:600;color:var(--text-dim);margin-top:2px;">Off = a master-key login never builds or continues a streak on that device.</span></label>
-                <label class="ios-toggle"><input type="checkbox" id="streakSysMasterToggle"><span></span></label>
-            </div>
-
-            <div style="display:flex;gap:14px;margin-top:18px;flex-wrap:wrap;">
-                <div style="flex:1;min-width:140px;">
-                    <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Reset Time <span style="text-transform:none;font-weight:600;color:var(--text-dim);opacity:.8;">(exact hour &amp; minute)</span></div>
-                    <input type="time" id="streakSysResetTime" step="60" style="width:100%;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.25);border:1px solid var(--glass-border);color:var(--text-main);font-weight:800;color-scheme:dark;">
-                </div>
-                <div style="flex:1;min-width:140px;">
-                    <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Reminder — Hours Before Reset</div>
-                    <input type="number" id="streakSysReminderHours" min="0" max="12" step="1" style="width:100%;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.25);border:1px solid var(--glass-border);color:var(--text-main);font-weight:800;">
-                </div>
-            </div>
-
-            <div class="streak-flow-phase-label" style="margin-top:22px;">Bonus Minutes Per Day (added on top of the 4hr base key)</div>
-            <div class="streak-day-editor" id="streakBonusDayEditor"></div>
-
-            <div class="modal-btns" style="margin-top:10px;">
-                <button class="btn-confirm" onclick="saveStreakSettings()">SAVE SETTINGS</button>
-                <button class="btn-cancel" onclick="closeModals()">CANCEL</button>
-            </div>
-        </div>
-    </div>
-
-    
     <!-- Suggested once, right when Factory Reset is tapped — a chance to
          grab a full backup before anything is wiped. -->
     <div class="modal-overlay" id="backupSuggestModal">
@@ -6167,40 +5836,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         }
 
         let adminUnlocked = sessionStorage.getItem('dgxen_admin_unlocked') === '1';
-        let __webauthnBusy = false;
-        let __webauthnAbort = null;
-        function isEnrollUiOpen() {
-            try {
-                const steps = ['enrollStepRequest', 'enrollStepOtp', 'enrollStepRegister'];
-                for (let i = 0; i < steps.length; i++) {
-                    const el = document.getElementById(steps[i]);
-                    if (el && el.style && el.style.display && el.style.display !== 'none') return true;
-                }
-            } catch (e) {}
-            return !!__enrollOtpVerified;
-        }
-        async function withWebAuthnExclusive(fn) {
-            if (__webauthnBusy) {
-                const err = new Error('A request is already pending. Close any fingerprint dialog, wait 2 seconds, then try again.');
-                err.name = 'InvalidStateError';
-                throw err;
-            }
-            __webauthnBusy = true;
-            try {
-                if (__webauthnAbort) {
-                    try { __webauthnAbort.abort(); } catch (e) {}
-                    __webauthnAbort = null;
-                    await new Promise(function(r) { setTimeout(r, 450); });
-                }
-                if (typeof AbortController !== 'undefined') {
-                    __webauthnAbort = new AbortController();
-                }
-                return await fn(__webauthnAbort ? __webauthnAbort.signal : undefined);
-            } finally {
-                __webauthnBusy = false;
-                __webauthnAbort = null;
-            }
-        }
         // Rehydrate primary flag from session
         window.__adminIsPrimary = sessionStorage.getItem('dgxen_admin_is_primary') === '1';
         window.__adminSessionFpId = sessionStorage.getItem('dgxen_admin_fp_id') || '';
@@ -6598,10 +6233,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 __enrollOtpVerified = true;
                 showEnrollStep('enrollStepRegister');
                 setGateStatus('OTP verified. Register fingerprint now.', true);
-                try {
-                    if (__webauthnAbort) { __webauthnAbort.abort(); __webauthnAbort = null; }
-                    __webauthnBusy = false;
-                } catch (e) {}
             } catch (e) {
                 setGateStatus('Verify failed: ' + (e.message || e), false);
             }
@@ -6616,65 +6247,74 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 setGateStatus('WebAuthn not supported on this browser.', false);
                 return;
             }
-            if (__webauthnBusy) {
-                setGateStatus('Fingerprint dialog already open — finish or cancel it, wait 2s, then tap REGISTER again.', false);
-                return;
-            }
-            const regBtn = document.getElementById('gateRegisterFpBtn');
-            if (regBtn) { regBtn.disabled = true; regBtn.textContent = 'WAITING…'; }
+            // Keep Chrome in foreground. Do NOT switch apps during the prompt.
+            // If a sheet appears: choose "This device" (not USB / another device).
             setGateStatus('Tap “This device” if asked, then use fingerprint / PIN…', true);
+
+            const rpId = (location.hostname || '').replace(/^www\./, '') || 'localhost';
+            const userId = crypto.getRandomValues(new Uint8Array(16));
+            const challenge = crypto.getRandomValues(new Uint8Array(32));
+            const base = {
+                challenge: challenge,
+                rp: { name: 'DGXEN Admin', id: rpId },
+                user: {
+                    id: userId,
+                    name: 'admin@' + rpId,
+                    displayName: 'DGXEN Admin'
+                },
+                pubKeyCredParams: [
+                    { type: 'public-key', alg: -7 },
+                    { type: 'public-key', alg: -257 }
+                ],
+                timeout: 120000
+            };
+
+            // Platform only. preferred = phone FP OR phone PIN/pattern (NOT Google/site password).
+            const attempts = [
+                {
+                    authenticatorSelection: {
+                        authenticatorAttachment: 'platform',
+                        userVerification: 'preferred',
+                        residentKey: 'discouraged',
+                        requireResidentKey: false
+                    },
+                    attestation: 'none',
+                    hints: ['client-device']
+                },
+                {
+                    authenticatorSelection: {
+                        authenticatorAttachment: 'platform',
+                        userVerification: 'discouraged',
+                        residentKey: 'discouraged'
+                    },
+                    attestation: 'none'
+                }
+            ];
 
             let cred = null;
             let lastErr = null;
-            try {
-                cred = await withWebAuthnExclusive(async function(signal) {
-                    const rpId = (location.hostname || '').replace(/^www\./, '') || 'localhost';
-                    const userId = crypto.getRandomValues(new Uint8Array(16));
-                    const challenge = crypto.getRandomValues(new Uint8Array(32));
-                    // Single create call only — sequential retries caused "already pending"
-                    const publicKey = {
-                        challenge: challenge,
-                        rp: { name: 'DGXEN Admin', id: rpId },
-                        user: {
-                            id: userId,
-                            name: 'admin@' + rpId,
-                            displayName: 'DGXEN Admin'
-                        },
-                        pubKeyCredParams: [
-                            { type: 'public-key', alg: -7 },
-                            { type: 'public-key', alg: -257 }
-                        ],
-                        timeout: 120000,
-                        authenticatorSelection: {
-                            authenticatorAttachment: 'platform',
-                            userVerification: 'preferred',
-                            residentKey: 'discouraged',
-                            requireResidentKey: false
-                        },
-                        attestation: 'none'
-                    };
-                    const createOpts = { publicKey: publicKey };
-                    if (signal) createOpts.signal = signal;
-                    return await navigator.credentials.create(createOpts);
-                });
-            } catch (e) {
-                lastErr = e;
-            } finally {
-                if (regBtn) { regBtn.disabled = false; regBtn.textContent = 'REGISTER FINGERPRINT'; }
+            for (let i = 0; i < attempts.length; i++) {
+                try {
+                    const opts = Object.assign({}, base, attempts[i]);
+                    cred = await navigator.credentials.create({ publicKey: opts });
+                    if (cred) break;
+                } catch (e) {
+                    lastErr = e;
+                    const name = (e && e.name) || '';
+                    if (name === 'NotAllowedError' || name === 'AbortError') break;
+                }
             }
 
             if (!cred) {
                 const name = (lastErr && lastErr.name) || '';
                 const msg = String((lastErr && lastErr.message) || lastErr || 'cancelled');
-                if (/already pending/i.test(msg)) {
-                    setGateStatus('Previous fingerprint dialog still open. Wait 2–3 seconds (or close it), then tap REGISTER once.', false);
-                } else if (name === 'NotAllowedError' || name === 'AbortError' || /not allowed|timed out|Abort|verify/i.test(msg)) {
+                if (name === 'NotAllowedError' || name === 'AbortError' || /not allowed|timed out|Abort|verify/i.test(msg)) {
                     setGateStatus(
-                        'Screen-lock failed. Use the SAME fingerprint/PIN that unlocks THIS phone. Stay in Chrome, wait 2s, tap REGISTER once. OTP still valid.',
+                        'Screen-lock failed. Use the SAME fingerprint/PIN that unlocks THIS phone (not Google password). Unlock phone once, stay in Chrome, tap REGISTER again. OTP still valid.',
                         false
                     );
                 } else if (name === 'InvalidStateError') {
-                    setGateStatus('Passkey conflict or pending request. Wait 3s and tap REGISTER once. Or clear site data for this host and OTP again.', false);
+                    setGateStatus('Passkey may already exist. Try FINGERPRINT, or Chrome site settings → Clear data for this site, then OTP again.', false);
                 } else if (name === 'NotSupportedError') {
                     setGateStatus('No platform authenticator. Use Chrome + phone with screen lock + fingerprint.', false);
                 } else {
@@ -6683,7 +6323,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 return;
             }
 
-                        try {
+            try {
                 const id = bufferToBase64(cred.rawId);
                 const safe = String(id).split('').map(function(ch) {
                     return ('.$[]#/'.indexOf(ch) >= 0) ? '_' : ch;
@@ -7014,17 +6654,13 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     try { allow.push({ type: 'public-key', id: base64ToBuffer(ids[i]) }); } catch (e) {}
                 }
                 if (!allow.length) { setGateStatus('Invalid fingerprint data in Firebase.'); return; }
-                const assertion = await withWebAuthnExclusive(async function(signal) {
-                    const getOpts = {
-                        publicKey: {
-                            challenge: crypto.getRandomValues(new Uint8Array(32)),
-                            timeout: 60000,
-                            userVerification: 'required',
-                            allowCredentials: allow
-                        }
-                    };
-                    if (signal) getOpts.signal = signal;
-                    return await navigator.credentials.get(getOpts);
+                const assertion = await navigator.credentials.get({
+                    publicKey: {
+                        challenge: crypto.getRandomValues(new Uint8Array(32)),
+                        timeout: 60000,
+                        userVerification: 'required',
+                        allowCredentials: allow
+                    }
                 });
                 if (!assertion) { setGateStatus('Fingerprint failed.'); return; }
                 let usedId = '';
@@ -7038,9 +6674,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 unlockAdmin('fingerprint', usedId);
             } catch (e) {
                 const msg = String((e && e.message) || e || '');
-                if (/already pending/i.test(msg)) {
-                    setGateStatus('Fingerprint dialog already open. Wait 2s then try again.', false);
-                } else if (/not allowed|no authenticator|no credentials|credential|abort|NotAllowed/i.test(msg) || (e && e.name === 'NotAllowedError')) {
+                // Typical when this browser/device has no passkey for the site
+                if (/not allowed|no authenticator|no credentials|credential|abort|NotAllowed/i.test(msg) || (e && e.name === 'NotAllowedError')) {
                     setGateStatus('No passkey on this device for this site.');
                     await offerEnrollmentIfAllowed();
                 } else {
@@ -7379,19 +7014,17 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         function autoTriggerFingerprintIfRegistered() {
             getFirebaseFpIds().then(ids => {
                 if (adminUnlocked) return;
-                // Never start credentials.get while new-admin enrollment is in progress
-                // (causes "A request is already pending" on REGISTER FINGERPRINT)
-                if (typeof isEnrollUiOpen === 'function' && isEnrollUiOpen()) {
-                    return;
-                }
                 if (ids && ids.length) {
                     setGateStatus('🔐 Fingerprint found — opening scanner…', true);
+                    // The gate UI is already visible by the time we get here
+                    // (this only runs after DOMContentLoaded + the Firebase
+                    // round-trip), so WebAuthn's "page must be visible"
+                    // requirement is already satisfied — this just needs to
+                    // be enough for the status text above to actually paint
+                    // before the OS fingerprint dialog takes over the screen.
                     setTimeout(function() {
-                        if (adminUnlocked) return;
-                        if (typeof isEnrollUiOpen === 'function' && isEnrollUiOpen()) return;
-                        if (__webauthnBusy) return;
-                        tryFingerprintLogin();
-                    }, 200);
+                        if (!adminUnlocked) tryFingerprintLogin();
+                    }, 150);
                 } else {
                     offerEnrollmentIfAllowed();
                 }
@@ -8344,7 +7977,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
 
         window.closeModals = () => {
             const modals = ['banModal', 'resetModal', 'keyBanModal', 'guideModal', 'confirmActionModal',
-                'unbindInfoModal', 'backupSuggestModal', 'newFolderModal', 'streakUserModal', 'streakSettingsModal'
+                'unbindInfoModal', 'backupSuggestModal', 'newFolderModal'
             ];
             modals.forEach(id => {
                 const el = document.getElementById(id);
@@ -9248,8 +8881,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         try { bindBanButtons(document); } catch (e) {}
         try { setupPinHoldToReveal(document.getElementById('activeUserList')); } catch (e) {}
         try { setupDeviceInfoToggle(document.getElementById('activeUserList')); } catch (e) {}
-        // Streak Elite reuses this same already-deduped users array
-        try { renderStreakEliteUI(users); } catch (e) { console.warn('Streak Elite render failed', e); }
         }
 
         window.togglePinUser = async function(userId, currentlyPinned) {
@@ -15038,14 +14669,8 @@ function explainFetchError(e) {
           if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) ae.blur();
         } catch (e) {}
         p.classList.add('closing');
-        p.classList.remove('open');
         if (bd) bd.classList.remove('open');
-        setTimeout(function() {
-          p.classList.remove('open', 'closing');
-          p.style.removeProperty('display');
-          p.style.removeProperty('transform');
-          p.style.removeProperty('opacity');
-        }, 400);
+        setTimeout(() => { p.classList.remove('open', 'closing'); }, 380);
         // upload continues in background; chip already driven by setCloudBgUpload
         if (window.__cloudUploading && typeof setCloudBgUpload === 'function') {
           setCloudBgUpload(true, document.getElementById('cloudBgUploadText') && document.getElementById('cloudBgUploadText').textContent || 'Uploading in background…', null);
@@ -16740,243 +16365,6 @@ function explainFetchError(e) {
 
 })();
     
-
-
-        // ========== STREAK ELITE (from adminstreak) ==========
-        // This section is READ-ONLY against users/<id>/streak — actually
-        // writing those fields happens in index.html/login.html as part
-        // of the key-generation/login flow, not here.
-        // ============================================================
-
-        let streakSettingsCache = { enabled: false, resetHour: 4, resetMinute: 0, reminderHoursBefore: 2, includeMasterKeyLogins: true };
-        let streakBonusMinutesCache = { 1: 0, 2: 20, 3: 40, 4: 60, 5: 80, 6: 120, 7: 180 };
-
-        function streakGetBonusMinutes(day) {
-            const d = Math.max(1, Math.min(7, Number(day) || 1));
-            const v = streakBonusMinutesCache[d];
-            return typeof v === 'number' ? v : 0;
-        }
-
-        onValue(ref(db, 'settings/streakSystem'), (snap) => {
-            const v = snap.exists() ? snap.val() : {};
-            streakSettingsCache = {
-                enabled: !!v.enabled,
-                resetHour: Number.isFinite(v.resetHour) ? v.resetHour : 4,
-                resetMinute: Number.isFinite(v.resetMinute) ? Math.max(0, Math.min(59, Number(v.resetMinute))) : 0,
-                reminderHoursBefore: Number.isFinite(v.reminderHoursBefore) ? v.reminderHoursBefore : 2,
-                includeMasterKeyLogins: v.includeMasterKeyLogins !== false
-            };
-            const badge = document.getElementById('streakSystemStateBadge');
-            if (badge) {
-                if (streakSettingsCache.enabled) {
-                    badge.textContent = 'SYSTEM ON';
-                    badge.style.background = 'rgba(0,255,136,.14)';
-                    badge.style.color = 'var(--accent)';
-                } else {
-                    badge.textContent = 'SYSTEM OFF';
-                    badge.style.background = 'rgba(255,80,80,.14)';
-                    badge.style.color = 'var(--error)';
-                }
-            }
-            const offNotice = document.getElementById('streakOffNotice');
-            if (offNotice) offNotice.style.display = streakSettingsCache.enabled ? 'none' : 'block';
-            const resetStat = document.getElementById('streakStatResetHour');
-            if (resetStat) resetStat.innerHTML = String(streakSettingsCache.resetHour) + '<span style="font-size:15px;font-weight:700;color:var(--text-dim);">:' + String(streakSettingsCache.resetMinute != null ? streakSettingsCache.resetMinute : 0).padStart(2, '0') + '</span>';
-            // Re-render the list so master-tag visibility (which depends
-            // on includeMasterKeyLogins) and the on/off empty-state stay
-            // in sync with whatever settings just changed.
-            if (window._lastStreakUsers) renderStreakEliteUI(window._lastStreakUsers);
-        });
-
-        onValue(ref(db, 'settings/streakBonusMinutes'), (snap) => {
-            const v = snap.exists() ? snap.val() : {};
-            const next = {};
-            for (let d = 1; d <= 7; d++) {
-                const raw = v[String(d)];
-                next[d] = Number.isFinite(raw) ? raw : streakGetBonusMinutes(d);
-            }
-            streakBonusMinutesCache = next;
-            if (window._lastStreakUsers) renderStreakEliteUI(window._lastStreakUsers);
-        });
-
-        function streakFormatKeyTime(day) {
-            const mins = streakGetBonusMinutes(day);
-            return mins > 0 ? `4h + ${mins}m` : '4h';
-        }
-
-        function renderStreakEliteUI(allUsers) {
-            window._lastStreakUsers = allUsers;
-            const listDiv = document.getElementById('streakEliteList');
-            if (!listDiv) return;
-
-            if (!streakSettingsCache.enabled) {
-                listDiv.innerHTML = '';
-                document.getElementById('streakStatActive').innerText = '0';
-                document.getElementById('streakStatLongest').innerText = '0';
-                document.getElementById('streakStatMaster').innerText = '0';
-                return;
-            }
-
-            // Streakers only — 2+ continuous days, matching the rest of
-            // this system's definition ("streakers = 2 or more days
-            // continuously"). A device sitting at cycleDay 1 with no
-            // lifetime history yet simply hasn't earned a place here.
-            const streakers = (allUsers || []).filter(u => u && u.streak && Number(u.streak.lifetimeDays) >= 2);
-
-            document.getElementById('streakStatActive').innerText = streakers.length;
-            document.getElementById('streakStatLongest').innerText =
-                streakers.reduce((max, u) => Math.max(max, Number(u.streak.lifetimeDays) || 0), 0);
-            document.getElementById('streakStatMaster').innerText =
-                streakers.filter(u => u.streak.isMasterUser).length;
-
-            if (streakers.length === 0) {
-                listDiv.innerHTML = getSkeletonHTML();
-                return;
-            }
-
-            streakers.sort((a, b) => (Number(b.streak.lifetimeDays) || 0) - (Number(a.streak.lifetimeDays) || 0));
-
-            listDiv.innerHTML = streakers.map(user => {
-                const s = user.streak;
-                const isMaster = !!s.isMasterUser && streakSettingsCache.includeMasterKeyLogins;
-                const masterTag = isMaster
-                    ? `<div class="streak-master-tag"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>MASTER USER${s.masterKeyUsed ? ' · ' + String(s.masterKeyUsed).slice(0, 14) + (String(s.masterKeyUsed).length > 14 ? '…' : '') : ''}</div>`
-                    : '';
-                const safeName = (user.name || 'Unknown').replace(/"/g, '&quot;');
-                return `
-                    <div class="user-card glass-panel float-anim streak-card${isMaster ? ' streak-master' : ''}" onclick="openStreakUserModal('${user.id}')" style="cursor:pointer;">
-                        <div class="streak-day-badge"><svg viewBox="0 0 24 24" fill="#1a0f00" stroke="none"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>${s.lifetimeDays}</div>
-                        ${masterTag}
-                        <div class="user-name" style="margin-top:${isMaster ? '0' : '4px'};padding-right:56px;">${safeName}</div>
-                        <div class="user-id" style="font-size:10.5px;">ID: ${user.id}</div>
-                        <div class="streak-bonus-line">Cycle Day <b>${s.cycleDay}</b>/7 · Today's key: <b>${streakFormatKeyTime(s.cycleDay)}</b></div>
-                        <div class="streak-card-actions">
-                            <button class="btn" style="background:rgba(255,160,40,.14);color:#ffd23c;border:1px solid rgba(255,160,40,.3);" onclick="event.stopPropagation();openStreakUserModal('${user.id}')">FLOW CHART</button>
-                            <button class="btn" style="background:rgba(91,157,255,.14);color:#5b9dff;border:1px solid rgba(91,157,255,.3);" onclick="event.stopPropagation();openStreakUserModal('${user.id}', true)">BIODATA</button>
-                        </div>
-                    </div>`;
-            }).join('');
-        }
-
-        // --- Per-user modal: flow chart + biodata ---
-        let streakModalCurrentUser = null;
-
-        window.openStreakUserModal = function(userId, startOnBiodata) {
-            const user = (window._lastStreakUsers || []).find(u => u.id === userId);
-            if (!user || !user.streak) return;
-            streakModalCurrentUser = user;
-
-            document.getElementById('streakModalUserName').textContent = user.name || 'Unknown';
-            buildStreakFlowTable(user.streak);
-            buildStreakBiodata(user);
-
-            if (startOnBiodata) { streakModalShowBiodata(); } else { streakModalShowFlow(); }
-            document.getElementById('streakUserModal').style.display = 'flex';
-        };
-
-        window.streakModalShowFlow = function() {
-            document.getElementById('streakModalFlowView').style.display = '';
-            document.getElementById('streakModalBiodataView').style.display = 'none';
-        };
-        window.streakModalShowBiodata = function() {
-            document.getElementById('streakModalFlowView').style.display = 'none';
-            document.getElementById('streakModalBiodataView').style.display = '';
-        };
-
-        function buildStreakFlowTable(s) {
-            const tbody = document.querySelector('#streakModalFlowTable tbody');
-            if (!tbody) return;
-            const cycleDay = Number(s.cycleDay) || 1;
-            const direction = s.cycleDirection === 'down' ? 'down' : 'up';
-            // Row 1..7 always displayed climb-order for readability; the
-            // "current" row highlight (and the direction arrow next to
-            // the header) is what actually conveys where the user is and
-            // which way they're headed, rather than physically
-            // reordering rows on every render.
-            let rows = '';
-            for (let day = 1; day <= 7; day++) {
-                let rowClass = 'streak-row-pending';
-                if (day < cycleDay || (day === cycleDay && direction === 'down' && day < 7)) rowClass = 'streak-row-done';
-                if (day === cycleDay) rowClass = 'streak-row-current';
-                rows += `<tr class="${rowClass}"><td>Day ${day}</td><td>4h ${streakGetBonusMinutes(day) > 0 ? '+ ' + streakGetBonusMinutes(day) + 'm' : ''}</td><td>${day === cycleDay ? (direction === 'down' ? '↓ Cooldown' : '↑ Climbing') : (day < cycleDay ? 'Completed' : 'Pending')}</td></tr>`;
-            }
-            tbody.innerHTML = `<tr><th>Day</th><th>Key Time</th><th>Status</th></tr>` + rows;
-        }
-
-        function buildStreakBiodata(user) {
-            const s = user.streak;
-            const grid = document.getElementById('streakModalBiodataGrid');
-            const strip = document.getElementById('streakModalMiniStrip');
-            if (!grid || !strip) return;
-
-            const nativeId = (user.lastDeviceId || user.deviceId || user.fingerprint || user.androidId || user.lastLoginDevice || '—');
-            const item = (label, value) => `<div class="streak-biodata-item"><span class="label">${label}</span><span class="value">${value}</span></div>`;
-
-            grid.innerHTML =
-                item('Lifetime Streak', s.lifetimeDays + ' days') +
-                item('Cycle Position', 'Day ' + s.cycleDay + '/7 (' + (s.cycleDirection === 'down' ? 'Cooldown' : 'Climbing') + ')') +
-                item('Last Unlock', s.lastUnlockDate || '—') +
-                item('Today\'s Bonus', s.pendingBonusAvailable ? ('Saved · +' + (s.pendingBonusMinutes || 0) + 'm pending') : 'Not saved') +
-                item('Login Type', s.isMasterUser ? 'Master Key' : 'Normal Key') +
-                item('Master Key Used', s.isMasterUser && s.masterKeyUsed ? s.masterKeyUsed : '—') +
-                item('Device ID', user.id) +
-                item('Native ID', nativeId);
-
-            let stripHtml = '';
-            for (let day = 1; day <= 7; day++) {
-                const cls = day === s.cycleDay ? 'current' : (day < s.cycleDay ? 'done' : '');
-                stripHtml += `<div class="streak-mini-pip ${cls}"><span class="n">${day}</span>${streakGetBonusMinutes(day) > 0 ? '+' + streakGetBonusMinutes(day) + 'm' : 'base'}</div>`;
-            }
-            strip.innerHTML = stripHtml;
-        }
-
-        // --- Settings modal ---
-        window.openStreakSettingsModal = function() {
-            document.getElementById('streakSysEnabledToggle').checked = streakSettingsCache.enabled;
-            document.getElementById('streakSysMasterToggle').checked = streakSettingsCache.includeMasterKeyLogins;
-            document.getElementById('streakSysResetTime').value =
-                String(streakSettingsCache.resetHour).padStart(2, '0') + ':' + String(streakSettingsCache.resetMinute != null ? streakSettingsCache.resetMinute : 0).padStart(2, '0');
-            document.getElementById('streakSysReminderHours').value = streakSettingsCache.reminderHoursBefore;
-
-            const editor = document.getElementById('streakBonusDayEditor');
-            let html = '';
-            for (let day = 1; day <= 7; day++) {
-                html += `<div class="day-slot"><div class="day-lab">Day ${day}</div><input type="number" min="0" step="5" id="streakBonusInput${day}" value="${streakGetBonusMinutes(day)}"></div>`;
-            }
-            editor.innerHTML = html;
-
-            document.getElementById('streakSettingsModal').style.display = 'flex';
-        };
-
-        window.saveStreakSettings = async function() {
-            const enabled = document.getElementById('streakSysEnabledToggle').checked;
-            const includeMaster = document.getElementById('streakSysMasterToggle').checked;
-            const timeVal = (document.getElementById('streakSysResetTime') && document.getElementById('streakSysResetTime').value) || '04:00';
-            const parts = String(timeVal).split(':');
-            let resetHour = Math.round(Number(parts[0]));
-            let resetMinute = Math.round(Number(parts[1] != null ? parts[1] : 0));
-            let reminderHours = Math.round(Number(document.getElementById('streakSysReminderHours').value));
-            if (!Number.isFinite(resetHour) || resetHour < 0 || resetHour > 23) resetHour = 4;
-            if (!Number.isFinite(resetMinute) || resetMinute < 0 || resetMinute > 59) resetMinute = 0;
-            if (!Number.isFinite(reminderHours) || reminderHours < 0) reminderHours = 2;
-
-            const bonusMinutes = {};
-            for (let day = 1; day <= 7; day++) {
-                const raw = Number(document.getElementById('streakBonusInput' + day).value);
-                bonusMinutes[String(day)] = Number.isFinite(raw) && raw >= 0 ? Math.round(raw) : 0;
-            }
-
-            try {
-                await set(ref(db, 'settings/streakSystem'), {
-                    enabled, resetHour, resetMinute, reminderHoursBefore: reminderHours, includeMasterKeyLogins: includeMaster
-                });
-                await set(ref(db, 'settings/streakBonusMinutes'), bonusMinutes);
-                closeModals();
-                showConfirm('Saved', 'Streak settings updated.', null);
-            } catch (e) {
-                showConfirm('Error', 'Could not save streak settings: ' + (e && e.message || e), null);
-            }
-        };
 
 // ===== ATMOSPHERE STUDIO =====
 (function(){
