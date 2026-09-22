@@ -3532,6 +3532,63 @@ body.cat-world-active .cat-mode-bar{display:block}
         body.dgxen-fs-lock {
             overflow: hidden !important;
         }
+
+/* ===================== CLOUD PRO — styles ===================== */
+
+/* --- (5) 1-finger control: the file NAME used to be touch-action:none, which froze scrolling/pinch
+       for the biggest part of every row. pan-y = vertical scroll works with 1 finger; horizontal
+       swipe stays ours; pinch-zoom is NOT blocked. --- */
+.cloud-file-row .name { touch-action: pan-y !important; }
+#cloudFileList { touch-action: pan-y pinch-zoom; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+#cloudPanel { touch-action: pan-x pan-y pinch-zoom; }
+.cloud-file-row { transition: transform .12s ease, background .15s ease; }
+.cloud-file-row.cp-swiping { background: rgba(92,200,255,.10); }
+
+/* --- (3) selection --- */
+.cloud-file-row.cp-selected { background: rgba(60,140,255,.20) !important; box-shadow: inset 3px 0 0 #3c8cff; border-radius: 10px; }
+.cloud-file-row.cp-selected .name { color: #9cc8ff; }
+#cloudFileList.cp-selecting .cloud-file-row.is-folder { opacity: .55; }
+#cpBulkBar { position: fixed; left: 50%; bottom: 16px; transform: translate(-50%, 140%); z-index: 2147483000; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
+  max-width: 96vw; padding: 8px 10px; border-radius: 16px; background: rgba(14,20,32,.96); border: 1px solid rgba(92,200,255,.35); box-shadow: 0 12px 40px rgba(0,0,0,.55); transition: transform .22s ease; backdrop-filter: blur(10px); }
+#cpBulkBar.show { transform: translate(-50%, 0); }
+#cpBulkBar button { border: 0; border-radius: 10px; padding: 9px 12px; font: 800 12px/1 system-ui, sans-serif; color: #fff; background: rgba(255,255,255,.10); cursor: pointer; }
+#cpBulkBar button.cp-danger { background: rgba(255,80,80,.25); color: #ff8c8c; }
+#cpBulkBar button.cp-primary { background: #00c2ff; color: #001018; }
+#cpBulkBar .cp-count { font: 800 12px/1 system-ui, sans-serif; color: #9cc8ff; padding: 0 6px; }
+
+/* --- (4) storage bar: used grows from the LEFT, trash from the RIGHT, they can never overlap --- */
+.cloud-stat-bar.cp-bar { position: relative; display: block; }
+.cloud-stat-bar.cp-bar > #cloudUsedBar { position: absolute; left: 0; top: 0; }
+.cloud-stat-bar.cp-bar > #cpTrashBar { position: absolute; right: 0; top: 0; display: block; height: 100%; width: 0; border-radius: 99px 0 0 99px;
+  background: repeating-linear-gradient(45deg, #ff9f43 0 6px, #ff7a1a 6px 12px); transition: width .4s ease; }
+.cloud-stat-bar.cp-full { box-shadow: 0 0 0 1px rgba(255,80,80,.7); }
+.cp-trash-lab { color: #ff9f43; font-weight: 800; }
+.cp-trash-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 6px; font-weight: 800; font-size: 13px; color: #ff9f43; }
+.cp-trash-head .cp-dim { color: var(--text-dim); font-weight: 700; font-size: 11px; flex: 1; }
+.cp-danger { background: rgba(255,80,80,.18) !important; color: #ff8c8c !important; }
+.cp-warn { color: #ff6b6b; font-weight: 800; }
+.cp-empty { padding: 14px; color: var(--text-dim); font-weight: 700; }
+
+/* --- (1) multi-preview: several drawers can be open at once, each with its own close button --- */
+.cp-drawer { position: relative; }
+.cp-drawer .cp-x { position: absolute; top: 4px; right: 4px; z-index: 5; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 14px; cursor: pointer; }
+.cp-load { color: var(--text-dim); font-size: 12px; padding: 10px 4px; }
+
+/* --- (6) zoom-proof players: control sizes come from CSS vars that JS recomputes from the zoom level,
+       so the seek bar keeps the same PHYSICAL length whatever the browser/pinch zoom is. --- */
+.cp-player { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
+.cp-player video { display: block; width: 100%; max-height: min(42vh, 380px); object-fit: contain; background: #000; }
+.cp-player audio { display: none; }
+.cp-audio { background: linear-gradient(135deg, #0d1b2a, #1b263b); }
+.cp-ctl { display: flex; align-items: center; gap: 8px; padding: 6px 10px; min-height: var(--cp-ctl-h, 44px); box-sizing: border-box; background: rgba(10,10,14,.88); color: #fff; font-size: var(--cp-font, 12px); }
+.cp-ctl button { flex: 0 0 auto; width: var(--cp-btn, 36px); height: var(--cp-btn, 36px); border-radius: 50%; border: 0; background: rgba(255,255,255,.14); color: #fff; font-size: calc(var(--cp-btn, 36px) * .42); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.cp-ctl .cp-time { flex: 0 0 auto; min-width: 4.2em; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cp-ctl .cp-seek { flex: 0 0 auto; width: var(--cp-seek-w, 260px); max-width: 100%; min-width: 60px; height: calc(var(--cp-btn, 36px) * .5); accent-color: var(--accent, #00ff88); touch-action: none; }
+.cp-player.cp-err .cp-ctl { background: rgba(120,20,20,.85); }
+@media (max-width: 520px) { .cp-ctl .cp-seek { flex: 1 1 auto; width: auto; } }
+.cp-player:fullscreen { display: flex; flex-direction: column; justify-content: center; width: 100vw; height: 100vh; border-radius: 0; }
+.cp-player:fullscreen video { max-height: none; height: 100%; flex: 1 1 auto; }
+
 </style>
 </head>
 <body>
@@ -4426,6 +4483,11 @@ body.cat-world-active .cat-mode-bar{display:block}
         </div>
         <div class="job-lines" id="cloudBgJobLines"></div>
     </div>
+    <button type="button" id="cloudLivePill" aria-live="polite" onclick="toggleCloudPanel(true)" title="Upload in progress — tap to open">
+        <span class="cloud-live-spin"></span>
+        <span id="cloudLivePillText">Uploading…</span>
+        <span id="cloudLivePillPct">0%</span>
+    </button>
     <div id="cloudDelPop" role="dialog">
         <p id="cloudDelPopMsg">Delete this file?</p>
         <div class="row">
@@ -4979,7 +5041,709 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     </div>
 
     <!-- Firebase SDK & Logic -->
-    <script type="module">
+    
+<script id="cloud-pro">
+/* ===================== CLOUD PRO — pure logic (no DOM, unit-tested) ===================== */
+(function (root) {
+  'use strict';
+  var TRASH_DIR = '.trash';
+  var TRASH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+  function joinPath() {
+    var p = [];
+    for (var i = 0; i < arguments.length; i++) {
+      var t = String(arguments[i] || '').replace(/^\/+/, '').replace(/\/+$/, '');
+      if (t) p.push(t);
+    }
+    return p.join('/');
+  }
+  function baseName(rel) { var s = String(rel || '').replace(/\/+$/, ''); return s.slice(s.lastIndexOf('/') + 1); }
+  function parentOf(rel) { var s = String(rel || '').replace(/\/+$/, ''); var i = s.lastIndexOf('/'); return i < 0 ? '' : s.slice(0, i); }
+
+  /* ---- Trash naming -------------------------------------------------------------------
+     Trashed items live at:  .trash/<deletedAtMs>__<encodedOriginalPath>
+     The deletion time and the original location are encoded in the NAME itself, so:
+       • auto-purge works with no database (server is the source of truth),
+       • Restore knows the original folder even after the tree changed,
+       • nothing extra can go out of sync.  encodeURIComponent keeps "/" out of the name.   */
+  function trashName(originalRel, nowMs) {
+    return String(nowMs) + '__' + encodeURIComponent(String(originalRel || '').replace(/^\/+|\/+$/g, ''));
+  }
+  function parseTrashName(name) {
+    var m = /^(\d{10,15})__(.+)$/.exec(String(name || ''));
+    if (!m) return null;
+    var orig;
+    try { orig = decodeURIComponent(m[2]); } catch (e) { return null; }
+    return { deletedAt: Number(m[1]), original: orig };
+  }
+  function trashExpiresAt(deletedAt) { return Number(deletedAt) + TRASH_TTL_MS; }
+  function isExpired(deletedAt, nowMs) { return nowMs >= trashExpiresAt(deletedAt); }
+  function daysLeft(deletedAt, nowMs) {
+    var ms = trashExpiresAt(deletedAt) - nowMs;
+    return ms <= 0 ? 0 : Math.ceil(ms / 86400000);
+  }
+  function isInsideTrash(rel) { var r = String(rel || ''); return r === TRASH_DIR || r.indexOf(TRASH_DIR + '/') === 0; }
+
+  /* ---- Storage bar (used + trash, never exceeding the quota) ---------------------------
+     "used" here means REAL files only.  trash is measured separately.  Because both sit on
+     the same physical quota the bar is made of two segments that can never overlap:
+        used   grows from the LEFT
+        trash  grows from the RIGHT
+     and their combined width is clamped to 100%.                                          */
+  function barSegments(usedBytes, trashBytes, quotaBytes) {
+    var q = Math.max(1, Number(quotaBytes) || 1);
+    var u = Math.max(0, Number(usedBytes) || 0);
+    var t = Math.max(0, Number(trashBytes) || 0);
+    var usedPct = Math.min(100, (u / q) * 100);
+    var trashPct = Math.min(100 - usedPct, (t / q) * 100);   // trash can never push past 100
+    var freeBytes = Math.max(0, q - u - t);
+    return { usedPct: usedPct, trashPct: trashPct, freeBytes: freeBytes, full: (u + t) >= q };
+  }
+  /* Would adding `incoming` bytes overflow the quota when trash counts too? */
+  function canFit(usedBytes, trashBytes, quotaBytes, incoming) {
+    return (Number(usedBytes) || 0) + (Number(trashBytes) || 0) + (Number(incoming) || 0) <= (Number(quotaBytes) || 0);
+  }
+
+  /* ---- Selection model ---------------------------------------------------------------- */
+  function makeSelection() {
+    var map = Object.create(null);      // rel -> {rel,name,isFolder,id}
+    return {
+      has: function (rel) { return rel in map; },
+      add: function (it) { if (it && !it.isFolder) map[it.rel] = it; return this; },   // folders are NEVER selectable
+      remove: function (rel) { delete map[rel]; return this; },
+      toggle: function (it) { if (!it || it.isFolder) return false; if (it.rel in map) { delete map[it.rel]; return false; } map[it.rel] = it; return true; },
+      clear: function () { map = Object.create(null); },
+      list: function () { return Object.keys(map).map(function (k) { return map[k]; }); },
+      size: function () { return Object.keys(map).length; }
+    };
+  }
+
+  /* ---- Swipe gesture classifier (right→left, then hold) ----------------------------------
+     Returns 'swipe' when the pointer moved mostly horizontally to the LEFT by >= minDx,
+     'vscroll' when it is a vertical scroll (must NOT start selection), else 'none'.        */
+  function classifySwipe(dx, dy, minDx) {
+    minDx = minDx || 36;
+    var ax = Math.abs(dx), ay = Math.abs(dy);
+    // Any meaningful vertical travel that is not clearly dominated by horizontal travel is a
+    // scroll/diagonal drag. Wrongly selecting a file while scrolling is worse than missing a swipe,
+    // so the swipe must be CLEARLY horizontal (>= 2.5x more horizontal than vertical).
+    if (ay > 14 && ax < ay * 2.5) return 'vscroll';
+    if (dx <= -minDx && ax >= ay * 2.5) return 'swipe';
+    return 'none';
+  }
+
+  /* ---- Fixed-size seek geometry ------------------------------------------------------------
+     Bar length must be independent of browser zoom.  Browser zoom changes devicePixelRatio and
+     shrinks/grows CSS px equally, so any length in px/vw stretches.  We instead compute the
+     desired CSS width so the bar keeps a constant PHYSICAL size:  cssPx = physicalPx / zoom.   */
+  function zoomFactor(dpr, baseDpr) { var z = (Number(dpr) || 1) / (Number(baseDpr) || 1); return z > 0 ? z : 1; }
+  function cssPxForPhysical(physicalPx, zoom) { return Math.round((Number(physicalPx) || 0) / (zoom > 0 ? zoom : 1)); }
+
+  /* ---- Bulk name collision helper (for paste/move/copy) ---------------------------------- */
+  function uniqueName(name, existingSet) {
+    if (!existingSet[name]) return name;
+    var dot = name.lastIndexOf('.');
+    var stem = dot > 0 ? name.slice(0, dot) : name, ext = dot > 0 ? name.slice(dot) : '';
+    for (var i = 1; i < 9999; i++) { var c = stem + ' (' + i + ')' + ext; if (!existingSet[c]) return c; }
+    return stem + '_' + Date.now() + ext;
+  }
+
+  root.CloudProCore = {
+    TRASH_DIR: TRASH_DIR, TRASH_TTL_MS: TRASH_TTL_MS,
+    joinPath: joinPath, baseName: baseName, parentOf: parentOf,
+    trashName: trashName, parseTrashName: parseTrashName, trashExpiresAt: trashExpiresAt,
+    isExpired: isExpired, daysLeft: daysLeft, isInsideTrash: isInsideTrash,
+    barSegments: barSegments, canFit: canFit,
+    makeSelection: makeSelection, classifySwipe: classifySwipe,
+    zoomFactor: zoomFactor, cssPxForPhysical: cssPxForPhysical, uniqueName: uniqueName
+  };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/* ===================== CLOUD PRO — provider adapters ===================================
+   One interface for both providers so trash / bulk / folder-delete are provider-neutral:
+     A.list(dir)              -> [{rel,name,isFolder,size,id}]       (one level)
+     A.walk(rel)              -> [{rel,size,id}]  every FILE under a folder (recursive)
+     A.remove(item)           -> hard delete one file (or, for infini, a whole folder)
+     A.removeTree(folderRel)  -> hard delete a whole folder (all files under it)
+     A.move(fromRel,toRel)    -> move ONE file
+     A.copy(fromRel,toRel)    -> copy ONE file
+     A.exists(rel)            -> bool
+   B2 has no folders/rename: a "folder" is just a shared prefix. So:
+     • removeTree deletes EVERY version of EVERY file under "<prefix>/" (incl. .keep markers)
+       — the old code removed only the .keep marker, so the folder kept re-appearing;
+     • move = server-side b2_copy_file + delete of the source (no download/re-upload).        */
+(function (root) {
+  'use strict';
+  var C = root.CloudProCore;
+
+  function makeInfini(B) {
+    function url(rel, isDir) { var u = B.cloudPathUrl(rel).replace(/\/+$/, ''); return isDir ? u + '/' : u; }
+    function tag(x, n) { var m = new RegExp('<(?:[A-Za-z0-9]+:)?' + n + '[^>]*>([\\s\\S]*?)</(?:[A-Za-z0-9]+:)?' + n + '>', 'i').exec(x); return m ? m[1] : ''; }
+    function parse(xml, baseRel) {
+      var out = [], blocks = xml.split(/<(?:[A-Za-z0-9]+:)?response[\s>]/i).slice(1);
+      var davPath = new URL(B.cloudPathUrl('')).pathname.replace(/\/+$/, '');
+      blocks.forEach(function (bl) {
+        var href = tag(bl, 'href'); if (!href) return;
+        var p; try { p = decodeURIComponent(new URL(href, B.cloudPathUrl('')).pathname); } catch (e) { return; }
+        var isDir = /<(?:[A-Za-z0-9]+:)?collection\b/i.test(bl);
+        var rel = p.replace(/\/+$/, ''); if (davPath && rel.indexOf(davPath) === 0) rel = rel.slice(davPath.length);
+        rel = rel.replace(/^\/+/, '');
+        if (!rel || rel === baseRel) return;
+        out.push({ rel: rel, name: C.baseName(rel), isFolder: isDir, size: Number(tag(bl, 'getcontentlength')) || 0, id: 'infini:' + rel });
+      });
+      return out;
+    }
+    function propfind(rel, depth) {
+      return B.infiniFetch(url(rel, true), { method: 'PROPFIND', headers: { Depth: depth, 'Content-Type': 'application/xml; charset=utf-8' },
+        body: '<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:getcontentlength/></d:prop></d:propfind>' });
+    }
+    var A = {
+      name: 'infini',
+      list: async function (dir) {
+        var r = await propfind(dir, '1'); if (r.status === 404) return [];
+        if (!(r.status === 207 || r.ok)) throw new Error('List failed (' + r.status + ')');
+        return parse(await r.text(), C.joinPath(dir));
+      },
+      walk: async function (rel) {
+        var out = [], stack = [rel];
+        while (stack.length) {
+          var d = stack.pop(), items = await A.list(d);
+          for (var i = 0; i < items.length; i++) { if (items[i].isFolder) stack.push(items[i].rel); else out.push(items[i]); }
+        }
+        return out;
+      },
+      exists: async function (rel) { var r = await propfind(rel, '0'); return r.status === 207 || r.ok; },
+      ensureDir: async function (rel) {
+        var parts = C.joinPath(rel).split('/').filter(Boolean), cur = '';
+        for (var i = 0; i < parts.length; i++) {
+          cur = C.joinPath(cur, parts[i]);
+          var r = await B.infiniFetch(url(cur, true), { method: 'MKCOL' });
+          if (!(r.status === 201 || r.status === 405 || r.status === 200 || r.status === 301)) {          // 405 = already exists
+            if (r.status === 409) throw new Error('Cannot create folder "' + cur + '" (409)');
+          }
+        }
+      },
+      remove: async function (item) {
+        var r = await B.infiniFetch(url(item.rel, false), { method: 'DELETE' });
+        if (!(r.ok || r.status === 404)) throw new Error('Delete failed (' + r.status + ')');
+      },
+      removeTree: async function (folderRel) {
+        var r = await B.infiniFetch(url(folderRel, true), { method: 'DELETE' });
+        if (!(r.ok || r.status === 404)) throw new Error('Folder delete failed (' + r.status + ')');
+      },
+      move: async function (from, to) {
+        await A.ensureDir(C.parentOf(to));
+        var r = await B.infiniFetch(url(from, false), { method: 'MOVE', headers: { Destination: url(to, false), Overwrite: 'F' } });
+        if (!r.ok) throw new Error('Move failed (' + r.status + ')');
+      },
+      copy: async function (from, to) {
+        await A.ensureDir(C.parentOf(to));
+        var r = await B.infiniFetch(url(from, false), { method: 'COPY', headers: { Destination: url(to, false), Overwrite: 'F' } });
+        if (!r.ok) throw new Error('Copy failed (' + r.status + ')');
+      }
+    };
+    return A;
+  }
+
+  function makeB2(B) {
+    async function call(path, body) {
+      await B.authorizeB2(false);
+      var b2 = B.b2();
+      var res = await B.b2Fetch(b2.apiUrl + '/b2api/v2/' + path, { method: 'POST', headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(data.message || (path + ' failed HTTP ' + res.status));
+      return data;
+    }
+    // every VERSION under a prefix (b2_list_file_versions) — needed so a deleted folder is really gone
+    async function versionsUnder(prefix) {
+      var out = [], startName = null, startId = null, guard = 0;
+      do {
+        var body = { bucketId: B.b2().bucketId, prefix: prefix, maxFileCount: 1000 };
+        if (startName) { body.startFileName = startName; if (startId) body.startFileId = startId; }
+        var d = await call('b2_list_file_versions', body);
+        (d.files || []).forEach(function (f) { out.push(f); });
+        startName = d.nextFileName; startId = d.nextFileId;
+      } while (startName && ++guard < 1000);
+      return out;
+    }
+    var A = {
+      name: 'b2',
+      list: async function (dir) {
+        var prefix = dir ? C.joinPath(dir) + '/' : '', out = [], seen = Object.create(null), start = null, guard = 0;
+        do {
+          var body = { bucketId: B.b2().bucketId, prefix: prefix, delimiter: '/', maxFileCount: 1000 };
+          if (start) body.startFileName = start;
+          var d = await call('b2_list_file_names', body);
+          (d.files || []).forEach(function (f) {
+            var full = String(f.fileName || '');
+            if (/\/\.(keep|bzEmpty)$/i.test(full)) { var fr = full.replace(/\/\.(keep|bzEmpty)$/i, ''); var nm = fr.slice(prefix.length); if (nm && nm.indexOf('/') < 0 && !seen[fr]) { seen[fr] = 1; out.push({ rel: fr, name: nm, isFolder: true, size: 0, id: 'folder:' + fr }); } return; }
+            if (/\/$/.test(full)) return;
+            out.push({ rel: full, name: full.slice(prefix.length), isFolder: false, size: Number(f.contentLength) || 0, id: f.fileId });
+          });
+          (d.commonPrefixes || []).forEach(function (p) { var fr = String(p).replace(/\/+$/, ''); var nm = fr.slice(prefix.length); if (nm && !seen[fr]) { seen[fr] = 1; out.push({ rel: fr, name: nm, isFolder: true, size: 0, id: 'folder:' + fr }); } });
+          start = d.nextFileName;
+        } while (start && ++guard < 1000);
+        return out;
+      },
+      walk: async function (rel) {
+        var vs = await versionsUnder(C.joinPath(rel) + '/'), seen = Object.create(null), out = [];
+        vs.forEach(function (f) {
+          if (f.action !== 'upload') return;                             // ignore hide markers / unfinished
+          if (/\/\.(keep|bzEmpty)$/i.test(f.fileName)) return;           // marker, not a real file
+          if (seen[f.fileName]) return;                                  // newest version only
+          seen[f.fileName] = 1; out.push({ rel: f.fileName, name: C.baseName(f.fileName), isFolder: false, size: Number(f.contentLength) || 0, id: f.fileId });
+        });
+        return out;
+      },
+      exists: async function (rel) {
+        var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: rel, maxFileCount: 1 });
+        return (d.files || []).some(function (f) { return f.fileName === rel; });
+      },
+      ensureDir: async function () { /* prefixes exist implicitly */ },
+      remove: async function (item) {
+        var id = item.id;
+        if (!id || String(id).indexOf('folder:') === 0) {
+          var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: item.rel, maxFileCount: 5 });
+          var m = (d.files || []).filter(function (f) { return f.fileName === item.rel; })[0]; if (!m) return; id = m.fileId;
+        }
+        await call('b2_delete_file_version', { fileName: item.rel, fileId: id });
+      },
+      removeTree: async function (folderRel) {
+        var all = await versionsUnder(C.joinPath(folderRel) + '/');           // ALL versions, incl. .keep + hidden
+        var fails = 0;
+        for (var i = 0; i < all.length; i++) {
+          try { await call('b2_delete_file_version', { fileName: all[i].fileName, fileId: all[i].fileId }); } catch (e) { fails++; if (fails > 5) throw e; }
+        }
+        if (fails) throw new Error(fails + ' file(s) inside the folder could not be deleted');
+      },
+      move: async function (from, to) { await A.copy(from, to); var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: from, maxFileCount: 1 });
+        var m = (d.files || []).filter(function (f) { return f.fileName === from; })[0]; if (m) await call('b2_delete_file_version', { fileName: from, fileId: m.fileId }); },
+      copy: async function (from, to) {
+        var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: from, maxFileCount: 1 });
+        var m = (d.files || []).filter(function (f) { return f.fileName === from; })[0]; if (!m) throw new Error('Source not found: ' + from);
+        await call('b2_copy_file', { sourceFileId: m.fileId, fileName: to, metadataDirective: 'COPY' });
+      }
+    };
+    return A;
+  }
+
+  root.CloudProAdapters = { makeInfini: makeInfini, makeB2: makeB2 };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/* ===================== CLOUD PRO — trash engine ==========================================
+   Provider-neutral. Everything the engine needs is encoded in the trashed item's NAME
+   (see CloudProCore.trashName), so the SERVER is the single source of truth:
+     .trash/<deletedAtMs>__<encoded original path>            (a file)
+     .trash/<deletedAtMs>__<encoded original folder path>/…   (a folder, moved as a unit on Infini)
+   B2 has no folder move, so a trashed B2 folder becomes N files, each with the SAME timestamp
+   and the original path encoded per file:  .trash/<ts>__<encoded original file path>
+   Auto-purge runs whenever the panel loads/opens and permanently removes anything > 7 days old. */
+(function (root) {
+  'use strict';
+  var C = root.CloudProCore;
+
+  function makeTrash(A, opts) {
+    opts = opts || {};
+    var now = opts.now || function () { return Date.now(); };
+    var T = {
+      /* Move a FILE to trash. Returns bytes trashed. */
+      trashFile: async function (item) {
+        var to = C.joinPath(C.TRASH_DIR, C.trashName(item.rel, now()));
+        await A.move(item.rel, to);
+        return item.size || 0;
+      },
+      /* Move a FOLDER to trash. Infini can move the whole directory; B2 moves file-by-file. */
+      trashFolder: async function (folderRel) {
+        var stamp = now(), moved = 0;
+        if (A.name === 'infini') {
+          var files = await A.walk(folderRel); moved = files.reduce(function (s, f) { return s + (f.size || 0); }, 0);
+          await A.move(folderRel, C.joinPath(C.TRASH_DIR, C.trashName(folderRel, stamp)));
+          return moved;
+        }
+        var all = await A.walk(folderRel);
+        for (var i = 0; i < all.length; i++) {
+          await A.move(all[i].rel, C.joinPath(C.TRASH_DIR, C.trashName(all[i].rel, stamp)));   // same stamp => restored together
+          moved += all[i].size || 0;
+        }
+        await A.removeTree(folderRel);                                                          // drop .keep markers left behind
+        return moved;
+      },
+      /* List trash entries (top level of .trash) with size + expiry info. */
+      list: async function () {
+        var top = await A.list(C.TRASH_DIR), out = [], t = now();
+        for (var i = 0; i < top.length; i++) {
+          var it = top[i], p = C.parseTrashName(it.name); if (!p) continue;
+          var size = it.size;
+          if (it.isFolder) { size = (await A.walk(it.rel)).reduce(function (s, f) { return s + (f.size || 0); }, 0); }
+          out.push({ rel: it.rel, name: C.baseName(p.original), original: p.original, isFolder: it.isFolder, size: size, id: it.id,
+                     deletedAt: p.deletedAt, expiresAt: C.trashExpiresAt(p.deletedAt), daysLeft: C.daysLeft(p.deletedAt, t), expired: C.isExpired(p.deletedAt, t) });
+        }
+        return out.sort(function (a, b) { return b.deletedAt - a.deletedAt; });
+      },
+      totalBytes: async function () { return (await T.list()).reduce(function (s, e) { return s + (e.size || 0); }, 0); },
+      /* Restore one entry back where it came from (folder recreated, name de-duplicated if taken). */
+      restore: async function (entry) {
+        var target = entry.original, existing;
+        if (await A.exists(target)) {
+          var dir = C.parentOf(target), sib = await A.list(dir), set = Object.create(null); sib.forEach(function (x) { set[x.name] = 1; });
+          target = C.joinPath(dir, C.uniqueName(C.baseName(target), set));
+        }
+        await A.move(entry.rel, target);
+        return target;
+      },
+      /* Permanently delete one entry. */
+      purge: async function (entry) { if (entry.isFolder) await A.removeTree(entry.rel); else await A.remove(entry); },
+      /* Permanently delete everything older than 7 days. Returns {purged, freedBytes, failed}. */
+      autoPurge: async function () {
+        var list = await T.list(), purged = 0, freed = 0, failed = 0;
+        for (var i = 0; i < list.length; i++) {
+          if (!list[i].expired) continue;
+          try { await T.purge(list[i]); purged++; freed += list[i].size || 0; } catch (e) { failed++; }
+        }
+        return { purged: purged, freedBytes: freed, failed: failed };
+      },
+      emptyAll: async function () { var l = await T.list(), n = 0; for (var i = 0; i < l.length; i++) { try { await T.purge(l[i]); n++; } catch (e) {} } return n; }
+    };
+    return T;
+  }
+  root.CloudProTrash = { makeTrash: makeTrash };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/* ===================== CLOUD PRO — UI layer ============================================== */
+(function (root) {
+  'use strict';
+  var C = root.CloudProCore, AD = root.CloudProAdapters, TR = root.CloudProTrash;
+  var doc = root.document;
+  var B = null, A = null, T = null, lastProvider = '';
+  var sel = C.makeSelection();
+  var clipboard = null;                     // {mode:'move'|'copy', items:[{rel,name,size,id}]}
+  var trashBytes = 0, usedBytes = 0;
+  var openPreviews = Object.create(null);   // rel -> {drawer, urls:[]}
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var $ = function (id) { return doc.getElementById(id); };
+
+  function bridge() { B = root.__cloudBridge; if (!B) return false; var p = B.getActiveCloudProvider(); if (p !== lastProvider || !A) { lastProvider = p; A = (p === 'infini') ? AD.makeInfini(B) : AD.makeB2(B); T = TR.makeTrash(A); } return true; }
+  function status(m, ok) { try { B.setStatus(m, ok); } catch (e) { console.log('[status]', m); } }
+  function fmt(n) { return B ? B.formatBytes(n) : String(n); }
+  function quota() { return B.getActiveCloudProvider() === 'infini' ? B.infiniQuotaBytes() : B.b2QuotaBytes(); }
+  function cwd() { return String(root.__cloudCwd || '').replace(/^\/+|\/+$/g, ''); }
+  function inTrash() { return !!root.__cloudTrashView; }
+  function rowInfo(row) {
+    var n = row.querySelector('.name'); if (!n) return null;
+    var dl = row.querySelector('[data-dl-id]');
+    return { rel: n.getAttribute('data-rel') || n.getAttribute('data-name') || '', name: n.getAttribute('data-name') || '', isFolder: n.getAttribute('data-folder') === '1', id: dl ? dl.getAttribute('data-dl-id') : '', size: Number(row.getAttribute('data-size')) || 0 };
+  }
+
+  /* =============================== 1) STORAGE BAR (used + trash) ============================ */
+  function paintBar() {
+    if (!B) return;
+    var q = quota(), seg = C.barSegments(usedBytes, trashBytes, q);
+    var bar = doc.querySelector('.cloud-stat-bar'); if (!bar) return;
+    bar.classList.add('cp-bar');
+    var used = $('cloudUsedBar'); if (used) { used.style.width = seg.usedPct.toFixed(2) + '%'; }
+    var tr = $('cpTrashBar');
+    if (!tr) { tr = doc.createElement('i'); tr.id = 'cpTrashBar'; tr.title = 'Trash'; bar.appendChild(tr); }
+    tr.style.width = seg.trashPct.toFixed(2) + '%';
+    tr.style.display = trashBytes > 0 ? 'block' : 'none';
+    bar.classList.toggle('cp-full', seg.full);
+    var free = $('cloudFreeLabel'); if (free) free.textContent = 'Free: ' + fmt(seg.freeBytes);
+    var lab = $('cloudUsedLabel');
+    if (lab) lab.innerHTML = esc(fmt(usedBytes)) + ' used' + (trashBytes > 0 ? ' <span class="cp-trash-lab">· 🗑 ' + esc(fmt(trashBytes)) + ' trash</span>' : '');
+  }
+  async function refreshTrashBytes() {
+    if (!bridge()) return;
+    try { trashBytes = await T.totalBytes(); } catch (e) { trashBytes = 0; }
+    paintBar();
+  }
+  // The original paintUsage(usedBytes) is told the REAL-file bytes. We capture that number via a tiny
+  // hook the host code calls (window.__cpOnUsage), then redraw the bar with the trash segment added.
+  function hookPaintUsage() { root.__cpOnUsage = function (u) { usedBytes = Number(u) || 0; paintBar(); }; }
+
+  /* =============================== 2) TRASH ================================================= */
+  root.cpAutoPurge = async function (silent) {
+    if (!bridge()) return;
+    try {
+      var r = await T.autoPurge();
+      if (r.purged && !silent) status('Trash: permanently deleted ' + r.purged + ' item(s) older than 7 days (' + fmt(r.freedBytes) + ' freed)', true);
+    } catch (e) { console.warn('[trash] auto-purge', e); }
+    await refreshTrashBytes();
+  };
+  /* Delete = move to trash (folders too). B2 and Infini alike. Quota check: trash counts toward the limit. */
+  root.cpTrashItems = async function (items) {
+    if (!bridge() || !items.length) return;
+    var ok = 0, fail = 0, lastErr = '';
+    status('Moving ' + items.length + ' item(s) to trash…', null);
+    for (var i = 0; i < items.length; i++) {
+      try { items[i].isFolder ? await T.trashFolder(items[i].rel) : await T.trashFile(items[i]); ok++; }
+      catch (e) { fail++; lastErr = (e && e.message) || String(e); console.error('[trash]', items[i].rel, e); }
+    }
+    sel.clear(); paintSelection();
+    status(fail ? ('Trashed ' + ok + ', failed ' + fail + ': ' + lastErr) : ('Moved ' + ok + ' item(s) to trash · auto-deleted after 7 days'), !fail);
+    if (root.refreshCloudFiles) await root.refreshCloudFiles();
+    await refreshTrashBytes();
+  };
+  root.cpPurgeItems = async function (entries) {
+    if (!bridge()) return; var n = 0, f = 0;
+    for (var i = 0; i < entries.length; i++) { try { await T.purge(entries[i]); n++; } catch (e) { f++; console.error(e); } }
+    sel.clear(); status(f ? ('Deleted ' + n + ', failed ' + f) : ('Permanently deleted ' + n + ' item(s)'), !f);
+    if (root.refreshCloudFiles) await root.refreshCloudFiles(); await refreshTrashBytes();
+  };
+  root.cpRestoreEntries = async function (entries) {
+    if (!bridge()) return; var n = 0, f = 0;
+    for (var i = 0; i < entries.length; i++) { try { await T.restore(entries[i]); n++; } catch (e) { f++; console.error(e); } }
+    sel.clear(); status(f ? ('Restored ' + n + ', failed ' + f) : ('Restored ' + n + ' item(s)'), !f);
+    if (root.refreshCloudFiles) await root.refreshCloudFiles(); await refreshTrashBytes();
+  };
+  root.cpEmptyTrash = async function () { if (!bridge()) return; var n = await T.emptyAll(); status('Trash emptied (' + n + ')', true); if (root.refreshCloudFiles) await root.refreshCloudFiles(); await refreshTrashBytes(); };
+
+  /* Trash view: the original renderer cannot decode our name format, so we paint the list ourselves. */
+  async function renderTrashView() {
+    var box = $('cloudFileList'); if (!box || !bridge()) return;
+    box.innerHTML = '<div class="cp-empty">Loading trash…</div>';
+    var list; try { await root.cpAutoPurge(true); list = await T.list(); } catch (e) { box.innerHTML = '<div class="cp-empty" style="color:var(--error)">' + esc(e.message || e) + '</div>'; return; }
+    trashBytes = list.reduce(function (s, e) { return s + (e.size || 0); }, 0); paintBar();
+    var head = '<div class="cp-trash-head"><span>🗑 Trash · ' + list.length + ' item(s) · ' + esc(fmt(trashBytes)) + '</span><span class="cp-dim">auto-deleted after 7 days</span>' +
+      (list.length ? '<button class="btn cp-danger" type="button" id="cpEmptyBtn">EMPTY</button>' : '') + '</div>';
+    if (!list.length) { box.innerHTML = head + '<div class="cp-empty">Trash is empty.</div>'; return; }
+    box.innerHTML = head + list.map(function (e, i) {
+      var warn = e.daysLeft <= 1 ? ' cp-warn' : '';
+      return '<div class="cloud-file-row cp-trash-row" data-ti="' + i + '"><div class="name" style="touch-action:pan-y">' + (e.isFolder ? '📁 ' : '') + esc(e.name) +
+        '<div class="meta">' + esc(fmt(e.size)) + ' · from /' + esc(C.parentOf(e.original)) + ' · <span class="' + warn + '">' + e.daysLeft + 'd left</span></div></div>' +
+        '<button class="btn" type="button" data-tact="restore" style="background:rgba(0,255,136,.15);color:var(--accent)">RESTORE</button>' +
+        '<button class="btn" type="button" data-tact="purge" style="background:rgba(255,80,80,.15);color:var(--error)">DEL</button></div>';
+    }).join('');
+    var eb = $('cpEmptyBtn'); if (eb) eb.onclick = function () { root.showConfirm('Empty trash?', 'Permanently delete all ' + list.length + ' item(s) in trash?', function () { root.cpEmptyTrash(); }); };
+    box.querySelectorAll('[data-tact]').forEach(function (b) {
+      b.onclick = function () { var e = list[Number(b.closest('.cp-trash-row').getAttribute('data-ti'))]; if (!e) return;
+        if (b.getAttribute('data-tact') === 'restore') root.cpRestoreEntries([e]);
+        else root.showConfirm('Delete permanently?', '"' + e.name + '" cannot be recovered.', function () { root.cpPurgeItems([e]); }); };
+    });
+  }
+
+  /* =============================== 3) SELECTION (swipe R→L + hold) ========================== */
+  var SWIPE_HOLD_MS = 320;
+  function paintSelection() {
+    var box = $('cloudFileList'); if (!box) return;
+    box.querySelectorAll('.cloud-file-row').forEach(function (row) { var i = rowInfo(row); row.classList.toggle('cp-selected', !!(i && !i.isFolder && sel.has(i.rel))); });
+    box.classList.toggle('cp-selecting', sel.size() > 0);
+    paintBulkBar();
+  }
+  function paintBulkBar() {
+    var bar = $('cpBulkBar'); var n = sel.size();
+    if (!bar) { bar = doc.createElement('div'); bar.id = 'cpBulkBar'; doc.body.appendChild(bar); }
+    if (!n && !clipboard) { bar.classList.remove('show'); bar.innerHTML = ''; return; }
+    bar.classList.add('show');
+    if (n) {
+      bar.innerHTML = '<span class="cp-count">' + n + ' selected</span>' +
+        '<button type="button" data-b="dl">⬇ DL</button><button type="button" data-b="star">⭐</button>' +
+        '<button type="button" data-b="move">✂ Move</button><button type="button" data-b="copy">⧉ Copy</button>' +
+        '<button type="button" data-b="del" class="cp-danger">🗑</button><button type="button" data-b="x" aria-label="Clear selection">✕</button>';
+    } else {
+      bar.innerHTML = '<span class="cp-count">' + (clipboard.mode === 'move' ? '✂ ' : '⧉ ') + clipboard.items.length + ' ready · open target folder</span>' +
+        '<button type="button" data-b="paste" class="cp-primary">PASTE HERE</button><button type="button" data-b="cancelclip">✕</button>';
+    }
+    bar.querySelectorAll('button').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); bulk(b.getAttribute('data-b')); }; });
+  }
+  async function bulk(kind) {
+    if (!bridge()) return; var items = sel.list();
+    if (kind === 'x') { sel.clear(); paintSelection(); return; }
+    if (kind === 'cancelclip') { clipboard = null; paintBulkBar(); return; }
+    if (kind === 'del') { root.showConfirm('Move to trash?', items.length + ' item(s) will be moved to trash and deleted forever after 7 days.', function () { root.cpTrashItems(items); }); return; }
+    if (kind === 'move' || kind === 'copy') { clipboard = { mode: kind, items: items.slice() }; sel.clear(); paintSelection(); status((kind === 'move' ? 'Cut ' : 'Copied ') + clipboard.items.length + ' — open the target folder and tap PASTE HERE', true); return; }
+    if (kind === 'paste') { await pasteHere(); return; }
+    if (kind === 'star') {
+      var n = 0; for (var i = 0; i < items.length; i++) { if (!B.starredSet().has(B.starKey(items[i].rel))) { try { await root.toggleCloudStar(items[i].rel); n++; } catch (e) {} } }
+      sel.clear(); status('Starred ' + n + ' item(s)', true); return;
+    }
+    if (kind === 'dl') {
+      for (var j = 0; j < items.length; j++) { status('Downloading ' + (j + 1) + '/' + items.length + '…', null); try { await B.downloadCloudFile(items[j].rel, items[j].id); } catch (e) { status('Download failed: ' + (e.message || e), false); } await new Promise(function (r) { setTimeout(r, 350); }); }
+      sel.clear(); paintSelection(); status('Downloaded ' + items.length + ' file(s)', true);
+    }
+  }
+  async function pasteHere() {
+    if (!clipboard) return; var dir = cwd(); if (C.isInsideTrash(dir)) { status('Cannot paste into trash', false); return; }
+    var siblings = await A.list(dir), taken = Object.create(null); siblings.forEach(function (s) { taken[s.name] = 1; });
+    var ok = 0, fail = 0, last = '', mode = clipboard.mode, its = clipboard.items;
+    for (var i = 0; i < its.length; i++) {
+      var it = its[i], nm = C.uniqueName(it.name, taken), to = C.joinPath(dir, nm);
+      if (to === it.rel) { fail++; last = 'Already in this folder'; continue; }
+      try { mode === 'move' ? await A.move(it.rel, to) : await A.copy(it.rel, to); taken[nm] = 1; ok++; } catch (e) { fail++; last = (e && e.message) || String(e); }
+    }
+    clipboard = null; paintBulkBar();
+    status(fail ? (ok + ' done, ' + fail + ' failed: ' + last) : ((mode === 'move' ? 'Moved ' : 'Copied ') + ok + ' file(s) here'), !fail);
+    if (root.refreshCloudFiles) await root.refreshCloudFiles();
+  }
+
+  /* Gesture: on a row, drag right→left >=36px (clearly horizontal) then keep the finger down for SWIPE_HOLD_MS → selected.
+     Once in selection mode a plain tap on any other file toggles it. Vertical drags are left alone (scroll). */
+  function bindGestures(box) {
+    if (!box || box.__cpGest) return; box.__cpGest = true;
+    var st = null;
+    box.addEventListener('pointerdown', function (e) {
+      if (e.button != null && e.button !== 0) return;
+      var row = e.target.closest('.cloud-file-row'); if (!row || row.classList.contains('cp-trash-row')) return;
+      if (e.target.closest('button,a,input,video,audio,.cp-player')) return;
+      st = { row: row, x: e.clientX, y: e.clientY, id: e.pointerId, mode: 'none', timer: null, done: false };
+    }, { passive: true });
+    box.addEventListener('pointermove', function (e) {
+      if (!st || e.pointerId !== st.id || st.done) return;
+      var dx = e.clientX - st.x, dy = e.clientY - st.y, k = C.classifySwipe(dx, dy, 36);
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) st.moved = true;          // this gesture was a drag, not a tap
+      if (k === 'vscroll') { clearTimeout(st.timer); st.mode = 'vscroll'; st.done = true; st.row.style.transform = ''; return; }
+      if (k === 'swipe' && st.mode !== 'swipe') {
+        st.mode = 'swipe'; st.row.classList.add('cp-swiping');
+        st.timer = setTimeout(function () {
+          if (!st || st.mode !== 'swipe') return;
+          var info = rowInfo(st.row);
+          if (info && !info.isFolder) { sel.toggle(info); try { if (navigator.vibrate) navigator.vibrate(15); } catch (er) {} paintSelection(); }
+          else status('Folders cannot be selected — open the folder instead', null);
+          st.done = true; st.row.classList.remove('cp-swiping'); st.row.style.transform = ''; st.suppressClick = true;
+        }, SWIPE_HOLD_MS);
+      }
+      if (st.mode === 'swipe') st.row.style.transform = 'translateX(' + Math.max(-70, dx * 0.5) + 'px)';
+    }, { passive: true });
+    function end() { if (!st) return; clearTimeout(st.timer); st.row.classList.remove('cp-swiping'); st.row.style.transform = '';
+      var s = st; if (s.moved) s.suppressClick = true;                        // a drag-release must never act as a tap
+      setTimeout(function () { if (st === s) st = null; }, 400); }
+    box.addEventListener('pointerup', end, { passive: true }); box.addEventListener('pointercancel', end, { passive: true });
+    // Selection mode: tap toggles (capture phase so it beats the preview/open handlers).
+    box.addEventListener('click', function (e) {
+      if (st && st.suppressClick) { e.stopImmediatePropagation(); e.preventDefault(); st.suppressClick = false; return; }
+      if (!sel.size()) return;
+      var row = e.target.closest('.cloud-file-row'); if (!row || e.target.closest('button,.cp-player,video,audio')) return;
+      var info = rowInfo(row); e.stopImmediatePropagation(); e.preventDefault();
+      if (info && !info.isFolder) { sel.toggle(info); paintSelection(); }
+    }, true);
+  }
+
+  /* =============================== 4) MULTI-PREVIEW (any provider) ========================== */
+  var AUDIO_EXT = ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'opus'], VIDEO_EXT = ['mp4', 'webm', 'mov', 'mkv', 'm4v'], IMG_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'heic', 'heif', 'avif', 'bmp'], TXT_EXT = ['txt', 'md', 'json', 'csv', 'log', 'html', 'js', 'css'];
+  function extOf(n) { var i = String(n).lastIndexOf('.'); return i < 0 ? '' : String(n).slice(i + 1).toLowerCase(); }
+  function closePreview(key) { var p = openPreviews[key]; if (!p) return; p.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) {} }); if (p.drawer && p.drawer.parentNode) p.drawer.parentNode.removeChild(p.drawer); delete openPreviews[key]; }
+  async function urlFor(info) {
+    if (B.getActiveCloudProvider() === 'infini') return { url: await B.getInfiniPreviewUrl(info.rel), blob: true };
+    await B.authorizeB2(false); var b2 = B.b2();
+    var r = await B.b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_download_authorization', { method: 'POST', headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ bucketId: b2.bucketId, fileNamePrefix: info.rel, validDurationInSeconds: 3600 }) });
+    var d = await r.json().catch(function () { return {}; }); if (!r.ok) throw new Error(d.message || 'Auth failed');
+    return { url: b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + info.rel.split('/').map(encodeURIComponent).join('/') + '?Authorization=' + encodeURIComponent(d.authorizationToken), blob: false };
+  }
+  function playerHtml(kind, id, src, mime) {
+    var el = kind === 'video' ? '<video id="' + id + '" playsinline preload="metadata" src="' + src + '"></video>' : '<audio id="' + id + '" preload="metadata" src="' + src + '"></audio>';
+    return '<div class="cp-player cp-' + kind + '" data-pid="' + id + '">' + el +
+      '<div class="cp-ctl"><button type="button" class="cp-pp" aria-label="Play/Pause">▶</button><span class="cp-time">0:00</span>' +
+      '<input class="cp-seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek"><span class="cp-time cp-dur">0:00</span>' +
+      '<button type="button" class="cp-mute" aria-label="Mute">🔊</button>' + (kind === 'video' ? '<button type="button" class="cp-fs" aria-label="Fullscreen">⛶</button>' : '') + '</div></div>';
+  }
+  function wirePlayer(pl) {
+    var m = pl.querySelector('video,audio'); if (!m) return;
+    var pp = pl.querySelector('.cp-pp'), seek = pl.querySelector('.cp-seek'), t1 = pl.querySelector('.cp-time'), t2 = pl.querySelector('.cp-dur'), mu = pl.querySelector('.cp-mute'), fs = pl.querySelector('.cp-fs');
+    var f = function (s) { if (!isFinite(s) || s < 0) s = 0; var h = Math.floor(s / 3600), mi = Math.floor((s % 3600) / 60), se = Math.floor(s % 60); return (h ? h + ':' + String(mi).padStart(2, '0') : mi) + ':' + String(se).padStart(2, '0'); };
+    var drag = false;
+    pp.onclick = function () { m.paused ? m.play().catch(function () {}) : m.pause(); };
+    m.addEventListener('play', function () { pp.textContent = '⏸'; }); m.addEventListener('pause', function () { pp.textContent = '▶'; });
+    m.addEventListener('timeupdate', function () { t1.textContent = f(m.currentTime); if (!drag && m.duration) seek.value = Math.round((m.currentTime / m.duration) * 1000); });
+    m.addEventListener('loadedmetadata', function () { t2.textContent = f(m.duration); });
+    m.addEventListener('durationchange', function () { t2.textContent = f(m.duration); });
+    m.addEventListener('error', function () { pl.classList.add('cp-err'); t1.textContent = '⚠ cannot play'; });
+    seek.addEventListener('input', function () { drag = true; if (m.duration) { m.currentTime = (seek.value / 1000) * m.duration; t1.textContent = f(m.currentTime); } });
+    seek.addEventListener('change', function () { drag = false; });
+    seek.addEventListener('pointerup', function () { drag = false; });
+    mu.onclick = function () { m.muted = !m.muted; mu.textContent = m.muted ? '🔇' : '🔊'; };
+    if (fs) fs.onclick = function () { var el = pl; var isFs = doc.fullscreenElement || doc.webkitFullscreenElement; if (isFs) { (doc.exitFullscreen || doc.webkitExitFullscreen).call(doc); } else { (el.requestFullscreen || el.webkitRequestFullscreen || function () { m.webkitEnterFullscreen && m.webkitEnterFullscreen(); }).call(el); } };
+  }
+  async function openPreview(row) {
+    var info = rowInfo(row); if (!info || info.isFolder || !bridge()) return;
+    var key = info.rel;
+    if (openPreviews[key]) { closePreview(key); row.querySelector('.name') && row.querySelector('.name').setAttribute('aria-expanded', 'false'); return; }   // tap again = close only this one
+    var drawer = doc.createElement('div'); drawer.className = 'cloud-preview-drawer cp-drawer'; drawer.setAttribute('data-preview-for', key);
+    drawer.innerHTML = '<div class="cp-load">Loading preview…</div>'; row.after(drawer);
+    openPreviews[key] = { drawer: drawer, urls: [] }; row.querySelector('.name') && row.querySelector('.name').setAttribute('aria-expanded', 'true');
+    try {
+      var ext = extOf(info.name), u = await urlFor(info); if (!openPreviews[key]) { if (u.blob) URL.revokeObjectURL(u.url); return; }
+      if (u.blob) openPreviews[key].urls.push(u.url);
+      var closeBtn = '<button type="button" class="cp-x" aria-label="Close preview">✕</button>', pid = 'cpP_' + Date.now() + '_' + Math.floor(Math.random() * 1e5);
+      if (IMG_EXT.indexOf(ext) >= 0) drawer.innerHTML = closeBtn + '<div class="media-wrap"><img src="' + u.url + '" alt="" loading="lazy"></div>';
+      else if (AUDIO_EXT.indexOf(ext) >= 0) drawer.innerHTML = closeBtn + playerHtml('audio', pid, u.url);
+      else if (VIDEO_EXT.indexOf(ext) >= 0) drawer.innerHTML = closeBtn + playerHtml('video', pid, u.url);
+      else if (ext === 'pdf') drawer.innerHTML = closeBtn + '<iframe src="' + u.url + '#toolbar=1&navpanes=0" title="PDF"></iframe>';
+      else if (TXT_EXT.indexOf(ext) >= 0) { var txt = await (await fetch(u.url)).text(); drawer.innerHTML = closeBtn + '<pre>' + esc(txt.length > 200000 ? txt.slice(0, 200000) + '\n…(truncated)' : txt) + '</pre>'; }
+      else drawer.innerHTML = closeBtn + '<div class="cp-load">No preview for this type. Use DL.</div>';
+      var pl = drawer.querySelector('.cp-player'); if (pl) { wirePlayer(pl); if (ext !== 'flac' || true) { var m = pl.querySelector('video,audio'); m.play().catch(function () {}); } }
+      var x = drawer.querySelector('.cp-x'); if (x) x.onclick = function (e) { e.stopPropagation(); closePreview(key); var nm = row.querySelector('.name'); if (nm) nm.setAttribute('aria-expanded', 'false'); };
+    } catch (e) { drawer.innerHTML = '<button type="button" class="cp-x">✕</button><div class="cp-load" style="color:var(--error)">❌ ' + esc((e && e.message) || 'Preview failed') + '</div>'; var x2 = drawer.querySelector('.cp-x'); if (x2) x2.onclick = function () { closePreview(key); }; }
+  }
+  /* Capture-phase: replaces the original single-preview click (which closed every other drawer). */
+  function bindPreview(box) {
+    if (!box || box.__cpPrev) return; box.__cpPrev = true;
+    box.addEventListener('click', function (e) {
+      if (sel.size()) return;                                        // selection mode handles taps
+      var nm = e.target.closest('.cloud-file-row .name[data-exp-id]'); if (!nm) return;
+      e.stopPropagation(); e.preventDefault(); openPreview(nm.closest('.cloud-file-row'));
+    }, true);
+    box.addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var nm = e.target.closest && e.target.closest('.cloud-file-row .name[data-exp-id]'); if (!nm) return; e.stopPropagation(); e.preventDefault(); openPreview(nm.closest('.cloud-file-row')); }, true);
+  }
+  function closeAllPreviews() { Object.keys(openPreviews).forEach(closePreview); }
+
+  /* =============================== 5) ZOOM-PROOF SEEK BAR ================================== */
+  var BASE_DPR = null;
+  function applyZoom() {
+    var dpr = root.devicePixelRatio || 1; if (BASE_DPR == null) BASE_DPR = (root.__cpBaseDpr || dpr);
+    var vv = root.visualViewport, pinch = vv && vv.scale ? vv.scale : 1;           // pinch zoom (phones)
+    var z = C.zoomFactor(dpr, BASE_DPR) * pinch;                                     // browser zoom (desktop) × pinch
+    doc.documentElement.style.setProperty('--cp-zoom', String(z));
+    doc.documentElement.style.setProperty('--cp-seek-w', C.cssPxForPhysical(260, z) + 'px');   // constant PHYSICAL length
+    doc.documentElement.style.setProperty('--cp-ctl-h', C.cssPxForPhysical(44, z) + 'px');
+    doc.documentElement.style.setProperty('--cp-btn', C.cssPxForPhysical(36, z) + 'px');
+    doc.documentElement.style.setProperty('--cp-font', Math.max(9, C.cssPxForPhysical(12, z)) + 'px');
+  }
+
+  /* =============================== 6) WIRING ============================================== */
+  function decorateRows() {
+    var box = $('cloudFileList'); if (!box) return;
+    bindGestures(box); bindPreview(box);
+    if (inTrash()) { return; }
+    box.querySelectorAll('.cloud-file-row').forEach(function (row) { if (!row.__cpDec) { row.__cpDec = 1; } });
+    paintSelection();
+    // Delete via menu / drag now = trash. Route the original entry points.
+  }
+  function installOverrides() {
+    if (root.__cpOverrides) return; root.__cpOverrides = true;
+    // The ONE function every delete path (⋮ menu, drag-to-trash button, bulk) ends in.
+    root.softDeleteCloudFile = async function (fileName, fileId, relPath) {
+      if (!bridge()) return; var rel = String(relPath || fileName || ''); if (rel.indexOf('/') < 0 && cwd()) rel = C.joinPath(cwd(), fileName);
+      var row = null, box = $('cloudFileList'); if (box) box.querySelectorAll('.cloud-file-row .name').forEach(function (n) { if ((n.getAttribute('data-rel') || n.getAttribute('data-name')) === (relPath || fileName)) row = n.closest('.cloud-file-row'); });
+      var info = row ? rowInfo(row) : { rel: rel, name: fileName, isFolder: false, id: fileId, size: 0 }; info.rel = rel;
+      await root.cpTrashItems([info]);
+    };
+    root.moveCloudToTrash = root.softDeleteCloudFile;
+    var origToggle = root.toggleCloudTrash;
+    root.toggleCloudTrash = function () {
+      root.__cloudTrashView = !root.__cloudTrashView; sel.clear(); closeAllPreviews();
+      var btn = $('cloudTrashBtn'); if (btn) btn.textContent = root.__cloudTrashView ? 'BACK TO FILES' : 'TRASH';
+      root.__cloudCwd = ''; if (root.__cloudTrashView) renderTrashView(); else if (root.refreshCloudFiles) root.refreshCloudFiles();
+    };
+    var origRefresh = root.refreshCloudFiles;
+    root.refreshCloudFiles = async function () {
+      sel.clear(); closeAllPreviews();
+      if (root.__cloudTrashView) { await renderTrashView(); return; }
+      var r = await origRefresh.apply(this, arguments); decorateRows(); paintBulkBar(); refreshTrashBytes(); return r;
+    };
+  }
+  function init() {
+    if (!root.__cloudBridge || !$('cloudFileList') || root.__cpInited) return false; root.__cpInited = true;
+    bridge(); installOverrides(); hookPaintUsage(); applyZoom();
+    root.addEventListener('resize', applyZoom); if (root.visualViewport) { root.visualViewport.addEventListener('resize', applyZoom); }
+    var rp = root.refreshCloudFiles; // first run of auto purge shortly after load
+    setTimeout(function () { root.cpAutoPurge(true); }, 2500);
+    setInterval(function () { if (doc.visibilityState === 'visible') root.cpAutoPurge(true); }, 30 * 60 * 1000);
+    return true;
+  }
+  var tries = 0, iv = setInterval(function () { if (init() || ++tries > 120) clearInterval(iv); }, 500);
+  root.CloudPro = { sel: sel, init: init, applyZoom: applyZoom, paintBar: paintBar, _state: function () { return { trashBytes: trashBytes, usedBytes: usedBytes, clipboard: clipboard, open: Object.keys(openPreviews) }; }, setUsed: function (n) { usedBytes = n; paintBar(); } };
+})(window);
+
+</script>
+<script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, push, remove, set, onValue, update, get, runTransaction } from
         "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -5017,9 +5781,28 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             else if (/Firefox\//i.test(s) || /FxiOS\//i.test(s)) browser = 'Firefox';
             else if (/CriOS\//i.test(s)) browser = 'Chrome (iOS)';
             else if (/wv\)/i.test(s) && /Chrome\//i.test(s)) browser = 'Android WebView';
-            else if (/Chrome\//i.test(s)) browser = 'Chrome';
+            else if (/Chrome\//i.test(s)) browser = 'Chrome (unverified)';
             else if (/Safari\//i.test(s) && /Version\//i.test(s)) browser = 'Safari';
             return { os: browser, model: 'unknown model' };
+        }
+
+        // Many Android browsers (Via, and others) ship a User-Agent string that is
+        // byte-for-byte identical to Chrome's — there is no token in it to tell them
+        // apart, same root problem as Brave (see below). Plain UA parsing above
+        // therefore labels them "Chrome (unverified)" rather than a false-confidence
+        // plain "Chrome". This live check, run in the browser that's actually logging
+        // in, can upgrade that label to a confirmed "Chrome" when the browser really
+        // does implement Chromium's Client Hints API the way real Chrome does — a
+        // genuine Chrome always lists "Google Chrome" as one of its brands; a browser
+        // that only reuses Chrome's trailing UA text without reimplementing Client
+        // Hints will not. This can only be known live, in-browser, at login time —
+        // never reconstructed later from a stored UA string.
+        function liveVerifyChromeBrand() {
+            try {
+                const brands = (navigator.userAgentData && navigator.userAgentData.brands) || [];
+                if (!brands.length) return null; // no Client Hints support at all — stay unverified
+                return brands.some(function(b) { return /Google Chrome|Chromium/i.test(b.brand || ''); });
+            } catch (e) { return null; }
         }
 
         // ========== ADMIN GATE (fingerprint + code) ==========
@@ -5780,12 +6563,14 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                         isBrave = await navigator.brave.isBrave();
                     }
                 } catch (e) {}
+                const chromeVerified = liveVerifyChromeBrand(); // true / false / null(unknown)
                 await push(ref(db, 'settings/adminGate/loginHistory'), {
                     at: Date.now(),
                     method: method || 'unknown',
                     fpId: fpId || '',
                     ua: (navigator.userAgent || '').slice(0, 300),
-                    isBrave: isBrave
+                    isBrave: isBrave,
+                    chromeVerified: chromeVerified
                 });
             } catch (e) {}
         }
@@ -5816,6 +6601,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     const when = r.at ? new Date(r.at).toLocaleString() : '—';
                     const dm = parseDeviceOsAndModel(r.ua);
                     if (r.isBrave === true) dm.os = 'Brave'; // live-detected at login time — overrides UA parsing, since Brave's UA never actually says "Brave"
+                    else if (dm.os === 'Chrome (unverified)') {
+                        // Older rows never recorded chromeVerified — treat those as unverified too
+                        // rather than silently upgrading them to a confident "Chrome".
+                        if (r.chromeVerified === true) dm.os = 'Chrome';
+                        // chromeVerified === false or null/undefined: leave as "Chrome (unverified)"
+                    }
                     const deviceLabel = (dm.os || dm.model) ? [dm.os, dm.model].filter(Boolean).join(' · ') : '';
                     return '<div class="mk-item" style="padding:16px 18px;"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;"><div style="font-size:15px;font-weight:800;">' + (r
                         .method || 'login') + '<div style="font-size:12px;color:var(--text-dim);margin-top:6px;">' +
@@ -9815,6 +10606,29 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
       if (lines) lines.innerHTML = '';
       window.__cloudUploading = false;
     }
+
+    // Top live pill: visible whether or not the Cloud panel is open, so a bulk
+    // upload running in the background is never silently invisible.
+    const pill = document.getElementById('cloudLivePill');
+    const pillTx = document.getElementById('cloudLivePillText');
+    const pillPct = document.getElementById('cloudLivePillPct');
+    if (pill) {
+      if (any) {
+        pill.classList.add('show');
+        const parts2 = [];
+        if (b2.active) parts2.push({ t: b2.text, pct: b2.pct });
+        if (inf.active) parts2.push({ t: inf.text, pct: inf.pct });
+        if (window.__cloudDownloading) parts2.push({ t: 'Downloading…', pct: null });
+        if (pillTx) pillTx.textContent = (parts2.length > 1) ? (parts2.length + ' transfers') : ((parts2[0] && parts2[0].t) || 'Working…');
+        const nums2 = parts2.map(function(x) { return x.pct; }).filter(function(n) { return n != null && !isNaN(n); });
+        if (pillPct) {
+          if (nums2.length) pillPct.textContent = Math.round(nums2.reduce(function(a, b) { return a + b; }, 0) / nums2.length) + '%';
+          else pillPct.textContent = '';
+        }
+      } else {
+        pill.classList.remove('show');
+      }
+    }
   };
 
   // Back-compat wrapper used by older call sites
@@ -10967,6 +11781,33 @@ window.__dgxenInitVideoControls = function(vId) {
         report(offset);
       }
       if (typeof progressCallback === 'function') progressCallback(100);
+
+      // Verify the file actually landed at full size. A chunked upload writes the
+      // SAME URL multiple times with different Content-Range headers — if any proxy
+      // between here and the server drops that header, each PUT silently overwrites
+      // the last one instead of extending it, and the file ends up only as big as
+      // whichever chunk was written last (this is exactly what "70MB file became a
+      // few hundred KB" looks like). A wrong final size is caught here immediately
+      // instead of only being noticed later when the file won't play.
+      try {
+        const pf = await infiniFetch(targetUrl, {
+          method: 'PROPFIND',
+          headers: { Depth: '0', 'Content-Type': 'application/xml; charset=utf-8' },
+          body: '<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:getcontentlength/></d:prop></d:propfind>'
+        });
+        const txt = await pf.text().catch(function() { return ''; });
+        const m = /<[a-z0-9]*:?getcontentlength[^>]*>\s*(\d+)\s*<\/[a-z0-9]*:?getcontentlength>/i.exec(txt);
+        const serverSize = m ? Number(m[1]) : -1;
+        if (serverSize >= 0 && serverSize !== total) {
+          throw new Error(
+            'Upload verification failed: server has ' + formatBytes(serverSize) + ' but file is ' + formatBytes(total) +
+            '. The upload proxy is dropping Content-Range on large files — check the Worker deployment. File NOT confirmed intact.'
+          );
+        }
+      } catch (e) {
+        if (e && /Upload verification failed/.test(e.message || '')) throw e;
+        // PROPFIND itself failing shouldn't block the upload result — just skip verification.
+      }
     }
 
     try {
@@ -11049,7 +11890,27 @@ window.__dgxenInitVideoControls = function(vId) {
     getActiveCloudProvider: function() { return getActiveCloudProvider(); },
     cloudCwd: function() { return cloudCwd(); },
     cloudJoinPath: function() { return cloudJoinPath.apply(null, arguments); },
-    deleteInfiniFile: function(p, isFolder) { return deleteInfiniFile(p, isFolder); }
+    deleteInfiniFile: function(p, isFolder) { return deleteInfiniFile(p, isFolder); },
+    // ---- used by the Cloud Pro module (multi-preview, bulk, trash, folder delete) ----
+    formatBytes: function(n) { return formatBytes(n); },
+    listAllFiles: function(p) { return listAllFiles(p); },
+    cloudPathUrl: function(r) { return cloudPathUrl(r); },
+    infiniFetch: function(u, o) { return infiniFetch(u, o); },
+    infiniQuotaBytes: function() { return (Number(infini.quotaGb) || 20) * 1073741824; },
+    b2QuotaBytes: function() { return (Number(b2.quotaGb) || QUOTA_DEFAULT_GB) * 1073741824; },
+    paintUsageRaw: function(u) { return paintUsage(u); },
+    authorizeB2: function(f) { return authorizeB2(f); },
+    b2Fetch: function(u, o) { return b2Fetch(u, o); },
+    b2: function() { return b2; },
+    getInfiniPreviewUrl: function(n) { return getInfiniPreviewUrl(n); },
+    downloadInfiniFile: function(n) { return downloadInfiniFile(n); },
+    downloadCloudFile: function(n, id) { return downloadCloudFile(n, id); },
+    guessMime: function(n) { return guessMimeFromName(n); },
+    explainFetchError: function(e) { return explainFetchError(e); },
+    dbGet: function(p) { return get(ref(db, p)); },
+    dbSet: function(p, v) { return set(ref(db, p), v); },
+    starredSet: function() { return window.__cloudStarredSet; },
+    starKey: function(r) { return cloudStarKey(r); }
   };
 
   async function downloadInfiniFile(fileName) {
@@ -11250,6 +12111,7 @@ window.__dgxenInitVideoControls = function(vId) {
   // =========================================================
 
   function paintUsage(usedBytes) {
+    try { if (window.__cpOnUsage) setTimeout(function(){ window.__cpOnUsage(usedBytes); }, 0); } catch (e) {}
     const activeGb = getActiveCloudProvider() === 'infini'
       ? (Number(infini.quotaGb) || 20)
       : (Number(b2.quotaGb) || QUOTA_DEFAULT_GB);
@@ -14181,19 +15043,8 @@ function explainFetchError(e) {
       }
       actions += '</div>';
 
-      // Long messages (a big pasted file, a huge attachment dump) get
-      // collapsed behind a "Show more" toggle instead of always
-      // sprawling across the whole chat.
-      const LONG_MSG_THRESHOLD = 600;
+      // AI responses are always shown in full — no "Show more" collapse.
       let bodyHtml = thoughtHtml + formattedContent;
-      if ((msg.content || '').length > LONG_MSG_THRESHOLD) {
-          const collapseId = 'longmsg-' + idx;
-          bodyHtml = '<div id="' + collapseId + '" class="ai-long-msg" style="max-height:160px; overflow:hidden; position:relative;">' +
-              bodyHtml +
-              '<div class="ai-long-msg-fade"></div>' +
-              '</div>' +
-              '<button type="button" class="ai-showmore-btn" onclick="toggleLongMessage(\'' + collapseId + '\', this)">Show more ▾</button>';
-      }
 
       return '<div class="ai-msg-bubble" data-msg-idx="' + idx + '" style="max-width: 85%; padding: 12px 16px; ' + bubbleStyle + ' word-break: break-word; line-height: 1.5; font-size: 13.5px;' + (totalCount > 12 ? '' : ' animation: aiMsgIn 0.25s ease-out;') + '">' + bodyHtml + actions + '</div>';
   }
@@ -14514,6 +15365,24 @@ function explainFetchError(e) {
       let fullReply = '';
       let fullReasoning = '';
 
+      // Streaming text arrives many times per second (sometimes per character).
+      // Re-parsing markdown and rewriting innerHTML on every single delta forces
+      // a full layout/paint each time — that's what reads as the chat "shaking"
+      // while the AI types. This collapses any number of updates that land
+      // within one animation frame into a single scheduled paint, so the DOM
+      // is touched at most once per frame no matter how fast chunks arrive.
+      let __streamPendingHtml = null, __streamPaintQueued = false;
+      const paintStreamText = (html) => {
+          __streamPendingHtml = html;
+          if (__streamPaintQueued) return;
+          __streamPaintQueued = true;
+          requestAnimationFrame(function() {
+              __streamPaintQueued = false;
+              if (streamTextEl && __streamPendingHtml != null) streamTextEl.innerHTML = __streamPendingHtml;
+              scrollChatToBottom(true);
+          });
+      };
+
       const updateLiveThought = (reasonText) => {
           if (!reasonText) return;
           const live = document.getElementById(loadingId + '_thought');
@@ -14617,8 +15486,7 @@ function explainFetchError(e) {
           if (answerText) {
               for (let i = 0; i <= answerText.length; i += 5) {
                   if (!window.__aiAbort) break;
-                  streamTextEl.innerHTML = formatAiMarkdown(answerText.slice(0, i));
-                  scrollChatToBottom(true);
+                  paintStreamText(formatAiMarkdown(answerText.slice(0, i)));
                   await sleep(10);
               }
           }
@@ -14771,8 +15639,7 @@ function explainFetchError(e) {
                                       fullReasoning = split.thinking;
                                       updateLiveThought(fullReasoning);
                                   }
-                                  streamTextEl.innerHTML = formatAiMarkdown(split.answer);
-                                  scrollChatToBottom(true);
+                                  paintStreamText(formatAiMarkdown(split.answer));
                               }
                           } else if (msg && msg.content) {
                               fullReply = msg.content;
