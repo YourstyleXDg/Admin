@@ -4784,7 +4784,7 @@ body.cat-world-active .cat-mode-bar{display:block}
                     <option value="size_desc">Largest first</option>
                 </select>
                 <button class="btn" type="button" id="cloudStarredFilterBtn" style="padding:8px 12px;font-size:11px;" onclick="toggleCloudStarredFilter()" title="⭐ filter / All files · hold-drag file here to star">⭐</button>
-                <button class="btn" type="button" style="padding:8px 14px;font-size:11px;" onclick="toggleCloudTrash()" id="cloudTrashBtn">TRASH</button>
+                <button class="btn" type="button" style="padding:8px 14px;font-size:11px;" onclick="toggleCloudTrash()" id="cloudTrashBtn" title="Trash"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>TRASH</button>
                 <button class="btn" type="button" style="padding:8px 14px;font-size:11px;" onclick="refreshCloudFiles()">REFRESH</button>
             </div>
         </div>
@@ -5873,12 +5873,13 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
   root.cpTrashItems = window.cpTrashItems = async function (items) {
     if (!bridge() || !items.length) return;
     var ok = 0, fail = 0, lastErr = '';
+    showMovingChip(items);
     status('Moving ' + items.length + ' file' + (items.length === 1 ? '' : 's') + ' to trash…', null);
     for (var i = 0; i < items.length; i++) {
       try { items[i].isFolder ? await T.trashFolder(items[i].rel) : await T.trashFile(items[i]); ok++; }
       catch (e) { fail++; lastErr = (e && e.message) || String(e); console.error('[trash]', items[i].rel, e); }
     }
-    sel.clear(); paintSelection();
+    sel.clear(); paintSelection(); hideMovingChip();
     status(fail ? ('Trashed ' + ok + ', failed ' + fail + ': ' + lastErr) : ('Moved ' + ok + ' item(s) to trash · auto-deleted after 7 days'), !fail);
     if (root.refreshCloudFiles) await root.refreshCloudFiles();
     await refreshTrashBytes();
@@ -5908,7 +5909,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     if (!list.length) { box.innerHTML = head + '<div class="cp-empty">Trash is empty.</div>'; return; }
     box.innerHTML = head + list.map(function (e, i) {
       var warn = e.daysLeft <= 1 ? ' cp-warn' : '';
-      return '<div class="cloud-file-row cp-trash-row" data-ti="' + i + '"><div class="name" style="touch-action:pan-y">' + (e.isFolder ? '▣ ' : '') + esc(e.name) +
+      return '<div class="cloud-file-row cp-trash-row" data-ti="' + i + '"><div class="name" style="touch-action:pan-y">' + (e.isFolder ? '' : '') + esc(e.name) +
         '<div class="meta">' + esc(fmt(e.size)) + ' · from /' + esc(C.parentOf(e.original)) + ' · <span class="' + warn + '">' + e.daysLeft + 'd left</span></div></div>' +
         '<button class="btn" type="button" data-tact="restore" style="background:rgba(0,255,136,.15);color:var(--accent)">RESTORE</button>' +
         '<button class="btn" type="button" data-tact="purge" style="background:rgba(255,80,80,.15);color:var(--error)">DEL</button></div>';
@@ -5929,6 +5930,25 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     box.classList.toggle('cp-selecting', sel.size() > 0);
     paintBulkBar();
   }
+
+  function showMovingChip(items) {
+    var chip = $('cpMovingChip');
+    if (!chip) {
+      chip = doc.createElement('div');
+      chip.id = 'cpMovingChip';
+      doc.body.appendChild(chip);
+    }
+    var names = (items || []).slice(0, 4).map(function(it){ return it.name || it.rel || ''; });
+    var extra = (items && items.length > 4) ? (' +' + (items.length - 4) + ' more') : '';
+    chip.innerHTML = '<div class="cp-move-title">Moving ' + (items ? items.length : 0) + ' file' + ((items && items.length===1)?'':'s') + '</div>' +
+      '<div class="cp-move-names">' + names.map(function(n){ return '<span>' + esc(n) + '</span>'; }).join('') + (extra ? ('<span>' + extra + '</span>') : '') + '</div>';
+    chip.classList.add('show');
+  }
+  function hideMovingChip() {
+    var chip = $('cpMovingChip');
+    if (chip) { chip.classList.remove('show'); chip.innerHTML = ''; }
+  }
+
   function paintBulkBar() {
     var bar = $('cpBulkBar'); var n = sel.size();
     if (!bar) { bar = doc.createElement('div'); bar.id = 'cpBulkBar'; doc.body.appendChild(bar); }
@@ -5936,9 +5956,9 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     bar.classList.add('show');
     if (n) {
       bar.innerHTML = '<span class="cp-count">' + n + ' selected</span>' +
-        '<button type="button" data-b="dl">⬇ DL</button><button type="button" data-b="star">⭐</button>' +
-        '<button type="button" data-b="move">✂ Move</button><button type="button" data-b="copy">⧉ Copy</button>' +
-        '<button type="button" data-b="del" class="cp-danger">🗑</button><button type="button" data-b="x" aria-label="Clear selection">✕</button>';
+        '<button type="button" data-b="dl">DL</button><button type="button" data-b="star">Star</button>' +
+        '<button type="button" data-b="move">Move</button><button type="button" data-b="copy">Copy</button>' +
+        '<button type="button" data-b="del" class="cp-danger">Trash</button><button type="button" data-b="x" aria-label="Clear selection">Close</button>';
     } else {
       bar.innerHTML = '<span class="cp-count">' + (clipboard.mode === 'move' ? '✂ ' : '⧉ ') + clipboard.items.length + ' ready · open target folder</span>' +
         '<button type="button" data-b="paste" class="cp-primary">PASTE HERE</button><button type="button" data-b="cancelclip">✕</button>';
@@ -6026,7 +6046,15 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     await B.authorizeB2(false); var b2 = B.b2();
     var r = await B.b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_download_authorization', { method: 'POST', headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ bucketId: b2.bucketId, fileNamePrefix: info.rel, validDurationInSeconds: 3600 }) });
     var d = await r.json().catch(function () { return {}; }); if (!r.ok) throw new Error(d.message || 'Auth failed');
-    return { url: b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + info.rel.split('/').map(encodeURIComponent).join('/') + '?Authorization=' + encodeURIComponent(d.authorizationToken), blob: false };
+    var direct = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + info.rel.split('/').map(encodeURIComponent).join('/') + '?Authorization=' + encodeURIComponent(d.authorizationToken);
+    try {
+      var fr = await fetch(direct);
+      if (!fr.ok) throw new Error('HTTP ' + fr.status);
+      var blob = await fr.blob();
+      return { url: URL.createObjectURL(blob), blob: true };
+    } catch (e) {
+      return { url: direct, blob: false };
+    }
   }
   function playerHtml(kind, id, src, mime) {
     var el = kind === 'video' ? '<video id="' + id + '" playsinline preload="metadata" src="' + src + '"></video>' : '<audio id="' + id + '" preload="metadata" src="' + src + '"></audio>';
@@ -6045,7 +6073,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     m.addEventListener('timeupdate', function () { t1.textContent = f(m.currentTime); if (!drag && m.duration) seek.value = Math.round((m.currentTime / m.duration) * 1000); });
     m.addEventListener('loadedmetadata', function () { t2.textContent = f(m.duration); });
     m.addEventListener('durationchange', function () { t2.textContent = f(m.duration); });
-    m.addEventListener('error', function () { pl.classList.add('cp-err'); t1.textContent = '⚠ cannot play'; });
+    m.addEventListener('error', function () { pl.classList.add('cp-err'); t1.textContent = '—'; });
     seek.addEventListener('input', function () { drag = true; if (m.duration) { m.currentTime = (seek.value / 1000) * m.duration; t1.textContent = f(m.currentTime); } });
     seek.addEventListener('change', function () { drag = false; });
     seek.addEventListener('pointerup', function () { drag = false; });
@@ -6071,7 +6099,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       else drawer.innerHTML = closeBtn + '<div class="cp-load">No preview for this type. Use DL.</div>';
       var pl = drawer.querySelector('.cp-player'); if (pl) { wirePlayer(pl); var m = pl.querySelector('video,audio'); if (m) {
         m.addEventListener('error', function() {
-          drawer.innerHTML = closeBtn + '<div class="cp-err">File corrupted or unreadable. Use DL to save, or re-upload.</div>';
+          drawer.innerHTML = closeBtn + '<div class="cp-err">Preview unavailable. Use DL to download the file.</div>';
         });
         m.play().catch(function () {});
       } }
@@ -6116,7 +6144,20 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     if (root.__cpOverrides) return; root.__cpOverrides = true;
     // The ONE function every delete path (⋮ menu, drag-to-trash button, bulk) ends in.
     root.softDeleteCloudFile = async function (fileName, fileId, relPath) {
-      if (!bridge()) return; var rel = String(relPath || fileName || ''); if (rel.indexOf('/') < 0 && cwd()) rel = C.joinPath(cwd(), fileName);
+      if (!bridge()) return;
+      // Multi-select: act on ALL selected files
+      if (sel.size() > 1) {
+        var many = sel.list();
+        status('Moving ' + many.length + ' files to trash…', null);
+        try {
+          document.querySelectorAll('.cloud-file-row.cp-selected').forEach(function(r){ r.classList.add('cp-bulk-leaving'); });
+        } catch(e){}
+        showMovingChip(many);
+        await root.cpTrashItems(many);
+        hideMovingChip();
+        return;
+      }
+      var rel = String(relPath || fileName || ''); if (rel.indexOf('/') < 0 && cwd()) rel = C.joinPath(cwd(), fileName);
       var row = null, box = $('cloudFileList'); if (box) box.querySelectorAll('.cloud-file-row .name').forEach(function (n) { if ((n.getAttribute('data-rel') || n.getAttribute('data-name')) === (relPath || fileName)) row = n.closest('.cloud-file-row'); });
       var info = row ? rowInfo(row) : { rel: rel, name: fileName, isFolder: false, id: fileId, size: 0 }; info.rel = rel;
       await root.cpTrashItems([info]);
@@ -10918,6 +10959,61 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
     else wire();
   })();
 
+
+  // ===== 2-finger pan inside cloud panel =====
+  (function bindCloudTwoFingerPan() {
+    function wire() {
+      var panel = document.getElementById('cloudPanel');
+      var list = document.getElementById('cloudFileList');
+      if (!panel || !list || list.__twoFingerWired) return;
+      list.__twoFingerWired = true;
+      var state = null;
+      list.addEventListener('touchstart', function(e) {
+        if (e.touches.length === 2) {
+          state = {
+            y0: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+            x0: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+            scrollTop: list.scrollTop,
+            scrollLeft: list.scrollLeft
+          };
+          panel.classList.add('cp-twofinger-panning');
+        }
+      }, { passive: true });
+      list.addEventListener('touchmove', function(e) {
+        if (!state || e.touches.length !== 2) return;
+        e.preventDefault();
+        var y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        var x = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        list.scrollTop = state.scrollTop - (y - state.y0);
+        list.scrollLeft = state.scrollLeft - (x - state.x0);
+      }, { passive: false });
+      function end() {
+        state = null;
+        panel.classList.remove('cp-twofinger-panning');
+      }
+      list.addEventListener('touchend', end, { passive: true });
+      list.addEventListener('touchcancel', end, { passive: true });
+      // 1-finger native scroll still works via overflow:auto when not 2-finger
+      list.style.touchAction = 'pan-y';
+      list.addEventListener('touchstart', function(e) {
+        if (e.touches.length >= 2) list.style.touchAction = 'none';
+        else list.style.touchAction = 'pan-y';
+      }, { passive: true });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+    else wire();
+    // re-wire when panel opens
+    var _orig = window.toggleCloudPanel;
+    if (typeof _orig === 'function' && !_orig.__twoFingerPatched) {
+      window.toggleCloudPanel = function(force) {
+        var r = _orig.apply(this, arguments);
+        setTimeout(wire, 50);
+        return r;
+      };
+      window.toggleCloudPanel.__twoFingerPatched = true;
+    }
+  })();
+
   window.__cloudUploading = false;
   window.__cloudDownloading = false;
   window.__cloudXhr = null;
@@ -13722,11 +13818,7 @@ async function listAllFiles(forcedProvider) {
 
                 const size = f._isFolder
                   ? 'Folder'
-                  : (function() {
-                      const cl = Number(f.contentLength) || 0;
-                      if (cl <= 0) return 'Broken · 0 B';
-                      return formatBytes(cl);
-                    })();
+                  : formatBytes(Number(f.contentLength) || 0);
 
                 const fid =
                   String(
@@ -13745,7 +13837,7 @@ async function listAllFiles(forcedProvider) {
                 const isStarred = !!(window.__cloudStarredSet && window.__cloudStarredSet.has(cloudStarKey(f._relPath || name)));
 
                 return (
-                  '<div class="cloud-file-row' + (isFolder ? ' is-folder' : '') + ((!isFolder && !(Number(f.contentLength)||0)) ? ' is-broken' : '') + '" data-search-name="' + name.toLowerCase().replace(/"/g,'&quot;') + '">' +
+                  '<div class="cloud-file-row' + (isFolder ? ' is-folder' : '') + '" data-size="' + (Number(f.contentLength)||0) + '" data-search-name="' + name.toLowerCase().replace(/"/g,'&quot;') + '">' +
 
                   (isStarred ? '<span class="cloud-star-badge" title="Starred">★</span>' : '') +
                   '<div class="name" data-name="' + name + '" data-rel="' + relPath + '"' + (isFolder ? ' data-folder="1" role="button" tabindex="0" title="Open folder"' : (hasPreview ? ' data-exp-id="' + fid + '" data-exp-name="' + name + '" role="button" tabindex="0" aria-expanded="false" title="Tap to preview"' : '')) + '>' +
@@ -13847,6 +13939,18 @@ async function listAllFiles(forcedProvider) {
                     });
                     start = data.nextFileName || null;
                   } while (start);
+                } else if (getActiveCloudProvider() === 'infini') {
+                  // Depth-1 list under this folder and sum file sizes (recursive light walk)
+                  var prev = window.__cloudCwd;
+                  window.__cloudCwd = path;
+                  try {
+                    var items = await listInfiniFiles();
+                    (items || []).forEach(function(f) {
+                      if (f && !f._isFolder) bytes += Number(f.contentLength || f.size) || 0;
+                    });
+                  } finally {
+                    window.__cloudCwd = prev;
+                  }
                 }
                 if (m && m.isConnected) m.textContent = 'Folder · ' + formatBytes(bytes);
               } catch (e) {
@@ -14278,7 +14382,11 @@ async function listAllFiles(forcedProvider) {
       console.log('[DELETE-TRACE] drop at', x, y, 'info=', info, 'overTrash=', pointOver('cloudTrashBtn', x, y));
       if (!info) return;
       if (pointOver('cloudTrashBtn', x, y)) {
-        if (window.softDeleteCloudFile) window.softDeleteCloudFile(info.name, info.id, info.rel);
+        if (window.__cpSelected && window.__cpSelected.size && window.__cpSelected.size() > 1) {
+          var many = window.__cpSelected.list();
+          if (window.cpTrashItems) window.cpTrashItems(many);
+          else if (window.softDeleteCloudFile) window.softDeleteCloudFile(info.name, info.id, info.rel);
+        } else if (window.softDeleteCloudFile) window.softDeleteCloudFile(info.name, info.id, info.rel);
         else if (window.deleteCloudFile) window.deleteCloudFile(info.name, info.id, info.rel);
       } else if (pointOver('cloudStarredFilterBtn', x, y)) {
         if (window.toggleCloudStar) window.toggleCloudStar(info.rel || info.name);
