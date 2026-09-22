@@ -108,6 +108,8 @@
             display: flex;
             min-height: 100vh;
             overflow-x: hidden;
+            width: 100%;
+            max-width: 100vw;
             position: relative;
             transition: background-color 0.8s ease, color 0.8s ease;
             -webkit-font-smoothing: antialiased;
@@ -656,6 +658,8 @@
             width: calc(100% - 260px);
             position: relative;
             z-index: 5;
+            overflow-x: hidden;
+            min-width: 0;
         }
         .tab-section {
             display: none;
@@ -1761,7 +1765,9 @@
             width: min(52vw, 720px);
             max-width: 100%;
             overflow: auto;
-            display: none;
+            display: none !important;
+            visibility: hidden;
+            pointer-events: none;
             flex-direction: column;
             padding: 28px 20px 50px;
             border-radius: 28px 0 0 28px;
@@ -1770,16 +1776,25 @@
             background: var(--glass-bg);
             backdrop-filter: blur(40px) saturate(180%);
             -webkit-backdrop-filter: blur(40px) saturate(180%);
+            transform: translateX(100%);
         }
         #cloudPanel.open {
             display: flex !important;
+            visibility: visible;
+            pointer-events: auto;
             flex-direction: column;
             animation: secPanelIn .4s cubic-bezier(.16, 1, .3, 1) forwards;
         }
         #cloudPanel.closing {
             display: flex !important;
+            visibility: visible;
+            pointer-events: none;
             flex-direction: column;
-            animation: secPanelOut .4s cubic-bezier(.4, 0, .2, 1) forwards;
+            animation: cloudPanelOut .38s cubic-bezier(.4, 0, .2, 1) forwards;
+        }
+        @keyframes cloudPanelOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(100%); }
         }
         #cloudPanelBackdrop {
             position: fixed;
@@ -1787,8 +1802,12 @@
             z-index: 120;
             background: rgba(0,0,0,.45);
             display: none;
+            pointer-events: none;
         }
-        #cloudPanelBackdrop.open { display: block; }
+        #cloudPanelBackdrop.open {
+            display: block;
+            pointer-events: auto;
+        }
 
         /* ========================================= */
         /* 🔥 3D FLUID AI ORB & MORPHING PANEL 🔥 */
@@ -2737,7 +2756,10 @@
             width: 520px;
             max-width: 100%;
             overflow: auto;
-            display: none;
+            display: none !important;
+            visibility: hidden;
+            pointer-events: none;
+            transform: translateX(100%);
             padding: 40px 30px 50px;
             border-radius: 28px 0 0 28px;
             border-left: 1px solid var(--glass-border);
@@ -2747,11 +2769,15 @@
             -webkit-backdrop-filter: blur(40px) saturate(180%);
         }
         #securityPanel.open {
-            display: block;
+            display: block !important;
+            visibility: visible;
+            pointer-events: auto;
             animation: secPanelIn .4s cubic-bezier(.16, 1, .3, 1) forwards;
         }
         #securityPanel.closing {
-            display: block;
+            display: block !important;
+            visibility: visible;
+            pointer-events: none;
             animation: secPanelOut .4s cubic-bezier(.4, 0, .2, 1) forwards;
         }
         @keyframes secPanelOut {
@@ -2761,7 +2787,7 @@
             }
             to {
                 opacity: 0;
-                transform: translateX(48px)
+                transform: translateX(100%)
             }
         }
         @keyframes secPanelIn {
@@ -5219,8 +5245,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
 
             <div style="display:flex;gap:14px;margin-top:18px;flex-wrap:wrap;">
                 <div style="flex:1;min-width:140px;">
-                    <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Reset Hour (0-23)</div>
-                    <input type="number" id="streakSysResetHour" min="0" max="23" step="1" style="width:100%;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.25);border:1px solid var(--glass-border);color:var(--text-main);font-weight:800;">
+                    <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Reset Time <span style="text-transform:none;font-weight:600;color:var(--text-dim);opacity:.8;">(exact hour &amp; minute)</span></div>
+                    <input type="time" id="streakSysResetTime" step="60" style="width:100%;padding:12px 14px;border-radius:12px;background:rgba(0,0,0,.25);border:1px solid var(--glass-border);color:var(--text-main);font-weight:800;color-scheme:dark;">
                 </div>
                 <div style="flex:1;min-width:140px;">
                     <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Reminder — Hours Before Reset</div>
@@ -14943,8 +14969,14 @@ function explainFetchError(e) {
           if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) ae.blur();
         } catch (e) {}
         p.classList.add('closing');
+        p.classList.remove('open');
         if (bd) bd.classList.remove('open');
-        setTimeout(() => { p.classList.remove('open', 'closing'); }, 380);
+        setTimeout(function() {
+          p.classList.remove('open', 'closing');
+          p.style.removeProperty('display');
+          p.style.removeProperty('transform');
+          p.style.removeProperty('opacity');
+        }, 400);
         // upload continues in background; chip already driven by setCloudBgUpload
         if (window.__cloudUploading && typeof setCloudBgUpload === 'function') {
           setCloudBgUpload(true, document.getElementById('cloudBgUploadText') && document.getElementById('cloudBgUploadText').textContent || 'Uploading in background…', null);
@@ -16647,7 +16679,7 @@ function explainFetchError(e) {
         // of the key-generation/login flow, not here.
         // ============================================================
 
-        let streakSettingsCache = { enabled: false, resetHour: 4, reminderHoursBefore: 2, includeMasterKeyLogins: true };
+        let streakSettingsCache = { enabled: false, resetHour: 4, resetMinute: 0, reminderHoursBefore: 2, includeMasterKeyLogins: true };
         let streakBonusMinutesCache = { 1: 0, 2: 20, 3: 40, 4: 60, 5: 80, 6: 120, 7: 180 };
 
         function streakGetBonusMinutes(day) {
@@ -16661,6 +16693,7 @@ function explainFetchError(e) {
             streakSettingsCache = {
                 enabled: !!v.enabled,
                 resetHour: Number.isFinite(v.resetHour) ? v.resetHour : 4,
+                resetMinute: Number.isFinite(v.resetMinute) ? Math.max(0, Math.min(59, Number(v.resetMinute))) : 0,
                 reminderHoursBefore: Number.isFinite(v.reminderHoursBefore) ? v.reminderHoursBefore : 2,
                 includeMasterKeyLogins: v.includeMasterKeyLogins !== false
             };
@@ -16679,7 +16712,7 @@ function explainFetchError(e) {
             const offNotice = document.getElementById('streakOffNotice');
             if (offNotice) offNotice.style.display = streakSettingsCache.enabled ? 'none' : 'block';
             const resetStat = document.getElementById('streakStatResetHour');
-            if (resetStat) resetStat.innerHTML = String(streakSettingsCache.resetHour) + '<span style="font-size:15px;font-weight:700;color:var(--text-dim);">:00</span>';
+            if (resetStat) resetStat.innerHTML = String(streakSettingsCache.resetHour) + '<span style="font-size:15px;font-weight:700;color:var(--text-dim);">:' + String(streakSettingsCache.resetMinute != null ? streakSettingsCache.resetMinute : 0).padStart(2, '0') + '</span>';
             // Re-render the list so master-tag visibility (which depends
             // on includeMasterKeyLogins) and the on/off empty-state stay
             // in sync with whatever settings just changed.
@@ -16832,7 +16865,8 @@ function explainFetchError(e) {
         window.openStreakSettingsModal = function() {
             document.getElementById('streakSysEnabledToggle').checked = streakSettingsCache.enabled;
             document.getElementById('streakSysMasterToggle').checked = streakSettingsCache.includeMasterKeyLogins;
-            document.getElementById('streakSysResetHour').value = streakSettingsCache.resetHour;
+            document.getElementById('streakSysResetTime').value =
+                String(streakSettingsCache.resetHour).padStart(2, '0') + ':' + String(streakSettingsCache.resetMinute != null ? streakSettingsCache.resetMinute : 0).padStart(2, '0');
             document.getElementById('streakSysReminderHours').value = streakSettingsCache.reminderHoursBefore;
 
             const editor = document.getElementById('streakBonusDayEditor');
@@ -16848,9 +16882,13 @@ function explainFetchError(e) {
         window.saveStreakSettings = async function() {
             const enabled = document.getElementById('streakSysEnabledToggle').checked;
             const includeMaster = document.getElementById('streakSysMasterToggle').checked;
-            let resetHour = Math.round(Number(document.getElementById('streakSysResetHour').value));
+            const timeVal = (document.getElementById('streakSysResetTime') && document.getElementById('streakSysResetTime').value) || '04:00';
+            const parts = String(timeVal).split(':');
+            let resetHour = Math.round(Number(parts[0]));
+            let resetMinute = Math.round(Number(parts[1] != null ? parts[1] : 0));
             let reminderHours = Math.round(Number(document.getElementById('streakSysReminderHours').value));
             if (!Number.isFinite(resetHour) || resetHour < 0 || resetHour > 23) resetHour = 4;
+            if (!Number.isFinite(resetMinute) || resetMinute < 0 || resetMinute > 59) resetMinute = 0;
             if (!Number.isFinite(reminderHours) || reminderHours < 0) reminderHours = 2;
 
             const bonusMinutes = {};
@@ -16861,7 +16899,7 @@ function explainFetchError(e) {
 
             try {
                 await set(ref(db, 'settings/streakSystem'), {
-                    enabled, resetHour, reminderHoursBefore: reminderHours, includeMasterKeyLogins: includeMaster
+                    enabled, resetHour, resetMinute, reminderHoursBefore: reminderHours, includeMasterKeyLogins: includeMaster
                 });
                 await set(ref(db, 'settings/streakBonusMinutes'), bonusMinutes);
                 closeModals();
