@@ -1756,6 +1756,75 @@
             stroke-linecap: round;
             stroke-linejoin: round;
         }
+        
+        /* Upload live pill — MUST be fixed+hidden or body flex shows it as a white right strip */
+        #cloudLivePill {
+            position: fixed !important;
+            left: 50%;
+            bottom: 88px;
+            transform: translateX(-50%);
+            z-index: 10051;
+            display: none !important;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            border-radius: 99px;
+            border: 1px solid rgba(92, 200, 255, 0.4);
+            background: rgba(12, 18, 28, 0.94);
+            color: #e8f7ff;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+            pointer-events: auto;
+        }
+        #cloudLivePill.show {
+            display: inline-flex !important;
+        }
+        #cloudLivePill .cloud-live-spin {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid rgba(92,200,255,0.25);
+            border-top-color: #5cc8ff;
+            animation: cloudLiveSpin .7s linear infinite;
+        }
+        @keyframes cloudLiveSpin {
+            to { transform: rotate(360deg); }
+        }
+        #cloudLivePillPct {
+            color: #5cc8ff;
+            font-variant-numeric: tabular-nums;
+        }
+        #cloudDelPop {
+            position: fixed;
+            z-index: 10060;
+            display: none;
+            min-width: 200px;
+            max-width: 280px;
+            padding: 14px;
+            border-radius: 16px;
+            background: rgba(18, 22, 30, 0.96);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+            color: var(--text-main);
+        }
+        #cloudDelPop.show { display: block; }
+
+
+        /* Body is flex — any non-fixed sibling becomes a side strip (white line bug) */
+        body > #cloudLivePill,
+        body > #cloudBgUpload,
+        body > #cloudDelPop,
+        body > #cloudPanel,
+        body > #cloudPanelBackdrop,
+        body > #securityPanel,
+        body > #securityPanelBackdrop,
+        body > #aiPanel,
+        body > #aiPanelBackdrop {
+            flex: none;
+        }
+
         #cloudPanel {
             position: fixed;
             top: 0;
@@ -4666,7 +4735,7 @@ body.cat-world-active .cat-mode-bar{display:block}
         </div>
         <div class="job-lines" id="cloudBgJobLines"></div>
     </div>
-    <button type="button" id="cloudLivePill" aria-live="polite" onclick="toggleCloudPanel(true)" title="Upload in progress — tap to open">
+    <button type="button" id="cloudLivePill" aria-live="polite" onclick="toggleCloudPanel(true)" style="display:none" title="Upload in progress — tap to open">
         <span class="cloud-live-spin"></span>
         <span id="cloudLivePillText">Uploading…</span>
         <span id="cloudLivePillPct">0%</span>
