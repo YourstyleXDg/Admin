@@ -3737,13 +3737,13 @@ body.cat-world-active .cat-mode-bar{display:block}
 .cloud-file-row.cp-selected { background: rgba(60,140,255,.20) !important; box-shadow: inset 3px 0 0 #3c8cff; border-radius: 10px; }
 .cloud-file-row.cp-selected .name { color: #9cc8ff; }
 #cloudFileList.cp-selecting .cloud-file-row.is-folder { opacity: .55; }
-#cpBulkBar { position: fixed; left: 50%; bottom: 16px; transform: translate(-50%, 140%); z-index: 2147483000; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
-  max-width: 96vw; padding: 8px 10px; border-radius: 16px; background: rgba(14,20,32,.96); border: 1px solid rgba(92,200,255,.35); box-shadow: 0 12px 40px rgba(0,0,0,.55); transition: transform .22s ease; backdrop-filter: blur(10px); }
+#cpBulkBar { position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 140%); z-index: 2147483000; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+  max-width: 96vw; padding: 14px 16px; border-radius: 20px; background: rgba(14,20,32,.96); border: 1px solid rgba(92,200,255,.35); box-shadow: 0 12px 40px rgba(0,0,0,.55); transition: transform .22s ease; backdrop-filter: blur(10px); }
 #cpBulkBar.show { transform: translate(-50%, 0); }
-#cpBulkBar button { border: 0; border-radius: 10px; padding: 9px 12px; font: 800 12px/1 system-ui, sans-serif; color: #fff; background: rgba(255,255,255,.10); cursor: pointer; }
-#cpBulkBar button.cp-danger { background: rgba(255,80,80,.25); color: #ff8c8c; }
+#cpBulkBar button { border: 0; border-radius: 14px; padding: 14px 18px; min-height: 48px; min-width: 52px; font: 800 14px/1.1 system-ui, sans-serif; color: #fff; background: rgba(255,255,255,.12); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+#cpBulkBar button.cp-danger { background: rgba(255,80,80,.32); color: #ffb0b0; }
 #cpBulkBar button.cp-primary { background: #00c2ff; color: #001018; }
-#cpBulkBar .cp-count { font: 800 12px/1 system-ui, sans-serif; color: #9cc8ff; padding: 0 6px; }
+#cpBulkBar .cp-count { font: 800 14px/1 system-ui, sans-serif; color: #9cc8ff; padding: 0 10px; }
 
 /* --- (4) storage bar: used grows from the LEFT, trash from the RIGHT, they can never overlap --- */
 .cloud-stat-bar.cp-bar { position: relative; display: block; }
@@ -3852,6 +3852,22 @@ body.cat-world-active .cat-mode-bar{display:block}
   outline: 2px solid var(--accent, #00ff88) !important;
   background: rgba(0,255,136,0.12) !important;
   border-radius: 12px;
+}
+
+/* Pause expensive animations while cloud is doing work — stops background "shutter" */
+body.cloud-op-busy .float-anim,
+body.cloud-op-busy .water-wave,
+body.cloud-op-busy::before,
+body.cloud-op-busy::after {
+  animation-play-state: paused !important;
+}
+body.cloud-op-busy .glass-panel,
+body.cloud-op-busy .stat-card,
+body.cloud-op-busy .cloud-file-row {
+  transition: none !important;
+}
+body.cloud-op-busy #cloudPanel {
+  contain: layout style;
 }
 </style>
 </head>
@@ -4725,7 +4741,10 @@ body.cat-world-active .cat-mode-bar{display:block}
         <div id="cloudUploadProgress" style="font-size:12px;font-weight:700;color:#5cc8ff;min-height:18px;margin-bottom:8px;"></div>
 
         <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0;gap:8px;flex-wrap:wrap;">
-            <span style="font-size:14px;font-weight:800;">Files</span>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <button class="btn" type="button" id="cloudStarredFilterBtn" style="padding:10px 14px;font-size:14px;min-width:44px;min-height:44px;" onclick="toggleCloudStarredFilter()" title="Star filter / hold-drag file here to star">★</button>
+                <span style="font-size:14px;font-weight:800;">Files</span>
+            </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 <button class="btn" type="button" id="cloudNewFolderBtn" onclick="cloudCreateFolder()">+ Folder</button>
                 <select id="cloudSortSelect" onchange="setCloudSort(this.value)" style="padding:8px 10px;font-size:11px;font-weight:800;border-radius:10px;background:var(--input-bg);border:1px solid var(--glass-border);color:var(--text-main);">
@@ -4734,9 +4753,8 @@ body.cat-world-active .cat-mode-bar{display:block}
                     <option value="name_asc">Name A–Z</option>
                     <option value="size_desc">Largest first</option>
                 </select>
-                <button class="btn" type="button" id="cloudStarredFilterBtn" style="padding:8px 12px;font-size:11px;" onclick="toggleCloudStarredFilter()" title="⭐ filter / All files · hold-drag file here to star">⭐</button>
-                <button class="btn" type="button" style="padding:8px 14px;font-size:11px;" onclick="toggleCloudTrash()" id="cloudTrashBtn" title="Trash"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>TRASH</button>
-                <button class="btn" type="button" style="padding:8px 14px;font-size:11px;" onclick="refreshCloudFiles()">REFRESH</button>
+                <button class="btn" type="button" style="padding:10px 16px;font-size:12px;min-height:44px;" onclick="toggleCloudTrash()" id="cloudTrashBtn" title="Trash"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>TRASH</button>
+                <button class="btn" type="button" style="padding:10px 16px;font-size:12px;min-height:44px;" onclick="refreshCloudFiles()">REFRESH</button>
             </div>
         </div>
         <div style="position:relative;margin:0 0 10px;">
@@ -5507,31 +5525,51 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         }
       },
       remove: async function (item) {
-        // Nested paths: use full rel. Try file URL; on 301/409 retry alternate slash form.
-        var u0 = url(item.rel, false);
+        // Nested: full rel path. Prefer MOVE-to-trash path via trash engine; this is hard-delete.
+        var rel = String(item.rel || item.name || '').replace(/^\/+/, '');
+        var u0 = url(rel, false);
         var r = await B.infiniFetch(u0, { method: 'DELETE' });
-        if (r.status === 301 || r.status === 302 || r.status === 409) {
-          r = await B.infiniFetch(url(item.rel, true).replace(/\/$/, ''), { method: 'DELETE' });
+        if (r.status === 301 || r.status === 302 || r.status === 404 || r.status === 409 || r.status === 405) {
+          // Retry with trailing slash (collection) and without
+          r = await B.infiniFetch(url(rel, true), { method: 'DELETE' });
+          if (!(r.ok || r.status === 204 || r.status === 200 || r.status === 404)) {
+            r = await B.infiniFetch(url(rel, false), { method: 'DELETE' });
+          }
         }
         if (!(r.ok || r.status === 204 || r.status === 200 || r.status === 404))
-          throw new Error('Delete failed (' + r.status + ')');
+          throw new Error('Delete failed (' + r.status + ') for ' + rel);
       },
       removeTree: async function (folderRel) {
-        var r = await B.infiniFetch(url(folderRel, true), { method: 'DELETE' });
-        if (r.status === 301 || r.status === 302) {
-          r = await B.infiniFetch(url(folderRel, false), { method: 'DELETE' });
+        var rel = String(folderRel || '').replace(/^\/+/, '').replace(/\/+$/, '');
+        var r = await B.infiniFetch(url(rel, true), { method: 'DELETE' });
+        if (!(r.ok || r.status === 204 || r.status === 200 || r.status === 404)) {
+          r = await B.infiniFetch(url(rel, false), { method: 'DELETE' });
+        }
+        // Deep delete children if server won't delete non-empty collection
+        if (!(r.ok || r.status === 204 || r.status === 200 || r.status === 404)) {
+          var kids = await A.walk(rel);
+          for (var i = 0; i < kids.length; i++) {
+            try { await A.remove(kids[i]); } catch (e) {}
+          }
+          r = await B.infiniFetch(url(rel, true), { method: 'DELETE' });
         }
         if (!(r.ok || r.status === 204 || r.status === 200 || r.status === 404))
           throw new Error('Folder delete failed (' + r.status + ')');
       },
       move: async function (from, to) {
         await A.ensureDir(C.parentOf(to));
+        var src = url(from, false);
         var dest = url(to, false);
-        // WebDAV requires absolute Destination; force absolute if relative slipped through
         try { if (!/^https?:/i.test(dest)) dest = new URL(dest, B.cloudPathUrl('')).href; } catch (e) {}
-        var r = await B.infiniFetch(url(from, false), { method: 'MOVE', headers: { Destination: dest, Overwrite: 'T' } });
-        // 201 Created, 204 No Content, 200 OK, 404 already gone — all fine; 301/302 after follow also ok
-        if (!(r.ok || r.status === 201 || r.status === 204 || r.status === 200 || r.status === 404 || r.status === 301 || r.status === 302))
+        try { if (!/^https?:/i.test(src)) src = new URL(src, B.cloudPathUrl('')).href; } catch (e2) {}
+        var r = await B.infiniFetch(src, { method: 'MOVE', headers: { Destination: dest, Overwrite: 'T' } });
+        // Real success only: 201/204/200. 301/302 = retry once on Location if present
+        if (r.status === 301 || r.status === 302) {
+          var loc = null;
+          try { loc = r.headers && (r.headers.get && r.headers.get('Location')); } catch (e3) {}
+          if (loc) r = await B.infiniFetch(loc, { method: 'MOVE', headers: { Destination: dest, Overwrite: 'T' } });
+        }
+        if (!(r.ok || r.status === 201 || r.status === 204 || r.status === 200 || r.status === 404))
           throw new Error('Move failed (' + r.status + ')');
       },
       copy: async function (from, to) {
@@ -5786,7 +5824,16 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     await refreshTrashBytes();
   };
   /* Delete = move to trash (folders too). B2 and Infini alike. Quota check: trash counts toward the limit. */
+  
+  window.__cloudOpBusy = function(on) {
+    try {
+      if (on) document.body.classList.add('cloud-op-busy');
+      else document.body.classList.remove('cloud-op-busy');
+    } catch (e) {}
+  };
   root.cpTrashItems = window.cpTrashItems = async function (items) {
+    window.__cloudOpBusy(true);
+    try {
     if (!bridge() || !items.length) return;
     var ok = 0, fail = 0, lastErr = '';
     showMovingChip(items);
@@ -5799,6 +5846,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     status(fail ? ('Trashed ' + ok + ', failed ' + fail + ': ' + lastErr) : ('Moved ' + ok + ' item(s) to trash · auto-deleted after 7 days'), !fail);
     if (root.refreshCloudFiles) await root.refreshCloudFiles();
     await refreshTrashBytes();
+    } finally { window.__cloudOpBusy(false); }
   };
   root.cpPurgeItems = async function (entries) {
     if (!bridge()) return; var n = 0, f = 0;
@@ -14485,7 +14533,9 @@ async function listAllFiles(forcedProvider) {
       const el = document.getElementById(id);
       if (!el) return false;
       const r = el.getBoundingClientRect();
-      return x >= r.left - 16 && x <= r.right + 16 && y >= r.top - 16 && y <= r.bottom + 16;
+      // Large hit area (64px) — finger / multi-drag must not miss Trash/Star
+      const pad = 64;
+      return x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
     }
     // Is (x,y) over a FOLDER row (not the row being dragged itself)? Folders
     // are drop targets for move/copy, same as the trash/star buttons above.
@@ -14528,12 +14578,23 @@ async function listAllFiles(forcedProvider) {
       console.log('[DELETE-TRACE] drop at', x, y, 'info=', info, 'overTrash=', pointOver('cloudTrashBtn', x, y));
       if (!info) return;
       if (pointOver('cloudTrashBtn', x, y)) {
-        if (window.__cpSelected && window.__cpSelected.size && window.__cpSelected.size() > 1) {
-          var many = window.__cpSelected.list();
-          if (window.cpTrashItems) window.cpTrashItems(many);
-          else if (window.softDeleteCloudFile) window.softDeleteCloudFile(info.name, info.id, info.rel);
-        } else if (window.softDeleteCloudFile) window.softDeleteCloudFile(info.name, info.id, info.rel);
-        else if (window.deleteCloudFile) window.deleteCloudFile(info.name, info.id, info.rel);
+        var many = null;
+        try {
+          if (window.__cpSelected && typeof window.__cpSelected.list === 'function' && window.__cpSelected.size() >= 1) {
+            many = window.__cpSelected.list();
+            // Ensure dragged item is included
+            if (info && info.rel && !many.some(function(it){ return (it.rel||it.name) === info.rel; })) {
+              many = many.concat([info]);
+            }
+          }
+        } catch (eSel) { many = null; }
+        if (many && many.length >= 1 && window.cpTrashItems) {
+          window.cpTrashItems(many);
+        } else if (window.softDeleteCloudFile) {
+          window.softDeleteCloudFile(info.name, info.id, info.rel);
+        } else if (window.deleteCloudFile) {
+          window.deleteCloudFile(info.name, info.id, info.rel);
+        }
       } else if (pointOver('cloudStarredFilterBtn', x, y)) {
         if (window.__cpSelected && window.__cpSelected.size && window.__cpSelected.size() > 1) {
           var manyStar = window.__cpSelected.list();
