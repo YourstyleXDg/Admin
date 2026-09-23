@@ -3895,6 +3895,85 @@ body.cat-world-active .cat-mode-bar{display:block}
 }
 body.cp-fs-lock { overflow: hidden !important; touch-action: none !important; }
 
+
+/* Kill bottom outgrowth / leftover chips when idle */
+#cpBulkBar:not(.show) {
+  display: none !important;
+  pointer-events: none !important;
+  transform: translate(-50%, 200%) !important;
+  visibility: hidden !important;
+}
+#cloudBgUpload:not(.show) {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+#cpMovingChip:not(.show) {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+/* Image lightbox fullscreen */
+.cp-img-fs {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483646 !important;
+  background: #000 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  max-height: none !important;
+  padding: 0 !important;
+}
+.cp-img-fs img {
+  max-width: 100vw !important;
+  max-height: 100dvh !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
+  margin: 0 auto !important;
+}
+.cp-img-fs .cp-x {
+  position: fixed !important;
+  top: max(12px, env(safe-area-inset-top));
+  right: 12px;
+  z-index: 2147483647;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(0,0,0,.65);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+/* FS controls: hidden until tap */
+.cp-player.cp-fs-active .cp-ctl.cp-ctl-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(12px);
+  transition: opacity .25s ease, transform .25s ease;
+}
+.cp-player.cp-fs-active .cp-ctl {
+  transition: opacity .25s ease, transform .25s ease;
+}
+/* Mini audio bar when double-tap plays in background */
+#cpAudioMini {
+  position: fixed; left: 50%; bottom: 88px; transform: translateX(-50%);
+  z-index: 12060; display: none; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 16px;
+  background: rgba(12,18,28,.94); border: 1px solid rgba(92,200,255,.35);
+  color: #fff; font-size: 12px; font-weight: 800;
+  max-width: min(92vw, 360px); box-shadow: 0 10px 30px rgba(0,0,0,.4);
+}
+#cpAudioMini.show { display: flex; }
+#cpAudioMini button {
+  border: 0; border-radius: 50%; width: 36px; height: 36px;
+  background: rgba(255,255,255,.14); color: #fff; cursor: pointer; font-size: 14px;
+}
+
 /* Pause expensive animations while cloud is doing work — stops background "shutter" */
 body.cloud-op-busy .float-anim,
 body.cloud-op-busy .water-wave,
@@ -6116,19 +6195,37 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
   /* =============================== 4) MULTI-PREVIEW (any provider) ========================== */
   var AUDIO_EXT = ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'opus'], VIDEO_EXT = ['mp4', 'webm', 'mov', 'mkv', 'm4v'], IMG_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'heic', 'heif', 'avif', 'bmp'], TXT_EXT = ['txt', 'md', 'json', 'csv', 'log', 'html', 'js', 'css'];
   function extOf(n) { var i = String(n).lastIndexOf('.'); return i < 0 ? '' : String(n).slice(i + 1).toLowerCase(); }
-  function closePreview(key) { var p = openPreviews[key]; if (!p) return; p.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) {} }); if (p.drawer && p.drawer.parentNode) p.drawer.parentNode.removeChild(p.drawer); delete openPreviews[key]; }
-  async function urlFor(info) {
-    if (B.getActiveCloudProvider() === 'infini') return { url: await B.getInfiniPreviewUrl(info.rel), blob: true };
+  function closePreview(key) {
+    var p = openPreviews[key]; if (!p) return;
+    // Abort in-flight preview download so net stops immediately
+    try { if (p.abort) p.abort.abort(); } catch (e0) {}
+    try { if (p.xhr) p.xhr.abort(); } catch (e1) {}
+    try {
+      var media = p.drawer && p.drawer.querySelectorAll('video,audio');
+      if (media) media.forEach(function(m){ try { m.pause(); m.removeAttribute('src'); m.load(); } catch(e2){} });
+    } catch (e3) {}
+    p.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) {} });
+    if (p.drawer && p.drawer.parentNode) p.drawer.parentNode.removeChild(p.drawer);
+    delete openPreviews[key];
+  }
+  async function urlFor(info, signal) {
+    if (B.getActiveCloudProvider() === 'infini') {
+      var u = await B.getInfiniPreviewUrl(info.rel, signal);
+      return { url: u, blob: true };
+    }
     await B.authorizeB2(false); var b2 = B.b2();
     var r = await B.b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_download_authorization', { method: 'POST', headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ bucketId: b2.bucketId, fileNamePrefix: info.rel, validDurationInSeconds: 3600 }) });
     var d = await r.json().catch(function () { return {}; }); if (!r.ok) throw new Error(d.message || 'Auth failed');
     var direct = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + info.rel.split('/').map(encodeURIComponent).join('/') + '?Authorization=' + encodeURIComponent(d.authorizationToken);
     try {
-      var fr = await fetch(direct);
+      var fr = await fetch(direct, signal ? { signal: signal } : undefined);
+      if (signal && signal.aborted) throw new Error('cancelled');
       if (!fr.ok) throw new Error('HTTP ' + fr.status);
       var blob = await fr.blob();
+      if (signal && signal.aborted) throw new Error('cancelled');
       return { url: URL.createObjectURL(blob), blob: true };
     } catch (e) {
+      if (e && (e.name === 'AbortError' || String(e.message||'').indexOf('cancel') >= 0)) throw e;
       return { url: direct, blob: false };
     }
   }
@@ -6174,6 +6271,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     if (mu) mu.onclick = function (e) { e.stopPropagation(); m.muted = !m.muted; mu.textContent = m.muted ? '🔇' : '🔊'; };
 
     function exitFs() {
+      if (hideTimer) clearTimeout(hideTimer);
+      if (ctl) ctl.classList.remove('cp-ctl-hidden');
       pl.classList.remove('cp-fs-active', 'cp-fs-landscape', 'cp-fs-portrait');
       try { document.body.classList.remove('cp-fs-lock', 'dgxen-fs-lock'); } catch (e) {}
       try {
@@ -6185,6 +6284,15 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       } catch (e2) {}
       if (fs) fs.textContent = '⛶';
     }
+    var hideTimer = null;
+    function showCtl() {
+      if (!ctl) return;
+      ctl.classList.remove('cp-ctl-hidden');
+      if (hideTimer) clearTimeout(hideTimer);
+      if (pl.classList.contains('cp-fs-active')) {
+        hideTimer = setTimeout(function(){ if (ctl) ctl.classList.add('cp-ctl-hidden'); }, 2800);
+      }
+    }
     function enterFs() {
       var vw = m.videoWidth || 16, vh = m.videoHeight || 9;
       pl.classList.add('cp-fs-active');
@@ -6192,14 +6300,11 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       if (vw >= vh) pl.classList.add('cp-fs-landscape');
       else pl.classList.add('cp-fs-portrait');
       try { document.body.classList.add('cp-fs-lock', 'dgxen-fs-lock'); } catch (e) {}
-      // Prefer native fullscreen on the player shell (keeps our controls)
       var req = pl.requestFullscreen || pl.webkitRequestFullscreen || pl.webkitRequestFullScreen;
-      if (req) {
-        try { req.call(pl); } catch (e3) {}
-      } else if (m.webkitEnterFullscreen) {
-        try { m.webkitEnterFullscreen(); } catch (e4) {}
-      }
+      if (req) { try { req.call(pl); } catch (e3) {} }
+      else if (m.webkitEnterFullscreen) { try { m.webkitEnterFullscreen(); } catch (e4) {} }
       if (fs) fs.textContent = '⛶';
+      showCtl(); // start auto-hide cycle in fullscreen
     }
     if (fs) {
       fs.onclick = function (e) {
@@ -6223,29 +6328,69 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     document.addEventListener('fullscreenchange', onFsChange);
     document.addEventListener('webkitfullscreenchange', onFsChange);
 
-    // Tap video toggles play (does not hide controls)
+    // In fullscreen: first tap shows controls; outside FS: toggle play
     if (m.tagName === 'VIDEO') {
       m.addEventListener('click', function (e) {
         e.stopPropagation();
-        m.paused ? m.play().catch(function () {}) : m.pause();
+        if (pl.classList.contains('cp-fs-active')) {
+          showCtl();
+        } else {
+          m.paused ? m.play().catch(function () {}) : m.pause();
+        }
       });
     }
+    pl.addEventListener('click', function (e) {
+      if (pl.classList.contains('cp-fs-active') && e.target === pl) showCtl();
+    });
+    if (ctl) {
+      ctl.addEventListener('pointerdown', function(){ showCtl(); });
+    }
   }
-  async function openPreview(row) {
+  async function openPreview(row, opts) {
+    opts = opts || {};
     var info = rowInfo(row); if (!info || info.isFolder || !bridge()) return;
     var key = info.rel;
-    if (openPreviews[key]) { closePreview(key); row.querySelector('.name') && row.querySelector('.name').setAttribute('aria-expanded', 'false'); return; }   // tap again = close only this one
+    if (openPreviews[key] && !opts.forceFs) { closePreview(key); row.querySelector('.name') && row.querySelector('.name').setAttribute('aria-expanded', 'false'); return; }
+    if (openPreviews[key]) closePreview(key);
     var drawer = doc.createElement('div'); drawer.className = 'cloud-preview-drawer cp-drawer'; drawer.setAttribute('data-preview-for', key);
     drawer.innerHTML = '<div class="cp-load">Loading preview…</div>'; row.after(drawer);
-    openPreviews[key] = { drawer: drawer, urls: [] }; row.querySelector('.name') && row.querySelector('.name').setAttribute('aria-expanded', 'true');
+    var ac = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    openPreviews[key] = { drawer: drawer, urls: [], abort: ac }; row.querySelector('.name') && row.querySelector('.name').setAttribute('aria-expanded', 'true');
     try {
-      var ext = extOf(info.name), u = await urlFor(info); if (!openPreviews[key]) { if (u.blob) URL.revokeObjectURL(u.url); return; }
+      var ext = extOf(info.name), u = await urlFor(info, ac && ac.signal);
+      if (!openPreviews[key]) { if (u.blob) URL.revokeObjectURL(u.url); return; }
       if (u.blob) openPreviews[key].urls.push(u.url);
       var closeBtn = '<button type="button" class="cp-x" aria-label="Close preview">✕</button>', pid = 'cpP_' + Date.now() + '_' + Math.floor(Math.random() * 1e5);
       if (ext === 'heic' || ext === 'heif' || ext === 'hevc') {
         drawer.innerHTML = closeBtn + '<div class="cp-load">HEIC/HEVC cannot be previewed in this browser. Use <b>DL</b>.</div>';
       } else if (IMG_EXT.indexOf(ext) >= 0) {
-        drawer.innerHTML = closeBtn + '<div class="media-wrap"><img src="' + u.url + '" alt="" loading="lazy"></div>';
+        drawer.innerHTML = closeBtn + '<div class="media-wrap cp-img-wrap"><img src="' + u.url + '" alt="" loading="lazy" style="cursor:zoom-in;" title="Tap for fullscreen"></div>';
+        var imgEl = drawer.querySelector('img');
+        var wrap = drawer.querySelector('.cp-img-wrap');
+        function enterImgFs() {
+          if (!wrap) return;
+          wrap.classList.add('cp-img-fs');
+          try { document.body.classList.add('cp-fs-lock'); } catch (e) {}
+          // floating close
+          var xb = drawer.querySelector('.cp-x');
+          if (xb) { xb.style.position = 'fixed'; xb.style.zIndex = '2147483647'; }
+        }
+        function exitImgFs() {
+          if (!wrap) return;
+          wrap.classList.remove('cp-img-fs');
+          try { document.body.classList.remove('cp-fs-lock'); } catch (e) {}
+          var xb = drawer.querySelector('.cp-x');
+          if (xb) { xb.style.position = ''; xb.style.zIndex = ''; }
+        }
+        if (imgEl) {
+          imgEl.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (wrap.classList.contains('cp-img-fs')) exitImgFs();
+            else enterImgFs();
+          });
+        }
+        openPreviews[key].exitImgFs = exitImgFs;
+        if (opts.forceFs) setTimeout(enterImgFs, 30);
       } else if (AUDIO_EXT.indexOf(ext) >= 0) {
         drawer.innerHTML = closeBtn + playerHtml('audio', pid, u.url);
       } else if (VIDEO_EXT.indexOf(ext) >= 0) {
@@ -6261,6 +6406,16 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       var pl = drawer.querySelector('.cp-player');
       if (pl) {
         wirePlayer(pl);
+        if (opts.forceFs && pl.classList.contains('cp-video')) {
+          setTimeout(function() {
+            var fsBtn = pl.querySelector('.cp-fs');
+            if (fsBtn) fsBtn.click();
+            else {
+              pl.classList.add('cp-fs-active', 'cp-fs-landscape');
+              try { document.body.classList.add('cp-fs-lock'); } catch (e) {}
+            }
+          }, 80);
+        }
         var m = pl.querySelector('video,audio');
         if (m) {
           // Only treat as failed after a real media error AND element has no usable data
@@ -6287,17 +6442,76 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         }
       }
       var x = drawer.querySelector('.cp-x'); if (x) x.onclick = function (e) { e.stopPropagation(); closePreview(key); var nm = row.querySelector('.name'); if (nm) nm.setAttribute('aria-expanded', 'false'); };
-    } catch (e) { drawer.innerHTML = '<button type="button" class="cp-x">✕</button><div class="cp-load" style="color:var(--error)">❌ ' + esc((e && e.message) || 'Preview failed') + '</div>'; var x2 = drawer.querySelector('.cp-x'); if (x2) x2.onclick = function () { closePreview(key); }; }
+    } catch (e) {
+      if (e && (e.name === 'AbortError' || String(e.message||'') === 'cancelled')) {
+        closePreview(key); return;
+      }
+      if (!openPreviews[key]) return;
+      drawer.innerHTML = '<button type="button" class="cp-x">✕</button><div class="cp-load" style="color:var(--error)">❌ ' + esc((e && e.message) || 'Preview failed') + '</div>';
+      var x2 = drawer.querySelector('.cp-x'); if (x2) x2.onclick = function () { closePreview(key); };
+    }
   }
   /* Capture-phase: replaces the original single-preview click (which closed every other drawer). */
   function bindPreview(box) {
     if (!box || box.__cpPrev) return; box.__cpPrev = true;
     box.addEventListener('click', function (e) {
-      if (sel.size()) return;                                        // selection mode handles taps
+      if (sel.size()) return;
       var nm = e.target.closest('.cloud-file-row .name[data-exp-id]'); if (!nm) return;
       e.stopPropagation(); e.preventDefault(); openPreview(nm.closest('.cloud-file-row'));
     }, true);
     box.addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var nm = e.target.closest && e.target.closest('.cloud-file-row .name[data-exp-id]'); if (!nm) return; e.stopPropagation(); e.preventDefault(); openPreview(nm.closest('.cloud-file-row')); }, true);
+    // Double-tap anywhere on file row → fullscreen preview / bg audio
+    if (!box.__cpDbl) {
+      box.__cpDbl = true;
+      var lastTap = 0, lastRow = null;
+      box.addEventListener('pointerup', function (e) {
+        if (sel.size()) return;
+        var row = e.target.closest('.cloud-file-row'); if (!row) return;
+        // ignore buttons (DL, more, OPEN)
+        if (e.target.closest('button')) return;
+        var now = Date.now();
+        if (lastRow === row && (now - lastTap) < 320) {
+          lastTap = 0; lastRow = null;
+          e.preventDefault(); e.stopPropagation();
+          var info = rowInfo(row); if (!info || info.isFolder) return;
+          var ex = extOf(info.name);
+          if (AUDIO_EXT.indexOf(ex) >= 0) {
+            // Background audio: load + play, mini bar
+            openPreview(row, { forceFs: false }).then(function(){
+              var p = openPreviews[info.rel];
+              if (!p || !p.drawer) return;
+              var audio = p.drawer.querySelector('audio');
+              if (audio) {
+                audio.play().catch(function(){});
+                var mini = doc.getElementById('cpAudioMini');
+                if (!mini) {
+                  mini = doc.createElement('div'); mini.id = 'cpAudioMini';
+                  mini.innerHTML = '<button type="button" data-a="pp">⏸</button><span data-a="n" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span><button type="button" data-a="x">✕</button>';
+                  doc.body.appendChild(mini);
+                  mini.addEventListener('click', function(ev){
+                    var t = ev.target.getAttribute('data-a');
+                    if (t === 'pp') {
+                      if (audio.paused) { audio.play(); mini.querySelector('[data-a=pp]').textContent = '⏸'; }
+                      else { audio.pause(); mini.querySelector('[data-a=pp]').textContent = '▶'; }
+                    } else if (t === 'x') {
+                      audio.pause(); mini.classList.remove('show');
+                      closePreview(info.rel);
+                    }
+                  });
+                }
+                mini.querySelector('[data-a=n]').textContent = info.name;
+                mini.querySelector('[data-a=pp]').textContent = '⏸';
+                mini.classList.add('show');
+              }
+            });
+          } else {
+            openPreview(row, { forceFs: true });
+          }
+        } else {
+          lastTap = now; lastRow = row;
+        }
+      }, true);
+    }
   }
   function closeAllPreviews() { Object.keys(openPreviews).forEach(closePreview); }
 
@@ -12875,7 +13089,7 @@ window.__dgxenInitVideoControls = function(vId) {
     authorizeB2: function(f) { return authorizeB2(f); },
     b2Fetch: function(u, o) { return b2Fetch(u, o); },
     b2: function() { return b2; },
-    getInfiniPreviewUrl: function(n) { return getInfiniPreviewUrl(n); },
+    getInfiniPreviewUrl: function(n, signal) { return getInfiniPreviewUrl(n, signal); },
     downloadInfiniFile: function(n) { return downloadInfiniFile(n); },
     downloadCloudFile: function(n, id) { return downloadCloudFile(n, id); },
     guessMime: function(n) { return guessMimeFromName(n); },
@@ -12977,14 +13191,16 @@ window.__dgxenInitVideoControls = function(vId) {
     return map[ext] || 'application/octet-stream';
   }
 
-  async function getInfiniPreviewUrl(fileName) {
-    // Support paths inside folders
+  async function getInfiniPreviewUrl(fileName, signal) {
+    // Support paths inside folders — pass AbortSignal so close stops net usage
     const rel = (fileName.indexOf('/') >= 0) ? fileName : cloudJoinPath(cloudCwd(), fileName);
-    const res = await infiniFetch(cloudPathUrl(rel), { method: 'GET' });
+    const res = await infiniFetch(cloudPathUrl(rel), { method: 'GET', signal: signal });
+    if (signal && signal.aborted) throw new Error('cancelled');
     if (!res.ok) throw new Error('Preview fetch failed (' + res.status + ')');
     const hdrCt = (res.headers.get('content-type') || '').split(';')[0].trim();
     const declaredLen = Number(res.headers.get('content-length'));
     const buf = await res.arrayBuffer();
+    if (signal && signal.aborted) throw new Error('cancelled');
     // A response can report ok:true and a plausible Content-Length yet still hand back
     // a truncated/empty body — a Worker hitting its own memory/CPU limit on a large file
     // does exactly this. That used to silently become a 0-byte (or partial) blob that
