@@ -3914,6 +3914,52 @@ body.cp-fs-lock { overflow: hidden !important; touch-action: none !important; }
   visibility: hidden !important;
 }
 /* Image lightbox fullscreen */
+.cp-img-card {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 8px auto 0;
+  box-sizing: border-box;
+}
+.cp-img-card .cp-x {
+  position: absolute !important;
+  top: -6px !important;
+  right: -6px !important;
+  left: auto !important;
+  z-index: 6 !important;
+  float: none !important;
+  width: 36px !important;
+  height: 36px !important;
+  margin: 0 !important;
+}
+.cp-img-card .cp-img-wrap {
+  display: block;
+  max-width: min(100%, 100vw - 48px);
+  max-height: min(48vh, 360px);
+  overflow: hidden;
+  border-radius: 12px;
+  background: #000;
+  border: 1px solid var(--glass-border, rgba(255,255,255,.12));
+}
+.cp-img-card .cp-img-wrap img {
+  display: block;
+  width: auto !important;
+  height: auto !important;
+  max-width: min(100%, 100vw - 48px) !important;
+  max-height: min(48vh, 360px) !important;
+  object-fit: contain !important;
+  margin: 0 auto;
+  pointer-events: auto;
+  -webkit-user-drag: none;
+  touch-action: manipulation;
+}
+.cp-img-card .cp-img-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 0 0;
+}
 .cp-img-fs {
   position: fixed !important;
   inset: 0 !important;
@@ -3926,7 +3972,9 @@ body.cp-fs-lock { overflow: hidden !important; touch-action: none !important; }
   border: 0 !important;
   border-radius: 0 !important;
   max-height: none !important;
+  max-width: none !important;
   padding: 0 !important;
+  overflow: hidden !important;
 }
 .cp-img-fs img {
   max-width: 100vw !important;
@@ -3935,20 +3983,17 @@ body.cp-fs-lock { overflow: hidden !important; touch-action: none !important; }
   height: auto !important;
   object-fit: contain !important;
   margin: 0 auto !important;
+  pointer-events: auto;
 }
-.cp-img-fs .cp-x {
+/* X sits on the image corner in FS */
+.cp-img-card:has(.cp-img-fs) > .cp-x,
+.cloud-preview-drawer:has(.cp-img-fs) > .cp-x {
   position: fixed !important;
-  top: max(12px, env(safe-area-inset-top));
-  right: 12px;
-  z-index: 2147483647;
-  width: 44px; height: 44px;
-  border-radius: 50%;
-  border: 0;
-  background: rgba(0,0,0,.65);
-  color: #fff;
-  font-size: 18px;
-  cursor: pointer;
+  top: max(10px, env(safe-area-inset-top)) !important;
+  right: 12px !important;
+  z-index: 2147483647 !important;
 }
+
 /* FS controls: hidden until tap */
 .cp-player.cp-fs-active .cp-ctl.cp-ctl-hidden {
   opacity: 0 !important;
@@ -5784,12 +5829,31 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         if (fails) throw new Error(fails + ' file(s) inside the folder could not be deleted');
       },
       move: async function (from, to) {
-        // Server-side copy + delete — Class C + Class A only (NO Class B download)
-        var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: from, maxFileCount: 10 });
+        // Server-side copy + delete ALL old versions (prevents rename duplicates)
+        var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: from, maxFileCount: 20 });
         var m = (d.files || []).filter(function (f) { return f.fileName === from; })[0];
         if (!m) throw new Error('Source not found: ' + from);
+        // If dest exists, clear its upload versions first
+        try {
+          var dv = await call('b2_list_file_versions', { bucketId: B.b2().bucketId, prefix: to, maxFileCount: 50 });
+          (dv.files || []).filter(function(f){ return f.fileName === to && f.action === 'upload'; }).forEach(function(f){
+            // fire-and-forget sequential in loop below
+          });
+          var destUploads = (dv.files || []).filter(function(f){ return f.fileName === to && f.action === 'upload'; });
+          for (var di = 0; di < destUploads.length; di++) {
+            try { await call('b2_delete_file_version', { fileName: to, fileId: destUploads[di].fileId }); } catch (eD) {}
+          }
+        } catch (e0) {}
         await call('b2_copy_file', { sourceFileId: m.fileId, fileName: to, metadataDirective: 'COPY' });
-        await call('b2_delete_file_version', { fileName: from, fileId: m.fileId });
+        try {
+          var vs = await call('b2_list_file_versions', { bucketId: B.b2().bucketId, prefix: from, maxFileCount: 100 });
+          var olds = (vs.files || []).filter(function(f){ return f.fileName === from; });
+          for (var oi = 0; oi < olds.length; oi++) {
+            try { await call('b2_delete_file_version', { fileName: from, fileId: olds[oi].fileId }); } catch (eO) {}
+          }
+        } catch (e1) {
+          await call('b2_delete_file_version', { fileName: from, fileId: m.fileId });
+        }
       },
       copy: async function (from, to) {
         var d = await call('b2_list_file_names', { bucketId: B.b2().bucketId, prefix: from, maxFileCount: 10 });
@@ -6372,27 +6436,26 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       if (ext === 'heic' || ext === 'heif' || ext === 'hevc') {
         drawer.innerHTML = closeBtn + '<div class="cp-load">HEIC/HEVC cannot be previewed in this browser. Use <b>DL</b>.</div>';
       } else if (IMG_EXT.indexOf(ext) >= 0) {
-        drawer.innerHTML = closeBtn +
-          '<div class="media-wrap cp-img-wrap"><img src="' + u.url + '" alt="" loading="lazy" style="cursor:zoom-in;" title="Tap for fullscreen"></div>' +
-          '<div class="cp-ctl" style="display:flex!important;justify-content:flex-end;gap:8px;padding:8px 12px;">' +
+        drawer.innerHTML =
+          '<div class="cp-img-card">' +
+          '<button type="button" class="cp-x" aria-label="Close preview">✕</button>' +
+          '<div class="media-wrap cp-img-wrap"><img src="' + u.url + '" alt="" loading="lazy" draggable="false" title="Tap for fullscreen"></div>' +
+          '<div class="cp-img-actions">' +
           '<button type="button" class="cp-img-fs-btn" aria-label="Fullscreen" title="Fullscreen" style="width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:16px;cursor:pointer;">⛶</button>' +
-          '</div>';
+          '</div></div>';
         var imgEl = drawer.querySelector('img');
         var wrap = drawer.querySelector('.cp-img-wrap');
         var imgFsBtn = drawer.querySelector('.cp-img-fs-btn');
+        var xb = drawer.querySelector('.cp-x');
         function enterImgFs() {
           if (!wrap) return;
           wrap.classList.add('cp-img-fs');
           try { document.body.classList.add('cp-fs-lock'); } catch (e) {}
-          var xb = drawer.querySelector('.cp-x');
-          if (xb) { xb.style.position = 'fixed'; xb.style.zIndex = '2147483647'; xb.style.top = '12px'; xb.style.right = '12px'; }
         }
         function exitImgFs() {
           if (!wrap) return;
           wrap.classList.remove('cp-img-fs');
           try { document.body.classList.remove('cp-fs-lock'); } catch (e) {}
-          var xb = drawer.querySelector('.cp-x');
-          if (xb) { xb.style.position = ''; xb.style.zIndex = ''; xb.style.top = ''; xb.style.right = ''; }
         }
         if (imgEl) {
           imgEl.addEventListener('click', function (e) {
@@ -6408,6 +6471,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             else enterImgFs();
           };
         }
+        if (xb) xb.onclick = function (e) {
+          e.stopPropagation();
+          if (wrap && wrap.classList.contains('cp-img-fs')) { exitImgFs(); return; }
+          closePreview(key);
+          var nm = row.querySelector('.name'); if (nm) nm.setAttribute('aria-expanded', 'false');
+        };
         openPreviews[key].exitImgFs = exitImgFs;
         if (opts.forceFs) setTimeout(enterImgFs, 30);
       } else if (AUDIO_EXT.indexOf(ext) >= 0) {
@@ -6477,11 +6546,9 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
               if (x3) x3.onclick = function(e) { e.stopPropagation(); closePreview(key); };
             }, 600);
           });
-          // Single-tap: show player paused (user presses play). Double-tap forceFs: autoplay.
-          if (opts.forceFs || (m.tagName === 'AUDIO' && opts.bgAudio)) {
-            var p = m.play();
-            if (p && p.catch) p.catch(function(){});
-          }
+          // Autoplay any media on preview open
+          var p = m.play();
+          if (p && p.catch) p.catch(function(){});
         }
       }
       var x = drawer.querySelector('.cp-x'); if (x) x.onclick = function (e) { e.stopPropagation(); closePreview(key); var nm = row.querySelector('.name'); if (nm) nm.setAttribute('aria-expanded', 'false'); };
@@ -6503,57 +6570,76 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       e.stopPropagation(); e.preventDefault(); openPreview(nm.closest('.cloud-file-row'));
     }, true);
     box.addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var nm = e.target.closest && e.target.closest('.cloud-file-row .name[data-exp-id]'); if (!nm) return; e.stopPropagation(); e.preventDefault(); openPreview(nm.closest('.cloud-file-row')); }, true);
-    // Double-tap anywhere on file row → fullscreen preview / bg audio
-    if (!box.__cpDbl) {
-      box.__cpDbl = true;
-      var lastTap = 0, lastRow = null;
-      box.addEventListener('pointerup', function (e) {
-        if (sel.size()) return;
-        var row = e.target.closest('.cloud-file-row'); if (!row) return;
-        // ignore buttons (DL, more, OPEN)
-        if (e.target.closest('button')) return;
-        var now = Date.now();
-        if (lastRow === row && (now - lastTap) < 320) {
-          lastTap = 0; lastRow = null;
-          e.preventDefault(); e.stopPropagation();
-          var info = rowInfo(row); if (!info || info.isFolder) return;
-          var ex = extOf(info.name);
-          if (AUDIO_EXT.indexOf(ex) >= 0) {
-            // Double-tap only: background audio + mini bar
-            openPreview(row, { forceFs: false, bgAudio: true }).then(function(){
-              var p = openPreviews[info.rel];
-              if (!p || !p.drawer) return;
-              var audio = p.drawer.querySelector('audio');
-              if (audio) {
-                audio.play().catch(function(){});
-                var mini = doc.getElementById('cpAudioMini');
-                if (!mini) {
-                  mini = doc.createElement('div'); mini.id = 'cpAudioMini';
-                  mini.innerHTML = '<button type="button" data-a="pp">⏸</button><span data-a="n" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span><button type="button" data-a="x">✕</button>';
-                  doc.body.appendChild(mini);
-                  mini.addEventListener('click', function(ev){
-                    var t = ev.target.getAttribute('data-a');
-                    if (t === 'pp') {
-                      if (audio.paused) { audio.play(); mini.querySelector('[data-a=pp]').textContent = '⏸'; }
-                      else { audio.pause(); mini.querySelector('[data-a=pp]').textContent = '▶'; }
-                    } else if (t === 'x') {
-                      audio.pause(); mini.classList.remove('show');
-                      closePreview(info.rel);
-                    }
-                  });
-                }
-                mini.querySelector('[data-a=n]').textContent = info.name;
-                mini.querySelector('[data-a=pp]').textContent = '⏸';
-                mini.classList.add('show');
+    // Swipe RIGHT + hold on file row → fullscreen / bg audio preview
+    if (!box.__cpSwipeHold) {
+      box.__cpSwipeHold = true;
+      var sh = { row: null, x0: 0, y0: 0, armed: false, timer: null, done: false };
+      function shClear() {
+        if (sh.timer) { clearTimeout(sh.timer); sh.timer = null; }
+        sh.row = null; sh.armed = false; sh.done = false;
+      }
+      function shFire(row) {
+        if (!row || sh.done) return;
+        sh.done = true;
+        var info = rowInfo(row); if (!info || info.isFolder) { shClear(); return; }
+        var ex = extOf(info.name);
+        try { if (navigator.vibrate) navigator.vibrate(18); } catch (eV) {}
+        if (AUDIO_EXT.indexOf(ex) >= 0) {
+          openPreview(row, { forceFs: false, bgAudio: true }).then(function(){
+            var p = openPreviews[info.rel];
+            if (!p || !p.drawer) return;
+            var audio = p.drawer.querySelector('audio');
+            if (audio) {
+              audio.play().catch(function(){});
+              var mini = doc.getElementById('cpAudioMini');
+              if (!mini) {
+                mini = doc.createElement('div'); mini.id = 'cpAudioMini';
+                mini.innerHTML = '<button type="button" data-a="pp">⏸</button><span data-a="n" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span><button type="button" data-a="x">✕</button>';
+                doc.body.appendChild(mini);
+                mini.addEventListener('click', function(ev){
+                  var t = ev.target.getAttribute('data-a');
+                  if (t === 'pp') {
+                    if (audio.paused) { audio.play(); mini.querySelector('[data-a=pp]').textContent = '⏸'; }
+                    else { audio.pause(); mini.querySelector('[data-a=pp]').textContent = '▶'; }
+                  } else if (t === 'x') {
+                    audio.pause(); mini.classList.remove('show');
+                    closePreview(info.rel);
+                  }
+                });
               }
-            });
-          } else {
-            openPreview(row, { forceFs: true });
-          }
+              mini.querySelector('[data-a=n]').textContent = info.name;
+              mini.querySelector('[data-a=pp]').textContent = '⏸';
+              mini.classList.add('show');
+            }
+          });
         } else {
-          lastTap = now; lastRow = row;
+          openPreview(row, { forceFs: true });
+        }
+        shClear();
+      }
+      box.addEventListener('pointerdown', function (e) {
+        if (sel.size()) return;
+        if (e.target.closest('button')) return;
+        var row = e.target.closest('.cloud-file-row'); if (!row) return;
+        shClear();
+        sh.row = row; sh.x0 = e.clientX; sh.y0 = e.clientY; sh.armed = false; sh.done = false;
+      }, true);
+      box.addEventListener('pointermove', function (e) {
+        if (!sh.row || sh.done) return;
+        var dx = e.clientX - sh.x0, dy = e.clientY - sh.y0;
+        // Must be clearly RIGHT swipe, not vertical scroll
+        if (!sh.armed && dx > 36 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+          sh.armed = true;
+          sh.timer = setTimeout(function () { shFire(sh.row); }, 480);
+        }
+        // Cancel if finger drifts back or goes vertical
+        if (sh.armed && (dx < 20 || Math.abs(dy) > 50)) {
+          shClear();
         }
       }, true);
+      box.addEventListener('pointerup', function () { shClear(); }, true);
+      box.addEventListener('pointercancel', function () { shClear(); }, true);
+      box.addEventListener('pointerleave', function () { shClear(); }, true);
     }
   }
   function closeAllPreviews() { Object.keys(openPreviews).forEach(closePreview); }
@@ -12156,6 +12242,25 @@ window.__dgxenInitVideoControls = function(vId) {
             if (!match) throw new Error('File not found on B2: ' + relPath);
             srcId = match.fileId;
           }
+          // If destination already exists, remove its versions first (avoid two visible files)
+          try {
+            const existRes = await b2Fetch(b2c.apiUrl + '/b2api/v2/b2_list_file_versions', {
+              method: 'POST',
+              headers: { Authorization: b2c.authToken, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ bucketId: b2c.bucketId, prefix: dest, maxFileCount: 50 })
+            });
+            const existData = await existRes.json().catch(function(){ return {}; });
+            const existFiles = (existData.files || []).filter(function(f){ return f.fileName === dest && f.action === 'upload'; });
+            for (var ei = 0; ei < existFiles.length; ei++) {
+              try {
+                await b2Fetch(b2c.apiUrl + '/b2api/v2/b2_delete_file_version', {
+                  method: 'POST',
+                  headers: { Authorization: b2c.authToken, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ fileName: dest, fileId: existFiles[ei].fileId })
+                });
+              } catch (eEx) {}
+            }
+          } catch (eExist) {}
           const copyRes = await b2Fetch(b2c.apiUrl + '/b2api/v2/b2_copy_file', {
             method: 'POST',
             headers: { Authorization: b2c.authToken, 'Content-Type': 'application/json' },
@@ -12163,13 +12268,34 @@ window.__dgxenInitVideoControls = function(vId) {
           });
           const copyData = await copyRes.json().catch(function(){ return {}; });
           if (!copyRes.ok) throw new Error(copyData.message || ('Copy failed ' + copyRes.status));
-          const delRes = await b2Fetch(b2c.apiUrl + '/b2api/v2/b2_delete_file_version', {
-            method: 'POST',
-            headers: { Authorization: b2c.authToken, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileName: relPath, fileId: srcId })
-          });
-          const delData = await delRes.json().catch(function(){ return {}; });
-          if (!delRes.ok) throw new Error(delData.message || ('Delete-old failed ' + delRes.status));
+          // Delete ALL versions of the OLD name so rename never leaves a duplicate
+          try {
+            const verRes = await b2Fetch(b2c.apiUrl + '/b2api/v2/b2_list_file_versions', {
+              method: 'POST',
+              headers: { Authorization: b2c.authToken, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ bucketId: b2c.bucketId, prefix: relPath, maxFileCount: 100 })
+            });
+            const verData = await verRes.json().catch(function(){ return {}; });
+            const oldVers = (verData.files || []).filter(function(f){ return f.fileName === relPath; });
+            for (var vi = 0; vi < oldVers.length; vi++) {
+              await b2Fetch(b2c.apiUrl + '/b2api/v2/b2_delete_file_version', {
+                method: 'POST',
+                headers: { Authorization: b2c.authToken, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileName: relPath, fileId: oldVers[vi].fileId })
+              });
+            }
+          } catch (eDel) {
+            // Fallback: delete the known source id
+            const delRes = await b2Fetch(b2c.apiUrl + '/b2api/v2/b2_delete_file_version', {
+              method: 'POST',
+              headers: { Authorization: b2c.authToken, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fileName: relPath, fileId: srcId })
+            });
+            if (!delRes.ok) {
+              const delData = await delRes.json().catch(function(){ return {}; });
+              throw new Error(delData.message || ('Delete-old failed — duplicate may remain. Delete the old file manually.'));
+            }
+          }
           setStatus('Renamed to ' + safeName, true);
           if (window.refreshCloudFiles) await window.refreshCloudFiles();
           closeModals();
