@@ -6206,7 +6206,16 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     } catch (e3) {}
     p.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) {} });
     if (p.drawer && p.drawer.parentNode) p.drawer.parentNode.removeChild(p.drawer);
+    try {
+      if (p.overlay && p.overlay.parentNode) p.overlay.parentNode.removeChild(p.overlay);
+    } catch (eOv) {}
     delete openPreviews[key];
+    // If nothing left in FS, clear body lock
+    try {
+      if (!document.querySelector('.cp-fs-active, .cp-img-fs')) {
+        document.body.classList.remove('cp-fs-lock', 'dgxen-fs-lock');
+      }
+    } catch (eLk) {}
   }
   async function urlFor(info, signal) {
     if (B.getActiveCloudProvider() === 'infini') {
@@ -6319,10 +6328,9 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     // Sync if user exits via system gesture
     function onFsChange() {
       var isFs = document.fullscreenElement === pl || document.webkitFullscreenElement === pl;
+      // Native FS ended (back gesture / app switch) → fully release lock
       if (!isFs && pl.classList.contains('cp-fs-active')) {
-        // keep manual FS class if native dropped but we want manual overlay
-        // Only clear if neither native nor our class should stay — exit fully
-        // If native exit happened, keep our fixed overlay (already active)
+        exitFs();
       }
     }
     document.addEventListener('fullscreenchange', onFsChange);
@@ -6364,23 +6372,27 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       if (ext === 'heic' || ext === 'heif' || ext === 'hevc') {
         drawer.innerHTML = closeBtn + '<div class="cp-load">HEIC/HEVC cannot be previewed in this browser. Use <b>DL</b>.</div>';
       } else if (IMG_EXT.indexOf(ext) >= 0) {
-        drawer.innerHTML = closeBtn + '<div class="media-wrap cp-img-wrap"><img src="' + u.url + '" alt="" loading="lazy" style="cursor:zoom-in;" title="Tap for fullscreen"></div>';
+        drawer.innerHTML = closeBtn +
+          '<div class="media-wrap cp-img-wrap"><img src="' + u.url + '" alt="" loading="lazy" style="cursor:zoom-in;" title="Tap for fullscreen"></div>' +
+          '<div class="cp-ctl" style="display:flex!important;justify-content:flex-end;gap:8px;padding:8px 12px;">' +
+          '<button type="button" class="cp-img-fs-btn" aria-label="Fullscreen" title="Fullscreen" style="width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:16px;cursor:pointer;">⛶</button>' +
+          '</div>';
         var imgEl = drawer.querySelector('img');
         var wrap = drawer.querySelector('.cp-img-wrap');
+        var imgFsBtn = drawer.querySelector('.cp-img-fs-btn');
         function enterImgFs() {
           if (!wrap) return;
           wrap.classList.add('cp-img-fs');
           try { document.body.classList.add('cp-fs-lock'); } catch (e) {}
-          // floating close
           var xb = drawer.querySelector('.cp-x');
-          if (xb) { xb.style.position = 'fixed'; xb.style.zIndex = '2147483647'; }
+          if (xb) { xb.style.position = 'fixed'; xb.style.zIndex = '2147483647'; xb.style.top = '12px'; xb.style.right = '12px'; }
         }
         function exitImgFs() {
           if (!wrap) return;
           wrap.classList.remove('cp-img-fs');
           try { document.body.classList.remove('cp-fs-lock'); } catch (e) {}
           var xb = drawer.querySelector('.cp-x');
-          if (xb) { xb.style.position = ''; xb.style.zIndex = ''; }
+          if (xb) { xb.style.position = ''; xb.style.zIndex = ''; xb.style.top = ''; xb.style.right = ''; }
         }
         if (imgEl) {
           imgEl.addEventListener('click', function (e) {
@@ -6388,6 +6400,13 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             if (wrap.classList.contains('cp-img-fs')) exitImgFs();
             else enterImgFs();
           });
+        }
+        if (imgFsBtn) {
+          imgFsBtn.onclick = function (e) {
+            e.stopPropagation();
+            if (wrap.classList.contains('cp-img-fs')) exitImgFs();
+            else enterImgFs();
+          };
         }
         openPreviews[key].exitImgFs = exitImgFs;
         if (opts.forceFs) setTimeout(enterImgFs, 30);
@@ -6406,15 +6425,36 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       var pl = drawer.querySelector('.cp-player');
       if (pl) {
         wirePlayer(pl);
-        if (opts.forceFs && pl.classList.contains('cp-video')) {
+        if (opts.forceFs && pl.querySelector('video')) {
           setTimeout(function() {
-            var fsBtn = pl.querySelector('.cp-fs');
-            if (fsBtn) fsBtn.click();
-            else {
-              pl.classList.add('cp-fs-active', 'cp-fs-landscape');
-              try { document.body.classList.add('cp-fs-lock'); } catch (e) {}
+            // Move player to body-level overlay so it never traps the cloud list
+            var ov = document.getElementById('cpFsOverlay');
+            if (!ov) {
+              ov = document.createElement('div');
+              ov.id = 'cpFsOverlay';
+              ov.style.cssText = 'position:fixed;inset:0;z-index:2147483645;background:#000;display:flex;flex-direction:column;';
+              document.body.appendChild(ov);
             }
-          }, 80);
+            ov.innerHTML = '';
+            ov.appendChild(pl);
+            pl.classList.add('cp-fs-active');
+            var vw = (pl.querySelector('video') && pl.querySelector('video').videoWidth) || 16;
+            var vh = (pl.querySelector('video') && pl.querySelector('video').videoHeight) || 9;
+            pl.classList.remove('cp-fs-landscape', 'cp-fs-portrait');
+            pl.classList.add(vw >= vh ? 'cp-fs-landscape' : 'cp-fs-portrait');
+            try { document.body.classList.add('cp-fs-lock'); } catch (e) {}
+            var vid = pl.querySelector('video');
+            if (vid) vid.play().catch(function(){});
+            // Close overlay via FS button or back
+            var fsBtn = pl.querySelector('.cp-fs');
+            if (fsBtn) {
+              fsBtn.onclick = function (e) {
+                e.stopPropagation();
+                try { unlockCloudMediaUi(); } catch (e2) { closePreview(key); }
+              };
+            }
+            openPreviews[key].overlay = ov;
+          }, 60);
         }
         var m = pl.querySelector('video,audio');
         if (m) {
@@ -6437,8 +6477,11 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
               if (x3) x3.onclick = function(e) { e.stopPropagation(); closePreview(key); };
             }, 600);
           });
-          var p = m.play();
-          if (p && p.catch) p.catch(function(){});
+          // Single-tap: show player paused (user presses play). Double-tap forceFs: autoplay.
+          if (opts.forceFs || (m.tagName === 'AUDIO' && opts.bgAudio)) {
+            var p = m.play();
+            if (p && p.catch) p.catch(function(){});
+          }
         }
       }
       var x = drawer.querySelector('.cp-x'); if (x) x.onclick = function (e) { e.stopPropagation(); closePreview(key); var nm = row.querySelector('.name'); if (nm) nm.setAttribute('aria-expanded', 'false'); };
@@ -6476,8 +6519,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
           var info = rowInfo(row); if (!info || info.isFolder) return;
           var ex = extOf(info.name);
           if (AUDIO_EXT.indexOf(ex) >= 0) {
-            // Background audio: load + play, mini bar
-            openPreview(row, { forceFs: false }).then(function(){
+            // Double-tap only: background audio + mini bar
+            openPreview(row, { forceFs: false, bgAudio: true }).then(function(){
               var p = openPreviews[info.rel];
               if (!p || !p.drawer) return;
               var audio = p.drawer.querySelector('audio');
@@ -6514,6 +6557,85 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     }
   }
   function closeAllPreviews() { Object.keys(openPreviews).forEach(closePreview); }
+  /** Hard unlock UI after FS / app-switch — fixes frozen cloud panel + dimmed screen */
+  function unlockCloudMediaUi() {
+    try {
+      Object.keys(openPreviews).forEach(closePreview);
+    } catch (e0) {}
+    try {
+      document.querySelectorAll('.cp-fs-active, .cp-img-fs').forEach(function (el) {
+        el.classList.remove('cp-fs-active', 'cp-fs-landscape', 'cp-fs-portrait', 'cp-img-fs');
+      });
+    } catch (e1) {}
+    try {
+      document.body.classList.remove('cp-fs-lock', 'dgxen-fs-lock');
+    } catch (e2) {}
+    try {
+      var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      if (fsEl) {
+        var exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) exit.call(document);
+      }
+    } catch (e3) {}
+    try {
+      document.querySelectorAll('video,audio').forEach(function (m) {
+        try {
+          if (m.closest('#cloudPanel') || m.closest('.cloud-preview-drawer') || m.closest('.cp-player') || m.closest('#cpFsOverlay')) {
+            m.pause();
+          }
+        } catch (e4) {}
+      });
+    } catch (e5) {}
+    try {
+      var mini = document.getElementById('cpAudioMini');
+      if (mini) mini.classList.remove('show');
+    } catch (e6) {}
+    try {
+      var ov = document.getElementById('cpFsOverlay');
+      if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+    } catch (e7) {}
+    try {
+      document.body.style.removeProperty('overflow');
+      document.documentElement.style.removeProperty('overflow');
+    } catch (e8) {}
+  }
+  window.unlockCloudMediaUi = unlockCloudMediaUi;
+  window.closeAllCloudPreviews = closeAllPreviews;
+
+  // App switch / tab hide → release FS lock so cloud stays usable on return
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      // Pause media + drop FS overlay lock (keep inline drawer data if any — unlock cleans)
+      try {
+        document.querySelectorAll('.cp-player video, .cp-player audio, .cloud-preview-drawer video, .cloud-preview-drawer audio').forEach(function (m) {
+          try { m.pause(); } catch (e) {}
+        });
+      } catch (e) {}
+      try {
+        document.querySelectorAll('.cp-fs-active, .cp-img-fs').forEach(function (el) {
+          el.classList.remove('cp-fs-active', 'cp-fs-landscape', 'cp-fs-portrait', 'cp-img-fs');
+        });
+        document.body.classList.remove('cp-fs-lock', 'dgxen-fs-lock');
+        var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+        if (fsEl) {
+          var exit = document.exitFullscreen || document.webkitExitFullscreen;
+          if (exit) exit.call(document);
+        }
+      } catch (e2) {}
+    }
+  });
+  window.addEventListener('pagehide', function () { try { unlockCloudMediaUi(); } catch (e) {} });
+  window.addEventListener('blur', function () {
+    // Soft unlock FS classes only (don't kill preview mid-interaction on desktop)
+    try {
+      if (document.body.classList.contains('cp-fs-lock')) {
+        document.querySelectorAll('.cp-fs-active, .cp-img-fs').forEach(function (el) {
+          el.classList.remove('cp-fs-active', 'cp-fs-landscape', 'cp-fs-portrait', 'cp-img-fs');
+        });
+        document.body.classList.remove('cp-fs-lock', 'dgxen-fs-lock');
+      }
+    } catch (e) {}
+  });
 
   /* =============================== 5) ZOOM-PROOF SEEK BAR ================================== */
   var BASE_DPR = null;
@@ -15871,6 +15993,14 @@ async function listAllFiles(forcedProvider) {
         document.getElementById(
           'cloudPanel'
         );
+      // When CLOSING panel: stop all previews / FS locks so UI never freezes
+      try {
+        var willOpen = force === false ? false : force === true ? true : !(p && p.classList.contains('open'));
+        if (!willOpen && typeof window.unlockCloudMediaUi === 'function') {
+          window.unlockCloudMediaUi();
+        }
+      } catch (eUnlock) {}
+
 
       const bd =
         document.getElementById(
