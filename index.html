@@ -3914,97 +3914,121 @@ body.cp-fs-lock { overflow: hidden !important; touch-action: none !important; }
   visibility: hidden !important;
 }
 /* Image lightbox fullscreen */
+/* Image preview: readable size in panel + true fullscreen */
 .cp-img-card {
   position: relative;
   display: block;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
-  margin: 8px auto 0;
+  margin: 10px 0 6px;
   box-sizing: border-box;
+  padding: 0 2px;
 }
 .cp-img-card .cp-x {
   position: absolute !important;
-  top: -6px !important;
-  right: -6px !important;
+  top: 8px !important;
+  right: 8px !important;
   left: auto !important;
-  z-index: 6 !important;
+  z-index: 8 !important;
   float: none !important;
-  width: 36px !important;
-  height: 36px !important;
+  width: 40px !important;
+  height: 40px !important;
   margin: 0 !important;
+  border-radius: 50% !important;
+  border: 0 !important;
+  background: rgba(0,0,0,.72) !important;
+  color: #fff !important;
+  font-size: 16px !important;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,.4);
 }
 .cp-img-card .cp-img-wrap {
-  display: block;
-  max-width: min(100%, 100vw - 48px);
-  max-height: min(48vh, 360px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 160px;
+  max-height: min(52vh, 420px);
   overflow: hidden;
-  border-radius: 12px;
-  background: #000;
-  border: 1px solid var(--glass-border, rgba(255,255,255,.12));
+  border-radius: 14px;
+  background: #0a0a0c;
+  border: 1px solid rgba(255,255,255,.12);
+  box-sizing: border-box;
 }
 .cp-img-card .cp-img-wrap img {
   display: block;
-  width: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
   height: auto !important;
-  max-width: min(100%, 100vw - 48px) !important;
-  max-height: min(48vh, 360px) !important;
+  max-height: min(52vh, 420px) !important;
   object-fit: contain !important;
   margin: 0 auto;
   pointer-events: auto;
   -webkit-user-drag: none;
   touch-action: manipulation;
+  cursor: zoom-in;
 }
 .cp-img-card .cp-img-actions {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  padding: 8px 0 0;
+  gap: 10px;
+  padding: 10px 0 4px;
 }
+.cp-img-card .cp-img-fs-btn {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 50% !important;
+  border: 0 !important;
+  background: rgba(255,255,255,.16) !important;
+  color: #fff !important;
+  font-size: 18px !important;
+  cursor: pointer;
+}
+/* TRUE fullscreen — whole device screen, not the list row */
+.cp-img-wrap.cp-img-fs,
 .cp-img-fs {
   position: fixed !important;
   inset: 0 !important;
+  top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  min-height: 0 !important;
   z-index: 2147483646 !important;
   background: #000 !important;
   display: flex !important;
-  align-items: center;
-  justify-content: center;
+  align-items: center !important;
+  justify-content: center !important;
   margin: 0 !important;
+  padding: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
-  max-height: none !important;
-  max-width: none !important;
-  padding: 0 !important;
   overflow: hidden !important;
 }
+.cp-img-wrap.cp-img-fs img,
 .cp-img-fs img {
-  max-width: 100vw !important;
-  max-height: 100dvh !important;
   width: auto !important;
   height: auto !important;
+  max-width: 100vw !important;
+  max-height: 100dvh !important;
   object-fit: contain !important;
-  margin: 0 auto !important;
-  pointer-events: auto;
+  margin: 0 !important;
+  cursor: zoom-out;
 }
-/* X sits on the image corner in FS */
-.cp-img-card:has(.cp-img-fs) > .cp-x,
-.cloud-preview-drawer:has(.cp-img-fs) > .cp-x {
+/* Close button always on top in image FS */
+body.cp-img-fs-on .cp-img-card > .cp-x,
+.cloud-preview-drawer:has(.cp-img-fs) > .cp-img-card > .cp-x,
+.cp-img-card:has(.cp-img-fs) > .cp-x {
   position: fixed !important;
-  top: max(10px, env(safe-area-inset-top)) !important;
-  right: 12px !important;
+  top: max(12px, env(safe-area-inset-top, 0px)) !important;
+  right: 14px !important;
   z-index: 2147483647 !important;
+  width: 44px !important;
+  height: 44px !important;
 }
 
-/* FS controls: hidden until tap */
-.cp-player.cp-fs-active .cp-ctl.cp-ctl-hidden {
-  opacity: 0 !important;
-  pointer-events: none !important;
-  transform: translateY(12px);
-  transition: opacity .25s ease, transform .25s ease;
-}
-.cp-player.cp-fs-active .cp-ctl {
-  transition: opacity .25s ease, transform .25s ease;
-}
-/* Mini audio bar when double-tap plays in background */
 #cpAudioMini {
   position: fixed; left: 50%; bottom: 88px; transform: translateX(-50%);
   z-index: 12060; display: none; align-items: center; gap: 10px;
@@ -6358,12 +6382,17 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       if (fs) fs.textContent = '⛶';
     }
     var hideTimer = null;
+    var fsUserTapped = false;
     function showCtl() {
       if (!ctl) return;
       ctl.classList.remove('cp-ctl-hidden');
+      ctl.style.display = 'flex';
+      ctl.style.visibility = 'visible';
+      ctl.style.opacity = '1';
       if (hideTimer) clearTimeout(hideTimer);
-      if (pl.classList.contains('cp-fs-active')) {
-        hideTimer = setTimeout(function(){ if (ctl) ctl.classList.add('cp-ctl-hidden'); }, 2800);
+      // Only auto-hide after user has interacted once in FS
+      if (pl.classList.contains('cp-fs-active') && fsUserTapped) {
+        hideTimer = setTimeout(function(){ if (ctl) ctl.classList.add('cp-ctl-hidden'); }, 3200);
       }
     }
     function enterFs() {
@@ -6377,7 +6406,9 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       if (req) { try { req.call(pl); } catch (e3) {} }
       else if (m.webkitEnterFullscreen) { try { m.webkitEnterFullscreen(); } catch (e4) {} }
       if (fs) fs.textContent = '⛶';
-      showCtl(); // start auto-hide cycle in fullscreen
+      fsUserTapped = false;
+      if (ctl) { ctl.classList.remove('cp-ctl-hidden'); ctl.style.display = 'flex'; ctl.style.opacity = '1'; }
+      showCtl();
     }
     if (fs) {
       fs.onclick = function (e) {
@@ -6405,6 +6436,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       m.addEventListener('click', function (e) {
         e.stopPropagation();
         if (pl.classList.contains('cp-fs-active')) {
+          fsUserTapped = true;
           showCtl();
         } else {
           m.paused ? m.play().catch(function () {}) : m.pause();
@@ -6449,13 +6481,52 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         var xb = drawer.querySelector('.cp-x');
         function enterImgFs() {
           if (!wrap) return;
+          // Reparent to body so FS is whole screen (not clipped by cloud panel)
+          if (!wrap.__cpHome) {
+            wrap.__cpHome = { parent: wrap.parentNode, next: wrap.nextSibling };
+          }
+          if (wrap.parentNode !== document.body) {
+            document.body.appendChild(wrap);
+          }
           wrap.classList.add('cp-img-fs');
-          try { document.body.classList.add('cp-fs-lock'); } catch (e) {}
+          try {
+            document.body.classList.add('cp-fs-lock', 'cp-img-fs-on');
+          } catch (e) {}
+          // Floating close on body
+          var xb2 = drawer.querySelector('.cp-x');
+          if (xb2) {
+            xb2.__cpHome = { parent: xb2.parentNode, next: xb2.nextSibling };
+            document.body.appendChild(xb2);
+            xb2.style.cssText = 'position:fixed!important;top:max(12px,env(safe-area-inset-top,0px))!important;right:14px!important;z-index:2147483647!important;width:44px!important;height:44px!important;border-radius:50%!important;border:0!important;background:rgba(0,0,0,.75)!important;color:#fff!important;font-size:18px!important;';
+          }
         }
         function exitImgFs() {
           if (!wrap) return;
           wrap.classList.remove('cp-img-fs');
-          try { document.body.classList.remove('cp-fs-lock'); } catch (e) {}
+          try {
+            document.body.classList.remove('cp-fs-lock', 'cp-img-fs-on');
+          } catch (e) {}
+          // Restore wrap into card
+          if (wrap.__cpHome && wrap.__cpHome.parent) {
+            if (wrap.__cpHome.next && wrap.__cpHome.next.parentNode === wrap.__cpHome.parent) {
+              wrap.__cpHome.parent.insertBefore(wrap, wrap.__cpHome.next);
+            } else {
+              wrap.__cpHome.parent.appendChild(wrap);
+            }
+          }
+          var xb2 = document.body.querySelector('.cp-img-card .cp-x, body > .cp-x');
+          // restore close btn
+          var xbCard = drawer.querySelector('.cp-img-card');
+          var xb = document.body.querySelector(':scope > .cp-x');
+          if (!xb) xb = drawer.querySelector('.cp-x');
+          if (xb && xb.__cpHome && xb.__cpHome.parent) {
+            xb.style.cssText = '';
+            if (xb.__cpHome.next && xb.__cpHome.next.parentNode === xb.__cpHome.parent) {
+              xb.__cpHome.parent.insertBefore(xb, xb.__cpHome.next);
+            } else {
+              xb.__cpHome.parent.insertBefore(xb, xb.__cpHome.parent.firstChild);
+            }
+          }
         }
         if (imgEl) {
           imgEl.addEventListener('click', function (e) {
@@ -6514,7 +6585,15 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             try { document.body.classList.add('cp-fs-lock'); } catch (e) {}
             var vid = pl.querySelector('video');
             if (vid) vid.play().catch(function(){});
-            // Close overlay via FS button or back
+            // Force media controls visible in gesture fullscreen
+            var ctlEl = pl.querySelector('.cp-ctl');
+            if (ctlEl) {
+              ctlEl.classList.remove('cp-ctl-hidden');
+              ctlEl.style.display = 'flex';
+              ctlEl.style.visibility = 'visible';
+              ctlEl.style.opacity = '1';
+              ctlEl.style.zIndex = '10';
+            }
             var fsBtn = pl.querySelector('.cp-fs');
             if (fsBtn) {
               fsBtn.onclick = function (e) {
@@ -6651,8 +6730,30 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     try {
       document.querySelectorAll('.cp-fs-active, .cp-img-fs').forEach(function (el) {
         el.classList.remove('cp-fs-active', 'cp-fs-landscape', 'cp-fs-portrait', 'cp-img-fs');
+        // If image wrap was moved to body for FS, try put back
+        try {
+          if (el.__cpHome && el.__cpHome.parent) {
+            if (el.__cpHome.next && el.__cpHome.next.parentNode === el.__cpHome.parent) {
+              el.__cpHome.parent.insertBefore(el, el.__cpHome.next);
+            } else {
+              el.__cpHome.parent.appendChild(el);
+            }
+          }
+        } catch (eH) {}
       });
     } catch (e1) {}
+    try { document.body.classList.remove('cp-img-fs-on'); } catch (eImg) {}
+    try {
+      // Orphan close buttons moved to body during image FS
+      document.querySelectorAll('body > .cp-x').forEach(function(xb){
+        if (xb.__cpHome && xb.__cpHome.parent) {
+          xb.style.cssText = '';
+          try { xb.__cpHome.parent.insertBefore(xb, xb.__cpHome.parent.firstChild); } catch(e){ xb.remove(); }
+        } else if (!xb.closest('.cloud-preview-drawer')) {
+          try { xb.remove(); } catch(e2){}
+        }
+      });
+    } catch (eXb) {}
     try {
       document.body.classList.remove('cp-fs-lock', 'dgxen-fs-lock');
     } catch (e2) {}
@@ -11822,21 +11923,29 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
       if (inf.active) parts.push({ tag: 'Infini', t: inf.text, pct: inf.pct });
       if (window.__cloudDownloading) parts.push({ tag: 'DL', t: (tx && tx.textContent) || 'Downloading…', pct: window.__cloudDownloadPct });
 
-      if (tx) {
-        if (parts.length === 1) tx.textContent = parts[0].t;
-        else tx.textContent = parts.length + ' transfers';
-      }
-      // Bottom bar uses average of active pcts
+      // ONE combined progress line for all active uploads/downloads
       const nums = parts.map(function(x) { return x.pct; }).filter(function(n) { return n != null && !isNaN(n); });
-      if (bar) {
-        if (nums.length) bar.style.width = (nums.reduce(function(a, b) { return a + b; }, 0) / nums.length) + '%';
-        else bar.style.width = '30%';
+      const avg = nums.length ? (nums.reduce(function(a, b) { return a + b; }, 0) / nums.length) : null;
+      if (tx) {
+        if (parts.length === 1) {
+          tx.textContent = parts[0].t + (avg != null ? (' · ' + Math.round(avg) + '%') : '');
+        } else {
+          tx.textContent = parts.map(function(x){ return x.tag; }).join(' + ') + (avg != null ? (' · ' + Math.round(avg) + '%') : ' · …');
+        }
       }
+      if (bar) {
+        bar.style.width = (avg != null ? avg : 28) + '%';
+      }
+      // Single summary line only (no multi job-line stack)
       if (lines) {
-        lines.innerHTML = parts.map(function(x) {
-          const pct = (x.pct != null && !isNaN(x.pct)) ? (' · ' + Math.round(x.pct) + '%') : '';
-          return '<div class="job-line"><b>' + x.tag + '</b> ' + String(x.t || '').replace(/</g, '&lt;') + pct + '</div>';
-        }).join('');
+        if (parts.length <= 1) {
+          lines.innerHTML = '';
+        } else {
+          lines.innerHTML = '<div class="job-line">' + parts.map(function(x) {
+            const pct = (x.pct != null && !isNaN(x.pct)) ? (Math.round(x.pct) + '%') : '…';
+            return '<b>' + x.tag + '</b> ' + pct;
+          }).join(' · ') + '</div>';
+        }
       }
     } else {
       el.classList.remove('show');
