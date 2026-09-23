@@ -5619,13 +5619,24 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
        • Restore knows the original folder even after the tree changed,
        • nothing extra can go out of sync.  encodeURIComponent keeps "/" out of the name.   */
   function trashName(originalRel, nowMs) {
-    return String(nowMs) + '__' + encodeURIComponent(String(originalRel || '').replace(/^\/+|\/+$/g, ''));
+    // Nested paths: do NOT encodeURIComponent the whole rel — "/" → %2F then
+    // cloudPathUrl encodes again → %252F and Infini MOVE/DELETE 404s inside folders.
+    // Use "::" as a reversible path-separator token.
+    var safe = String(originalRel || '').replace(/^\/+|\/+$/g, '');
+    safe = safe.split('/').join('::');
+    safe = safe.replace(/[\\?%*:|"<>]/g, '_');
+    return String(nowMs) + '__' + safe;
   }
   function parseTrashName(name) {
     var m = /^(\d{10,15})__(.+)$/.exec(String(name || ''));
     if (!m) return null;
+    var raw = m[2];
     var orig;
-    try { orig = decodeURIComponent(m[2]); } catch (e) { return null; }
+    if (raw.indexOf('::') >= 0) {
+      orig = raw.split('::').join('/');
+    } else {
+      try { orig = decodeURIComponent(raw); } catch (e) { orig = raw; }
+    }
     return { deletedAt: Number(m[1]), original: orig };
   }
   function trashExpiresAt(deletedAt) { return Number(deletedAt) + TRASH_TTL_MS; }
@@ -5776,17 +5787,22 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         }
       },
       remove: async function (item) {
-        // Nested: full rel path. Prefer MOVE-to-trash path via trash engine; this is hard-delete.
-        var rel = String(item.rel || item.name || '').replace(/^\/+/, '');
-        var u0 = url(rel, false);
-        var r = await B.infiniFetch(u0, { method: 'DELETE' });
-        if (r.status === 301 || r.status === 302 || r.status === 404 || r.status === 409 || r.status === 405) {
-          // Retry with trailing slash (collection) and without
-          r = await B.infiniFetch(url(rel, true), { method: 'DELETE' });
-          if (!(r.ok || r.status === 204 || r.status === 200 || r.status === 404)) {
-            r = await B.infiniFetch(url(rel, false), { method: 'DELETE' });
+        var rel = String((item && (item.rel || item.name)) || '').replace(/^\/+/, '').replace(/\/+$/, '');
+        if (!rel) throw new Error('Delete: empty path');
+        async function del(u) {
+          var r = await B.infiniFetch(u, { method: 'DELETE' });
+          if (r.status === 301 || r.status === 302 || r.status === 307 || r.status === 308) {
+            var loc = null;
+            try { loc = r.headers && r.headers.get && r.headers.get('Location'); } catch (e) {}
+            if (loc) r = await B.infiniFetch(loc, { method: 'DELETE' });
           }
+          return r;
         }
+        var r = await del(url(rel, false));
+        if (!(r.ok || r.status === 204 || r.status === 200 || r.status === 404)) {
+          r = await del(url(rel, true));
+        }
+        // Still failing: try each path segment encoding variant is already in url()
         if (!(r.ok || r.status === 204 || r.status === 200 || r.status === 404))
           throw new Error('Delete failed (' + r.status + ') for ' + rel);
       },
@@ -5808,20 +5824,43 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
           throw new Error('Folder delete failed (' + r.status + ')');
       },
       move: async function (from, to, isFolder) {
+        from = String(from || '').replace(/^\/+/, '').replace(/\/+$/, '');
+        to = String(to || '').replace(/^\/+/, '').replace(/\/+$/, '');
+        if (!from) throw new Error('Move: empty source');
         await A.ensureDir(C.parentOf(to));
-        var src = url(from, !!isFolder);
-        var dest = url(to, !!isFolder);
+        var folder = !!isFolder;
+        var src = url(from, folder);
+        var dest = url(to, folder);
         try { if (!/^https?:/i.test(dest)) dest = new URL(dest, B.cloudPathUrl('')).href; } catch (e) {}
         try { if (!/^https?:/i.test(src)) src = new URL(src, B.cloudPathUrl('')).href; } catch (e2) {}
-        var r = await B.infiniFetch(src, { method: 'MOVE', headers: { Destination: dest, Overwrite: 'T' } });
-        // Real success only: 201/204/200. 301/302 = retry once on Location if present
-        if (r.status === 301 || r.status === 302) {
-          var loc = null;
-          try { loc = r.headers && (r.headers.get && r.headers.get('Location')); } catch (e3) {}
-          if (loc) r = await B.infiniFetch(loc, { method: 'MOVE', headers: { Destination: dest, Overwrite: 'T' } });
+        async function tryMove(s, d) {
+          var r = await B.infiniFetch(s, { method: 'MOVE', headers: { Destination: d, Overwrite: 'T' } });
+          if (r.status === 301 || r.status === 302 || r.status === 307 || r.status === 308) {
+            var loc = null;
+            try { loc = r.headers && r.headers.get && r.headers.get('Location'); } catch (e3) {}
+            if (loc) r = await B.infiniFetch(loc, { method: 'MOVE', headers: { Destination: d, Overwrite: 'T' } });
+          }
+          return r;
         }
-        if (!(r.ok || r.status === 201 || r.status === 204 || r.status === 200 || r.status === 404))
-          throw new Error('Move failed (' + r.status + ')');
+        var r = await tryMove(src, dest);
+        // Nested files: some Infini/TeraCLOUD paths need trailing-slash flip
+        if (!(r.ok || r.status === 201 || r.status === 204 || r.status === 200 || r.status === 404)) {
+          r = await tryMove(url(from, !folder), dest);
+        }
+        if (!(r.ok || r.status === 201 || r.status === 204 || r.status === 200 || r.status === 404)) {
+          // Last resort: COPY then DELETE source (works when MOVE is blocked on nested paths)
+          try {
+            var rc = await B.infiniFetch(src, { method: 'COPY', headers: { Destination: dest, Overwrite: 'T' } });
+            if (rc.ok || rc.status === 201 || rc.status === 204 || rc.status === 200) {
+              var rd = await B.infiniFetch(src, { method: 'DELETE' });
+              if (!(rd.ok || rd.status === 204 || rd.status === 200 || rd.status === 404)) {
+                rd = await B.infiniFetch(url(from, true), { method: 'DELETE' });
+              }
+              if (rd.ok || rd.status === 204 || rd.status === 200 || rd.status === 404) return;
+            }
+          } catch (eCopy) {}
+          throw new Error('Move failed (' + r.status + ') for ' + from + ' → ' + to);
+        }
       },
       copy: async function (from, to, isFolder) {
         await A.ensureDir(C.parentOf(to));
@@ -5972,16 +6011,35 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     var T = {
       /* Move a FILE to trash. Returns bytes trashed. */
       trashFile: async function (item) {
-        var to = C.joinPath(C.TRASH_DIR, C.trashName(item.rel, now()));
-        await A.move(item.rel, to);
+        var rel = String((item && (item.rel || item.name)) || '').replace(/^\/+/, '');
+        if (!rel) throw new Error('Trash: missing path');
+        var to = C.joinPath(C.TRASH_DIR, C.trashName(rel, now()));
+        try {
+          await A.move(rel, to, false);
+        } catch (eMove) {
+          // Nested Infini paths often fail MOVE through proxy — hard DELETE so user isn't stuck
+          console.warn('[trash] MOVE failed, hard-deleting', rel, eMove && eMove.message);
+          await A.remove({ rel: rel, name: (item && item.name) || C.baseName(rel) });
+        }
         return item.size || 0;
       },
       /* Move a FOLDER to trash. Infini can move the whole directory; B2 moves file-by-file. */
       trashFolder: async function (folderRel) {
         var stamp = now(), moved = 0;
+        folderRel = String(folderRel || '').replace(/^\/+/, '').replace(/\/+$/, '');
         if (A.name === 'infini') {
-          var files = await A.walk(folderRel); moved = files.reduce(function (s, f) { return s + (f.size || 0); }, 0);
-          await A.move(folderRel, C.joinPath(C.TRASH_DIR, C.trashName(folderRel, stamp)), true);
+          var files = [];
+          try { files = await A.walk(folderRel); } catch (eW) { files = []; }
+          moved = files.reduce(function (s, f) { return s + (f.size || 0); }, 0);
+          try {
+            await A.move(folderRel, C.joinPath(C.TRASH_DIR, C.trashName(folderRel, stamp)), true);
+          } catch (eMF) {
+            console.warn('[trashFolder] MOVE failed, deleting children', folderRel, eMF && eMF.message);
+            for (var fi = 0; fi < files.length; fi++) {
+              try { await A.remove(files[fi]); } catch (eR) {}
+            }
+            try { await A.removeTree(folderRel); } catch (eRT) {}
+          }
           return moved;
         }
         var all = await A.walk(folderRel);
@@ -7211,9 +7269,25 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         hideMovingChip();
         return;
       }
-      var rel = String(relPath || fileName || ''); if (rel.indexOf('/') < 0 && cwd()) rel = C.joinPath(cwd(), fileName);
-      var row = null, box = $('cloudFileList'); if (box) box.querySelectorAll('.cloud-file-row .name').forEach(function (n) { if ((n.getAttribute('data-rel') || n.getAttribute('data-name')) === (relPath || fileName)) row = n.closest('.cloud-file-row'); });
-      var info = row ? rowInfo(row) : { rel: rel, name: fileName, isFolder: false, id: fileId, size: 0 }; info.rel = rel;
+      var row = null, box = $('cloudFileList');
+      if (box) box.querySelectorAll('.cloud-file-row .name').forEach(function (n) {
+        var dr = n.getAttribute('data-rel') || '';
+        var dn = n.getAttribute('data-name') || '';
+        if (dr === relPath || dn === fileName || dr === fileName || dn === relPath ||
+            (relPath && dr && (dr === relPath || dr.endsWith('/' + relPath)))) {
+          row = n.closest('.cloud-file-row');
+        }
+      });
+      // Prefer data-rel (always full path including parent folder)
+      var info = row ? rowInfo(row) : null;
+      var rel = '';
+      if (info && info.rel) rel = info.rel;
+      else rel = String(relPath || fileName || '');
+      if (rel.indexOf('/') < 0 && cwd()) rel = C.joinPath(cwd(), rel);
+      rel = String(rel).replace(/^\/+/, '');
+      if (!info) info = { rel: rel, name: C.baseName(rel) || fileName, isFolder: false, id: fileId, size: 0 };
+      info.rel = rel;
+      if (!info.name) info.name = C.baseName(rel) || fileName;
       await root.cpTrashItems([info]);
     };
     root.moveCloudToTrash = root.softDeleteCloudFile;
