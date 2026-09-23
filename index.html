@@ -2533,25 +2533,29 @@
             display: block;
             clear: both;
             box-sizing: border-box;
-            overflow: hidden;
+            overflow: visible; /* never clip play/mute/fs controls */
         }
         .cloud-preview-drawer .cp-player {
             width: 100%;
             max-width: 100%;
             border-radius: 14px;
-            overflow: hidden;
+            overflow: visible;
             background: #000;
             border: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
         }
         .cloud-preview-drawer .cp-player video {
             display: block;
-            width: 100%;
+            width: auto;
             max-width: 100%;
             height: auto;
-            max-height: min(40vh, 360px);
+            max-height: min(48vh, 420px);
             object-fit: contain;
             background: #000;
             margin: 0 auto;
+            /* keep real aspect — do not stretch/squeeze */
+            flex: 0 0 auto;
         }
         .cloud-preview-drawer .cp-x {
             float: right;
@@ -2591,12 +2595,14 @@
         }
         .cloud-preview-drawer video {
             display: block;
-            width: 100%;
+            width: auto;
+            max-width: 100%;
             height: auto;
-            max-height: min(42vh, 380px);
+            max-height: min(48vh, 420px);
             object-fit: contain;
             background: #000;
             vertical-align: top;
+            margin: 0 auto;
         }
         .cloud-preview-drawer audio {
             display: block;
@@ -3765,8 +3771,8 @@ body.cat-world-active .cat-mode-bar{display:block}
 
 /* --- (6) zoom-proof players: control sizes come from CSS vars that JS recomputes from the zoom level,
        so the seek bar keeps the same PHYSICAL length whatever the browser/pinch zoom is. --- */
-.cp-player { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
-.cp-player video { display: block; width: 100%; max-height: min(42vh, 380px); object-fit: contain; background: #000; }
+.cp-player { width: 100%; border-radius: 12px; overflow: visible; background: #000; display: flex; flex-direction: column; position: relative; }
+.cp-player video { display: block; width: auto; max-width: 100%; height: auto; max-height: min(48vh, 420px); object-fit: contain; background: #000; margin: 0 auto; }
 .cp-player audio { display: none; }
 .cp-audio { background: linear-gradient(135deg, #0d1b2a, #1b263b); }
 .cp-ctl { display: flex; align-items: center; gap: 8px; padding: 6px 10px; min-height: var(--cp-ctl-h, 44px); box-sizing: border-box; background: rgba(10,10,14,.88); color: #fff; font-size: var(--cp-font, 12px); }
@@ -3840,12 +3846,22 @@ body.cat-world-active .cat-mode-bar{display:block}
   flex: 0 0 auto !important;
   transform: none !important;
 }
-.cp-drawer audio, .cloud-preview-drawer audio,
-.cp-drawer video, .cloud-preview-drawer video {
+.cp-drawer audio, .cloud-preview-drawer audio {
   width: 100% !important;
   max-width: 100% !important;
+}
+.cp-drawer video, .cloud-preview-drawer video {
+  width: auto !important;
+  max-width: 100% !important;
   height: auto !important;
-  max-height: 50vh !important;
+  max-height: min(48vh, 420px) !important;
+  object-fit: contain !important;
+  margin: 0 auto !important;
+}
+.cp-drawer .cp-ctl, .cloud-preview-drawer .cp-ctl {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .cloud-file-row.drop-folder-hot {
@@ -3853,6 +3869,31 @@ body.cat-world-active .cat-mode-bar{display:block}
   background: rgba(0,255,136,0.12) !important;
   border-radius: 12px;
 }
+
+
+/* Cloud preview fullscreen + always-visible controls */
+.cp-ctl { display: flex !important; visibility: visible !important; opacity: 1 !important; flex: 0 0 auto; z-index: 8; min-height: 48px; }
+.cp-player.cp-fs-active {
+  position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100dvh !important;
+  max-height: none !important; border-radius: 0 !important; z-index: 2147483646 !important;
+  background: #000 !important; display: flex !important; flex-direction: column !important; justify-content: center !important;
+  margin: 0 !important; border: 0 !important; overflow: visible !important;
+}
+.cp-player.cp-fs-active video {
+  width: auto !important; height: auto !important; max-width: 100vw !important;
+  max-height: calc(100dvh - 56px) !important; margin: auto !important; object-fit: contain !important;
+}
+.cp-player.cp-fs-active.cp-fs-landscape video {
+  width: 100% !important; height: auto !important; max-height: calc(100dvh - 56px) !important;
+}
+.cp-player.cp-fs-active.cp-fs-portrait video {
+  height: calc(100dvh - 56px) !important; width: auto !important; max-width: 100vw !important;
+}
+.cp-player.cp-fs-active .cp-ctl {
+  flex: 0 0 auto !important; display: flex !important; width: 100%; min-height: 56px;
+  padding: 12px 16px; background: rgba(0,0,0,.88) !important;
+}
+body.cp-fs-lock { overflow: hidden !important; touch-action: none !important; }
 
 /* Pause expensive animations while cloud is doing work — stops background "shutter" */
 body.cloud-op-busy .float-anim,
@@ -6092,28 +6133,103 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     }
   }
   function playerHtml(kind, id, src, mime) {
-    var el = kind === 'video' ? '<video id="' + id + '" playsinline preload="metadata" src="' + src + '"></video>' : '<audio id="' + id + '" preload="metadata" src="' + src + '"></audio>';
+    var el = kind === 'video'
+      ? '<video id="' + id + '" playsinline webkit-playsinline preload="metadata" src="' + src + '" style="object-fit:contain;"></video>'
+      : '<audio id="' + id + '" preload="metadata" src="' + src + '"></audio>';
     return '<div class="cp-player cp-' + kind + '" data-pid="' + id + '">' + el +
-      '<div class="cp-ctl"><button type="button" class="cp-pp" aria-label="Play/Pause">▶</button><span class="cp-time">0:00</span>' +
+      '<div class="cp-ctl" style="display:flex!important;visibility:visible!important;opacity:1!important;">' +
+      '<button type="button" class="cp-pp" aria-label="Play/Pause">▶</button><span class="cp-time">0:00</span>' +
       '<input class="cp-seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek"><span class="cp-time cp-dur">0:00</span>' +
-      '<button type="button" class="cp-mute" aria-label="Mute">🔊</button>' + (kind === 'video' ? '<button type="button" class="cp-fs" aria-label="Fullscreen">⛶</button>' : '') + '</div></div>';
+      '<button type="button" class="cp-mute" aria-label="Mute">🔊</button>' +
+      (kind === 'video' ? '<button type="button" class="cp-fs" aria-label="Fullscreen">⛶</button>' : '') +
+      '</div></div>';
   }
   function wirePlayer(pl) {
     var m = pl.querySelector('video,audio'); if (!m) return;
     var pp = pl.querySelector('.cp-pp'), seek = pl.querySelector('.cp-seek'), t1 = pl.querySelector('.cp-time'), t2 = pl.querySelector('.cp-dur'), mu = pl.querySelector('.cp-mute'), fs = pl.querySelector('.cp-fs');
     var f = function (s) { if (!isFinite(s) || s < 0) s = 0; var h = Math.floor(s / 3600), mi = Math.floor((s % 3600) / 60), se = Math.floor(s % 60); return (h ? h + ':' + String(mi).padStart(2, '0') : mi) + ':' + String(se).padStart(2, '0'); };
     var drag = false;
-    pp.onclick = function () { m.paused ? m.play().catch(function () {}) : m.pause(); };
-    m.addEventListener('play', function () { pp.textContent = '⏸'; }); m.addEventListener('pause', function () { pp.textContent = '▶'; });
+    // Controls must stay visible — never hide on play
+    var ctl = pl.querySelector('.cp-ctl');
+    if (ctl) { ctl.style.display = 'flex'; ctl.style.visibility = 'visible'; ctl.style.opacity = '1'; }
+
+    pp.onclick = function (e) { e.stopPropagation(); m.paused ? m.play().catch(function () {}) : m.pause(); };
+    m.addEventListener('play', function () { pp.textContent = '⏸'; });
+    m.addEventListener('pause', function () { pp.textContent = '▶'; });
     m.addEventListener('timeupdate', function () { t1.textContent = f(m.currentTime); if (!drag && m.duration) seek.value = Math.round((m.currentTime / m.duration) * 1000); });
-    m.addEventListener('loadedmetadata', function () { t2.textContent = f(m.duration); });
+    m.addEventListener('loadedmetadata', function () {
+      t2.textContent = f(m.duration);
+      // Apply natural aspect for video (no squeeze)
+      if (m.tagName === 'VIDEO' && m.videoWidth && m.videoHeight) {
+        pl.setAttribute('data-aspect', (m.videoWidth / m.videoHeight).toFixed(4));
+        pl.setAttribute('data-vw', m.videoWidth);
+        pl.setAttribute('data-vh', m.videoHeight);
+      }
+    });
     m.addEventListener('durationchange', function () { t2.textContent = f(m.duration); });
     m.addEventListener('error', function () { pl.classList.add('cp-err'); t1.textContent = '—'; });
     seek.addEventListener('input', function () { drag = true; if (m.duration) { m.currentTime = (seek.value / 1000) * m.duration; t1.textContent = f(m.currentTime); } });
     seek.addEventListener('change', function () { drag = false; });
     seek.addEventListener('pointerup', function () { drag = false; });
-    mu.onclick = function () { m.muted = !m.muted; mu.textContent = m.muted ? '🔇' : '🔊'; };
-    if (fs) fs.onclick = function () { var el = pl; var isFs = doc.fullscreenElement || doc.webkitFullscreenElement; if (isFs) { (doc.exitFullscreen || doc.webkitExitFullscreen).call(doc); } else { (el.requestFullscreen || el.webkitRequestFullscreen || function () { m.webkitEnterFullscreen && m.webkitEnterFullscreen(); }).call(el); } };
+    if (mu) mu.onclick = function (e) { e.stopPropagation(); m.muted = !m.muted; mu.textContent = m.muted ? '🔇' : '🔊'; };
+
+    function exitFs() {
+      pl.classList.remove('cp-fs-active', 'cp-fs-landscape', 'cp-fs-portrait');
+      try { document.body.classList.remove('cp-fs-lock', 'dgxen-fs-lock'); } catch (e) {}
+      try {
+        var isFs = document.fullscreenElement || document.webkitFullscreenElement;
+        if (isFs) {
+          var exit = document.exitFullscreen || document.webkitExitFullscreen;
+          if (exit) exit.call(document);
+        }
+      } catch (e2) {}
+      if (fs) fs.textContent = '⛶';
+    }
+    function enterFs() {
+      var vw = m.videoWidth || 16, vh = m.videoHeight || 9;
+      pl.classList.add('cp-fs-active');
+      pl.classList.remove('cp-fs-landscape', 'cp-fs-portrait');
+      if (vw >= vh) pl.classList.add('cp-fs-landscape');
+      else pl.classList.add('cp-fs-portrait');
+      try { document.body.classList.add('cp-fs-lock', 'dgxen-fs-lock'); } catch (e) {}
+      // Prefer native fullscreen on the player shell (keeps our controls)
+      var req = pl.requestFullscreen || pl.webkitRequestFullscreen || pl.webkitRequestFullScreen;
+      if (req) {
+        try { req.call(pl); } catch (e3) {}
+      } else if (m.webkitEnterFullscreen) {
+        try { m.webkitEnterFullscreen(); } catch (e4) {}
+      }
+      if (fs) fs.textContent = '⛶';
+    }
+    if (fs) {
+      fs.onclick = function (e) {
+        e.stopPropagation();
+        if (pl.classList.contains('cp-fs-active') || document.fullscreenElement === pl || document.webkitFullscreenElement === pl) {
+          exitFs();
+        } else {
+          enterFs();
+        }
+      };
+    }
+    // Sync if user exits via system gesture
+    function onFsChange() {
+      var isFs = document.fullscreenElement === pl || document.webkitFullscreenElement === pl;
+      if (!isFs && pl.classList.contains('cp-fs-active')) {
+        // keep manual FS class if native dropped but we want manual overlay
+        // Only clear if neither native nor our class should stay — exit fully
+        // If native exit happened, keep our fixed overlay (already active)
+      }
+    }
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+
+    // Tap video toggles play (does not hide controls)
+    if (m.tagName === 'VIDEO') {
+      m.addEventListener('click', function (e) {
+        e.stopPropagation();
+        m.paused ? m.play().catch(function () {}) : m.pause();
+      });
+    }
   }
   async function openPreview(row) {
     var info = rowInfo(row); if (!info || info.isFolder || !bridge()) return;
