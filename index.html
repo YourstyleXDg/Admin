@@ -6274,50 +6274,120 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
   /* =============================== 4) MULTI-PREVIEW (any provider) ========================== */
   var AUDIO_EXT = ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'opus'], VIDEO_EXT = ['mp4', 'webm', 'mov', 'mkv', 'm4v'], IMG_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'heic', 'heif', 'avif', 'bmp'], TXT_EXT = ['txt', 'md', 'json', 'csv', 'log', 'html', 'js', 'css'];
   function extOf(n) { var i = String(n).lastIndexOf('.'); return i < 0 ? '' : String(n).slice(i + 1).toLowerCase(); }
-  function closePreview(key) {
+  function closePreview(key, opts) {
+    opts = opts || {};
     var p = openPreviews[key]; if (!p) return;
-    // Abort in-flight preview download so net stops immediately
     try { if (p.abort) p.abort.abort(); } catch (e0) {}
     try { if (p.xhr) p.xhr.abort(); } catch (e1) {}
+
+    // Gesture / bg playback: keep media alive in floating mini bar
+    var keep = opts.keepPlaying || p.keepPlaying;
+    var bgMedia = null;
+    var bgName = key;
     try {
-      var media = p.drawer && p.drawer.querySelectorAll('video,audio');
-      if (media) media.forEach(function(m){ try { m.pause(); m.removeAttribute('src'); m.load(); } catch(e2){} });
-    } catch (e3) {}
+      if (keep && p.drawer) {
+        var list = p.drawer.querySelectorAll('video,audio');
+        for (var i = 0; i < list.length; i++) {
+          if (!list[i].paused && !list[i].ended) { bgMedia = list[i]; break; }
+        }
+        if (!bgMedia && list.length) {
+          // still promote if gesture-marked
+          for (var j = 0; j < list.length; j++) {
+            if (list[j].getAttribute('data-cp-bg') === '1') { bgMedia = list[j]; break; }
+          }
+        }
+      }
+    } catch (eK) {}
+
+    if (bgMedia) {
+      try {
+        // Detach media node so removing drawer doesn't kill it
+        bgMedia.setAttribute('data-cp-bg', '1');
+        bgMedia.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;';
+        document.body.appendChild(bgMedia);
+        if (bgMedia.paused) bgMedia.play().catch(function(){});
+        ensureCpBgMini(bgMedia, bgName);
+      } catch (eBg) {
+        try { bgMedia.pause(); } catch (e) {}
+        bgMedia = null;
+      }
+    }
+
+    if (!bgMedia) {
+      try {
+        var media = p.drawer && p.drawer.querySelectorAll('video,audio');
+        if (media) media.forEach(function(m){
+          try {
+            if (m.getAttribute('data-cp-bg') === '1') return; // already detached
+            m.pause(); m.removeAttribute('src'); m.load();
+          } catch(e2){}
+        });
+      } catch (e3) {}
+    }
+
     p.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) {} });
     if (p.drawer && p.drawer.parentNode) p.drawer.parentNode.removeChild(p.drawer);
     try {
       if (p.overlay && p.overlay.parentNode) p.overlay.parentNode.removeChild(p.overlay);
     } catch (eOv) {}
     delete openPreviews[key];
-    // If nothing left in FS, clear body lock
     try {
       if (!document.querySelector('.cp-fs-active, .cp-img-fs')) {
-        document.body.classList.remove('cp-fs-lock', 'dgxen-fs-lock');
+        document.body.classList.remove('cp-fs-lock', 'dgxen-fs-lock', 'cp-img-fs-on');
       }
     } catch (eLk) {}
   }
-  async function urlFor(info, signal) {
-    if (B.getActiveCloudProvider() === 'infini') {
-      var u = await B.getInfiniPreviewUrl(info.rel, signal);
-      return { url: u, blob: true };
+
+  /** Floating mini player for gesture background audio/video */
+  function ensureCpBgMini(media, label) {
+    var mini = document.getElementById('cpAudioMini');
+    if (!mini) {
+      mini = document.createElement('div');
+      mini.id = 'cpAudioMini';
+      mini.innerHTML = '<button type="button" data-a="pp" aria-label="Play/Pause">⏸</button>' +
+        '<span data-a="n" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;"></span>' +
+        '<button type="button" data-a="x" aria-label="Stop">✕</button>';
+      document.body.appendChild(mini);
+      mini.addEventListener('click', function (ev) {
+        var t = ev.target.getAttribute('data-a');
+        var m = window.__cpBgMedia;
+        if (!m) return;
+        if (t === 'pp') {
+          if (m.paused) { m.play().catch(function(){}); mini.querySelector('[data-a=pp]').textContent = '⏸'; }
+          else { m.pause(); mini.querySelector('[data-a=pp]').textContent = '▶'; }
+        } else if (t === 'x') {
+          stopCpBgMedia();
+        }
+      });
     }
-    await B.authorizeB2(false); var b2 = B.b2();
-    var r = await B.b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_download_authorization', { method: 'POST', headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ bucketId: b2.bucketId, fileNamePrefix: info.rel, validDurationInSeconds: 3600 }) });
-    var d = await r.json().catch(function () { return {}; }); if (!r.ok) throw new Error(d.message || 'Auth failed');
-    var direct = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + info.rel.split('/').map(encodeURIComponent).join('/') + '?Authorization=' + encodeURIComponent(d.authorizationToken);
-    try {
-      var fr = await fetch(direct, signal ? { signal: signal } : undefined);
-      if (signal && signal.aborted) throw new Error('cancelled');
-      if (!fr.ok) throw new Error('HTTP ' + fr.status);
-      var blob = await fr.blob();
-      if (signal && signal.aborted) throw new Error('cancelled');
-      return { url: URL.createObjectURL(blob), blob: true };
-    } catch (e) {
-      if (e && (e.name === 'AbortError' || String(e.message||'').indexOf('cancel') >= 0)) throw e;
-      return { url: direct, blob: false };
-    }
+    window.__cpBgMedia = media;
+    var nameEl = mini.querySelector('[data-a=n]');
+    if (nameEl) nameEl.textContent = (label || 'Playing').split('/').pop();
+    var pp = mini.querySelector('[data-a=pp]');
+    if (pp) pp.textContent = media.paused ? '▶' : '⏸';
+    mini.classList.add('show');
+    media.addEventListener('ended', function onEnd() {
+      media.removeEventListener('ended', onEnd);
+      stopCpBgMedia();
+    });
   }
-  function playerHtml(kind, id, src, mime) {
+  function stopCpBgMedia() {
+    try {
+      var m = window.__cpBgMedia;
+      if (m) {
+        try { m.pause(); m.removeAttribute('src'); m.load(); } catch (e) {}
+        try { if (m.parentNode) m.parentNode.removeChild(m); } catch (e2) {}
+      }
+    } catch (e3) {}
+    window.__cpBgMedia = null;
+    try {
+      var mini = document.getElementById('cpAudioMini');
+      if (mini) mini.classList.remove('show');
+    } catch (e4) {}
+  }
+  window.stopCpBgMedia = stopCpBgMedia;
+
+    function playerHtml(kind, id, src, mime) {
     var el = kind === 'video'
       ? '<video id="' + id + '" playsinline webkit-playsinline preload="metadata" src="' + src + '" style="object-fit:contain;"></video>'
       : '<audio id="' + id + '" preload="metadata" src="' + src + '"></audio>';
@@ -6633,10 +6703,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
               vid.style.cssText = 'flex:1;width:100%;height:100%;object-fit:contain;background:#000;';
             }
             if (vid) {
+              vid.setAttribute('data-cp-bg', '1');
               if (vid.readyState >= 1) layoutVid();
               else vid.addEventListener('loadedmetadata', layoutVid, { once: true });
               vid.play().catch(function(){});
             }
+            if (openPreviews[key]) openPreviews[key].keepPlaying = true;
             var ctlEl = pl.querySelector('.cp-ctl');
             if (ctlEl) {
               ctlEl.classList.remove('cp-ctl-hidden');
@@ -6652,13 +6724,25 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             ov.appendChild(closeFs);
             closeFs.onclick = function (e) {
               e.stopPropagation();
-              try { unlockCloudMediaUi(); } catch (e2) { closePreview(key); }
+              try {
+                if (openPreviews[key]) openPreviews[key].keepPlaying = true;
+                closePreview(key, { keepPlaying: true });
+                var ov2 = document.getElementById('cpFsOverlay');
+                if (ov2 && ov2.parentNode) ov2.parentNode.removeChild(ov2);
+                document.body.classList.remove('cp-fs-lock');
+              } catch (e2) { try { unlockCloudMediaUi({ keepBg: true }); } catch (e3) {} }
             };
             var fsBtn = pl.querySelector('.cp-fs');
             if (fsBtn) {
               fsBtn.onclick = function (e) {
                 e.stopPropagation();
-                try { unlockCloudMediaUi(); } catch (e2) { closePreview(key); }
+                try {
+                  if (openPreviews[key]) openPreviews[key].keepPlaying = true;
+                  closePreview(key, { keepPlaying: true });
+                  var ov2 = document.getElementById('cpFsOverlay');
+                  if (ov2 && ov2.parentNode) ov2.parentNode.removeChild(ov2);
+                  document.body.classList.remove('cp-fs-lock');
+                } catch (e2) { try { unlockCloudMediaUi({ keepBg: true }); } catch (e3) {} }
               };
             }
             openPreviews[key].overlay = ov;
@@ -6723,37 +6807,33 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         var info = rowInfo(row); if (!info || info.isFolder) { shClear(); return; }
         var ex = extOf(info.name);
         try { if (navigator.vibrate) navigator.vibrate(18); } catch (eV) {}
-        if (AUDIO_EXT.indexOf(ex) >= 0) {
-          openPreview(row, { forceFs: false, bgAudio: true }).then(function(){
-            var p = openPreviews[info.rel];
-            if (!p || !p.drawer) return;
-            var audio = p.drawer.querySelector('audio');
-            if (audio) {
-              audio.play().catch(function(){});
-              var mini = doc.getElementById('cpAudioMini');
-              if (!mini) {
-                mini = doc.createElement('div'); mini.id = 'cpAudioMini';
-                mini.innerHTML = '<button type="button" data-a="pp">⏸</button><span data-a="n" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span><button type="button" data-a="x">✕</button>';
-                doc.body.appendChild(mini);
-                mini.addEventListener('click', function(ev){
-                  var t = ev.target.getAttribute('data-a');
-                  if (t === 'pp') {
-                    if (audio.paused) { audio.play(); mini.querySelector('[data-a=pp]').textContent = '⏸'; }
-                    else { audio.pause(); mini.querySelector('[data-a=pp]').textContent = '▶'; }
-                  } else if (t === 'x') {
-                    audio.pause(); mini.classList.remove('show');
-                    closePreview(info.rel);
-                  }
-                });
-              }
-              mini.querySelector('[data-a=n]').textContent = info.name;
-              mini.querySelector('[data-a=pp]').textContent = '⏸';
-              mini.classList.add('show');
-            }
-          });
-        } else {
-          openPreview(row, { forceFs: true });
-        }
+        // Gesture = play continues after preview close (bg mini)
+        openPreview(row, {
+          forceFs: (VIDEO_EXT.indexOf(ex) >= 0 || IMG_EXT.indexOf(ex) >= 0),
+          bgAudio: true,
+          gestureBg: true
+        }).then(function () {
+          var p = openPreviews[info.rel];
+          if (!p) return;
+          p.keepPlaying = true;
+          try {
+            var mediaEls = [];
+            if (p.drawer) mediaEls = mediaEls.concat([].slice.call(p.drawer.querySelectorAll('video,audio')));
+            if (p.overlay) mediaEls = mediaEls.concat([].slice.call(p.overlay.querySelectorAll('video,audio')));
+            mediaEls.forEach(function (m) {
+              m.setAttribute('data-cp-bg', '1');
+              m.play().catch(function () {});
+            });
+          } catch (eM) {}
+          // Audio: promote to mini bar immediately (no need to keep drawer open)
+          if (AUDIO_EXT.indexOf(ex) >= 0) {
+            setTimeout(function () {
+              if (!openPreviews[info.rel]) return;
+              closePreview(info.rel, { keepPlaying: true });
+            }, 80);
+          }
+          // Video: stay in FS; when user closes → keepPlaying promotes to mini
+        });
         shClear();
       }
       box.addEventListener('pointerdown', function (e) {
@@ -6783,14 +6863,17 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
   }
   function closeAllPreviews() { Object.keys(openPreviews).forEach(closePreview); }
   /** Hard unlock UI after FS / app-switch — fixes frozen cloud panel + dimmed screen */
-  function unlockCloudMediaUi() {
+  function unlockCloudMediaUi(opts) {
+    opts = opts || {};
+    // Close inline / FS previews (bg mini can keep playing)
     try {
-      Object.keys(openPreviews).forEach(closePreview);
+      Object.keys(openPreviews).forEach(function (k) {
+        closePreview(k, { keepPlaying: !!opts.keepBg });
+      });
     } catch (e0) {}
     try {
       document.querySelectorAll('.cp-fs-active, .cp-img-fs').forEach(function (el) {
         el.classList.remove('cp-fs-active', 'cp-fs-landscape', 'cp-fs-portrait', 'cp-img-fs');
-        // If image wrap was moved to body for FS, try put back
         try {
           if (el.__cpHome && el.__cpHome.parent) {
             if (el.__cpHome.next && el.__cpHome.next.parentNode === el.__cpHome.parent) {
@@ -6802,21 +6885,17 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         } catch (eH) {}
       });
     } catch (e1) {}
-    try { document.body.classList.remove('cp-img-fs-on'); } catch (eImg) {}
+    try { document.body.classList.remove('cp-img-fs-on', 'cp-fs-lock', 'dgxen-fs-lock'); } catch (e2) {}
     try {
-      // Orphan close buttons moved to body during image FS
-      document.querySelectorAll('body > .cp-x').forEach(function(xb){
+      document.querySelectorAll('body > .cp-x').forEach(function (xb) {
         if (xb.__cpHome && xb.__cpHome.parent) {
           xb.style.cssText = '';
-          try { xb.__cpHome.parent.insertBefore(xb, xb.__cpHome.parent.firstChild); } catch(e){ xb.remove(); }
-        } else if (!xb.closest('.cloud-preview-drawer')) {
-          try { xb.remove(); } catch(e2){}
+          try { xb.__cpHome.parent.insertBefore(xb, xb.__cpHome.parent.firstChild); } catch (e) { xb.remove(); }
+        } else if (!xb.closest('.cloud-preview-drawer') && !xb.closest('#cpAudioMini')) {
+          try { xb.remove(); } catch (e2) {}
         }
       });
     } catch (eXb) {}
-    try {
-      document.body.classList.remove('cp-fs-lock', 'dgxen-fs-lock');
-    } catch (e2) {}
     try {
       var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
       if (fsEl) {
@@ -6824,19 +6903,17 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         if (exit) exit.call(document);
       }
     } catch (e3) {}
+    // Pause only NON-bg media still in drawers/overlays
     try {
       document.querySelectorAll('video,audio').forEach(function (m) {
         try {
+          if (m.getAttribute('data-cp-bg') === '1' || m === window.__cpBgMedia) return;
           if (m.closest('#cloudPanel') || m.closest('.cloud-preview-drawer') || m.closest('.cp-player') || m.closest('#cpFsOverlay')) {
             m.pause();
           }
         } catch (e4) {}
       });
     } catch (e5) {}
-    try {
-      var mini = document.getElementById('cpAudioMini');
-      if (mini) mini.classList.remove('show');
-    } catch (e6) {}
     try {
       var ov = document.getElementById('cpFsOverlay');
       if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
@@ -6845,38 +6922,44 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       document.body.style.removeProperty('overflow');
       document.documentElement.style.removeProperty('overflow');
     } catch (e8) {}
+    // Fix stuck gray backdrop if cloud panel is closed
+    try {
+      var panel = document.getElementById('cloudPanel');
+      var bd = document.getElementById('cloudPanelBackdrop');
+      if (bd && panel && !panel.classList.contains('open')) {
+        bd.classList.remove('open');
+        bd.style.display = '';
+        bd.style.opacity = '';
+        bd.style.pointerEvents = '';
+      }
+    } catch (e9) {}
   }
-  window.unlockCloudMediaUi = unlockCloudMediaUi;
+    window.unlockCloudMediaUi = unlockCloudMediaUi;
   window.closeAllCloudPreviews = closeAllPreviews;
 
   // App switch / tab hide → release FS lock so cloud stays usable on return
   document.addEventListener('visibilitychange', function () {
-    // Leaving app / recent-apps: fully tear down FS overlays so return is never broken
     if (document.visibilityState === 'hidden') {
-      try { unlockCloudMediaUi(); } catch (e) {}
-    }
-  });
-  document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') {
-      // Safety: if any orphan overlay survived, clear it
+      // Tear down FS UI only — keep gesture background media playing
+      try { unlockCloudMediaUi({ keepBg: true }); } catch (e) {}
+    } else if (document.visibilityState === 'visible') {
+      // Clear any stuck gray backdrop / FS residue after recent-apps
       try {
-        if (document.getElementById('cpFsOverlay') || document.body.classList.contains('cp-fs-lock') || document.querySelector('.cp-fs-active')) {
-          unlockCloudMediaUi();
+        unlockCloudMediaUi({ keepBg: true });
+        var panel = document.getElementById('cloudPanel');
+        var bd = document.getElementById('cloudPanelBackdrop');
+        if (bd && panel && !panel.classList.contains('open')) {
+          bd.classList.remove('open');
+          bd.style.cssText = '';
         }
+        document.body.classList.remove('cp-fs-lock', 'dgxen-fs-lock', 'cp-img-fs-on');
+        document.body.style.removeProperty('overflow');
+        document.documentElement.style.removeProperty('overflow');
       } catch (e2) {}
     }
   });
-  window.addEventListener('pagehide', function () { try { unlockCloudMediaUi(); } catch (e) {} });
-  window.addEventListener('blur', function () {
-    // Soft unlock FS classes only (don't kill preview mid-interaction on desktop)
-    try {
-      if (document.body.classList.contains('cp-fs-lock')) {
-        document.querySelectorAll('.cp-fs-active, .cp-img-fs').forEach(function (el) {
-          el.classList.remove('cp-fs-active', 'cp-fs-landscape', 'cp-fs-portrait', 'cp-img-fs');
-        });
-        document.body.classList.remove('cp-fs-lock', 'dgxen-fs-lock');
-      }
-    } catch (e) {}
+  window.addEventListener('pagehide', function () {
+    try { unlockCloudMediaUi({ keepBg: true }); } catch (e) {}
   });
 
   /* =============================== 5) ZOOM-PROOF SEEK BAR ================================== */
