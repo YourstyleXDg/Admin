@@ -1869,9 +1869,12 @@
             position: fixed;
             inset: 0;
             z-index: 120;
-            background: rgba(0,0,0,.45);
+            background: rgba(0,0,0,.18);
             display: none;
             pointer-events: none;
+        }
+        body.light-mode #cloudPanelBackdrop {
+            background: rgba(0,0,0,.08);
         }
         #cloudPanelBackdrop.open {
             display: block;
@@ -5804,10 +5807,10 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         if (!(r.ok || r.status === 204 || r.status === 200 || r.status === 404))
           throw new Error('Folder delete failed (' + r.status + ')');
       },
-      move: async function (from, to) {
+      move: async function (from, to, isFolder) {
         await A.ensureDir(C.parentOf(to));
-        var src = url(from, false);
-        var dest = url(to, false);
+        var src = url(from, !!isFolder);
+        var dest = url(to, !!isFolder);
         try { if (!/^https?:/i.test(dest)) dest = new URL(dest, B.cloudPathUrl('')).href; } catch (e) {}
         try { if (!/^https?:/i.test(src)) src = new URL(src, B.cloudPathUrl('')).href; } catch (e2) {}
         var r = await B.infiniFetch(src, { method: 'MOVE', headers: { Destination: dest, Overwrite: 'T' } });
@@ -5820,11 +5823,11 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         if (!(r.ok || r.status === 201 || r.status === 204 || r.status === 200 || r.status === 404))
           throw new Error('Move failed (' + r.status + ')');
       },
-      copy: async function (from, to) {
+      copy: async function (from, to, isFolder) {
         await A.ensureDir(C.parentOf(to));
-        var dest = url(to, false);
+        var dest = url(to, !!isFolder);
         try { if (!/^https?:/i.test(dest)) dest = new URL(dest, B.cloudPathUrl('')).href; } catch (e) {}
-        var r = await B.infiniFetch(url(from, false), { method: 'COPY', headers: { Destination: dest, Overwrite: 'T' } });
+        var r = await B.infiniFetch(url(from, !!isFolder), { method: 'COPY', headers: { Destination: dest, Overwrite: 'T' } });
         if (!(r.ok || r.status === 201 || r.status === 204 || r.status === 200 || r.status === 301 || r.status === 302))
           throw new Error('Copy failed (' + r.status + ')');
       }
@@ -5978,7 +5981,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         var stamp = now(), moved = 0;
         if (A.name === 'infini') {
           var files = await A.walk(folderRel); moved = files.reduce(function (s, f) { return s + (f.size || 0); }, 0);
-          await A.move(folderRel, C.joinPath(C.TRASH_DIR, C.trashName(folderRel, stamp)));
+          await A.move(folderRel, C.joinPath(C.TRASH_DIR, C.trashName(folderRel, stamp)), true);
           return moved;
         }
         var all = await A.walk(folderRel);
@@ -6009,7 +6012,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
           var dir = C.parentOf(target), sib = await A.list(dir), set = Object.create(null); sib.forEach(function (x) { set[x.name] = 1; });
           target = C.joinPath(dir, C.uniqueName(C.baseName(target), set));
         }
-        await A.move(entry.rel, target);
+        await A.move(entry.rel, target, !!entry.isFolder);
         return target;
       },
       /* Permanently delete one entry. */
@@ -9479,6 +9482,18 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         }
 
         window.showConfirm = function(title, desc, callback) {
+            // A confirm dialog is one shared modal for the whole page — if
+            // another one is already showing (e.g. triggered by a background
+            // listener/poll from a different section while the user is
+            // looking at a cloud-delete confirmation), overwriting
+            // pendingConfirmAction here would silently swap out what CONFIRM
+            // actually does, or drop the first action entirely. Queue instead.
+            if (window.__confirmModalBusy) {
+                window.__confirmQueue = window.__confirmQueue || [];
+                window.__confirmQueue.push([title, desc, callback]);
+                return;
+            }
+            window.__confirmModalBusy = true;
             document.getElementById('confirmActionTitle').innerText = title;
             document.getElementById('confirmActionDesc').innerText = desc;
             pendingConfirmAction = callback || null;
@@ -9506,6 +9521,13 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
             });
+            if (window.__confirmModalBusy) {
+                window.__confirmModalBusy = false;
+                if (window.__confirmQueue && window.__confirmQueue.length) {
+                    const next = window.__confirmQueue.shift();
+                    setTimeout(function() { window.showConfirm.apply(null, next); }, 50);
+                }
+            }
         }
 
         window.executeConfirm = async function() {
@@ -12081,19 +12103,37 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
         if (e.touches.length >= 2) list.style.touchAction = 'none';
         else list.style.touchAction = 'pan-y';
       }, { passive: true });
+      // Without this, lifting from 2 fingers to 0 left touchAction stuck at
+      // 'none' (only another touchstart would reset it) — 1-finger scroll
+      // could appear dead until the next gesture happened to fix it.
+      list.addEventListener('touchend', function(e) {
+        if (e.touches.length < 2) list.style.touchAction = 'pan-y';
+      }, { passive: true });
+      list.addEventListener('touchcancel', function() { list.style.touchAction = 'pan-y'; }, { passive: true });
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
     else wire();
-    // re-wire when panel opens
-    var _orig = window.toggleCloudPanel;
-    if (typeof _orig === 'function' && !_orig.__twoFingerPatched) {
-      window.toggleCloudPanel = function(force) {
-        var r = _orig.apply(this, arguments);
-        setTimeout(wire, 50);
-        return r;
-      };
-      window.toggleCloudPanel.__twoFingerPatched = true;
-    }
+    // Wrap toggleCloudPanel so opening the panel re-wires the 2-finger pan
+    // listeners. The REAL toggleCloudPanel is defined further down in this
+    // same script (loads later), so it doesn't exist yet at this point —
+    // polling (instead of a one-shot check) is what actually lets this patch
+    // attach once the real function shows up, rather than silently no-op'ing
+    // forever while a later, unpatched definition overwrites it.
+    var __twoFingerTries = 0;
+    var __twoFingerIv = setInterval(function() {
+      var _orig = window.toggleCloudPanel;
+      if (typeof _orig === 'function' && !_orig.__twoFingerPatched) {
+        window.toggleCloudPanel = function(force) {
+          var r = _orig.apply(this, arguments);
+          setTimeout(wire, 50);
+          return r;
+        };
+        window.toggleCloudPanel.__twoFingerPatched = true;
+        clearInterval(__twoFingerIv);
+      } else if (++__twoFingerTries > 100) {
+        clearInterval(__twoFingerIv); // ~10s safety cutoff — never spin forever
+      }
+    }, 100);
   })();
 
   window.__cloudUploading = false;
