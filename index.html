@@ -6314,23 +6314,41 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     box.addEventListener('pointermove', function (e) {
       if (!st || e.pointerId !== st.id || st.done) return;
       var dx = e.clientX - st.x, dy = e.clientY - st.y, k = C.classifySwipe(dx, dy, 36);
-      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) st.moved = true;          // this gesture was a drag, not a tap
-      if (k === 'vscroll') { clearTimeout(st.timer); st.mode = 'vscroll'; st.done = true; st.row.style.transform = ''; return; }
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) st.moved = true;
+      if (k === 'vscroll') {
+        clearTimeout(st.timer); st.mode = 'vscroll'; st.done = true; st.row.style.transform = '';
+        root.__cpSelectSwipeActive = false;
+        return;
+      }
+      // Left swipe (select) → cancel any right-swipe preview arm
+      if (dx < -12) {
+        try { if (typeof root.__cpCancelHoldPreview === 'function') root.__cpCancelHoldPreview(); } catch (eC) {}
+      }
       if (k === 'swipe' && st.mode !== 'swipe') {
-        st.mode = 'swipe'; st.row.classList.add('cp-swiping');
+        st.mode = 'swipe';
+        root.__cpSelectSwipeActive = true;
+        try { if (typeof root.__cpCancelHoldPreview === 'function') root.__cpCancelHoldPreview(); } catch (eC2) {}
+        st.row.classList.add('cp-swiping');
         st.timer = setTimeout(function () {
           if (!st || st.mode !== 'swipe') return;
           var info = rowInfo(st.row);
           if (info && !info.isFolder) { sel.toggle(info); try { if (navigator.vibrate) navigator.vibrate(15); } catch (er) {} paintSelection(); }
           else status('Folders cannot be selected — open the folder instead', null);
           st.done = true; st.row.classList.remove('cp-swiping'); st.row.style.transform = ''; st.suppressClick = true;
+          root.__cpSelectSwipeActive = false;
         }, SWIPE_HOLD_MS);
       }
       if (st.mode === 'swipe') st.row.style.transform = 'translateX(' + Math.max(-70, dx * 0.5) + 'px)';
     }, { passive: true });
-    function end() { if (!st) return; clearTimeout(st.timer); st.row.classList.remove('cp-swiping'); st.row.style.transform = '';
-      var s = st; if (s.moved) s.suppressClick = true;                        // a drag-release must never act as a tap
-      setTimeout(function () { if (st === s) st = null; }, 400); }
+    function end() {
+      if (!st) return;
+      clearTimeout(st.timer);
+      st.row.classList.remove('cp-swiping');
+      st.row.style.transform = '';
+      root.__cpSelectSwipeActive = false;
+      var s = st; if (s.moved) s.suppressClick = true;
+      setTimeout(function () { if (st === s) st = null; }, 400);
+    }
     box.addEventListener('pointerup', end, { passive: true }); box.addEventListener('pointercancel', end, { passive: true });
     // Selection mode: tap toggles (capture phase so it beats the preview/open handlers).
     box.addEventListener('click', function (e) {
@@ -6974,24 +6992,28 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     }, true);
     box.addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var nm = e.target.closest && e.target.closest('.cloud-file-row .name[data-exp-id]'); if (!nm) return; e.stopPropagation(); e.preventDefault(); openPreview(nm.closest('.cloud-file-row')); }, true);
     // Swipe RIGHT + hold on file row → fullscreen / bg audio preview
+    // Gesture play: ONLY intentional swipe RIGHT (>=40px clear horizontal) then hold ~300ms.
+    // NO pure long-press — that was stealing select / hold-to-drag / normal taps.
     if (!box.__cpSwipeHold) {
       box.__cpSwipeHold = true;
-      var sh = { row: null, x0: 0, y0: 0, armed: false, timer: null, holdTimer: null, done: false, pid: null };
-      function shClear(keepRow) {
+      var sh = { row: null, x0: 0, y0: 0, armed: false, timer: null, done: false };
+      function shClear() {
         if (sh.timer) { clearTimeout(sh.timer); sh.timer = null; }
-        if (sh.holdTimer) { clearTimeout(sh.holdTimer); sh.holdTimer = null; }
         if (sh.row) try { sh.row.classList.remove('cp-gesture-arm'); } catch (e) {}
-        if (!keepRow) { sh.row = null; }
-        sh.armed = false; sh.done = false; sh.pid = null;
+        sh.row = null; sh.armed = false; sh.done = false;
       }
+      // Expose cancel so select-swipe (R→L) can kill preview gesture
+      root.__cpCancelHoldPreview = shClear;
       function shFire(row) {
         if (!row || sh.done) return;
+        // If selection already active or select-swipe is in progress, never open FS
+        if (sel.size()) { shClear(); return; }
+        if (root.__cpSelectSwipeActive) { shClear(); return; }
         sh.done = true;
         var info = rowInfo(row); if (!info || info.isFolder) { shClear(); return; }
         var ex = extOf(info.name);
         try { if (navigator.vibrate) navigator.vibrate([12, 30, 12]); } catch (eV) {}
         try { row.classList.remove('cp-gesture-arm'); } catch (e2) {}
-        // Stop previous bg so next video isn't stacked/zoomed
         try { if (window.stopCpBgMedia) window.stopCpBgMedia(); } catch (e3) {}
         openPreview(row, {
           forceFs: (VIDEO_EXT.indexOf(ex) >= 0 || IMG_EXT.indexOf(ex) >= 0),
@@ -7021,39 +7043,29 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       }
       box.addEventListener('pointerdown', function (e) {
         if (sel.size()) return;
-        if (e.target.closest('button')) return;
+        if (root.__cpSelectSwipeActive) return;
+        if (e.target.closest('button,a,input')) return;
         var row = e.target.closest('.cloud-file-row'); if (!row) return;
         var info = rowInfo(row); if (!info || info.isFolder) return;
         shClear();
         sh.row = row; sh.x0 = e.clientX; sh.y0 = e.clientY; sh.armed = false; sh.done = false;
-        sh.pid = e.pointerId;
-        try { row.setPointerCapture(e.pointerId); } catch (eC) {}
-        // Long-press fallback (no swipe needed) — 550ms on row body
-        sh.holdTimer = setTimeout(function () {
-          if (!sh.row || sh.done) return;
-          var dx = 0, dy = 0;
-          // if finger barely moved, treat as long-press gesture play
-          shFire(sh.row);
-        }, 550);
-        try { row.classList.add('cp-gesture-arm'); } catch (eA) {}
+        // NO setPointerCapture — breaks hold-to-drag / select
+        // NO long-press timer — only right-swipe arms preview
       }, true);
       box.addEventListener('pointermove', function (e) {
         if (!sh.row || sh.done) return;
         var dx = e.clientX - sh.x0, dy = e.clientY - sh.y0;
-        // Cancel long-press if user is clearly scrolling
-        if (Math.abs(dy) > 28 && Math.abs(dy) > Math.abs(dx)) {
-          if (sh.holdTimer) { clearTimeout(sh.holdTimer); sh.holdTimer = null; }
-          try { sh.row.classList.remove('cp-gesture-arm'); } catch (eR) {}
-        }
-        // Swipe-right arm: easier thresholds
-        if (!sh.armed && dx > 22 && Math.abs(dx) > Math.abs(dy) * 1.1) {
+        // Leftward move = select-swipe territory → cancel preview completely
+        if (dx < -16) { shClear(); return; }
+        // Vertical scroll → cancel
+        if (Math.abs(dy) > 24 && Math.abs(dy) >= Math.abs(dx)) { shClear(); return; }
+        // Must be CLEARLY right swipe before arming
+        if (!sh.armed && dx > 40 && Math.abs(dx) > Math.abs(dy) * 1.6) {
           sh.armed = true;
-          if (sh.holdTimer) { clearTimeout(sh.holdTimer); sh.holdTimer = null; }
-          sh.timer = setTimeout(function () { shFire(sh.row); }, 280);
+          try { sh.row.classList.add('cp-gesture-arm'); } catch (eA) {}
+          sh.timer = setTimeout(function () { shFire(sh.row); }, 300);
         }
-        if (sh.armed && (dx < 10 || Math.abs(dy) > 60)) {
-          shClear();
-        }
+        if (sh.armed && (dx < 20 || Math.abs(dy) > 50)) shClear();
       }, true);
       box.addEventListener('pointerup', function () { shClear(); }, true);
       box.addEventListener('pointercancel', function () { shClear(); }, true);
@@ -12651,8 +12663,8 @@ window.__dgxenInitVideoControls = function(vId) {
       if (getActiveCloudProvider() === 'infini') {
         const fromUrl = cloudPathUrl(rel);
         const toUrl = cloudPathUrl(restoredPath);
-        const res = await infiniFetch(fromUrl, { method: 'MOVE', headers: { Destination: toUrl } });
-        if (!res.ok) throw new Error('Restore failed (' + res.status + ')');
+        const res = await infiniMoveWithRetry(fromUrl, toUrl);
+        if (!infiniWriteOk(res)) throw new Error('Restore failed (' + (res && res.status) + ')');
         setStatus('Restored: ' + restoredPath, true);
         if (window.refreshCloudFiles) await window.refreshCloudFiles();
       } else {
@@ -12824,9 +12836,9 @@ window.__dgxenInitVideoControls = function(vId) {
     try {
       const fromUrl = cloudPathUrl(relPath) + (isFolder ? '/' : '');
       const toUrl = cloudPathUrl(newRelPath) + (isFolder ? '/' : '');
-      const res = await infiniFetch(fromUrl, { method: 'MOVE', headers: { Destination: toUrl } });
-      if (!res.ok) {
-        if (res.status === 412 || res.status === 409) throw new Error('A file/folder named "' + safeName + '" already exists here.');
+      const res = await infiniMoveWithRetry(fromUrl, toUrl);
+      if (!infiniWriteOk(res)) {
+        if (res && (res.status === 412 || res.status === 409)) throw new Error('A file/folder named "' + safeName + '" already exists here.');
         throw new Error('Rename failed (' + res.status + ')');
       }
       setStatus('Renamed to ' + safeName, true);
@@ -12887,8 +12899,8 @@ window.__dgxenInitVideoControls = function(vId) {
     try {
       const fromUrl = cloudPathUrl(relPath) + (isFolder ? '/' : '');
       const toUrl = cloudPathUrl(newRelPath) + (isFolder ? '/' : '');
-      const res = await infiniFetch(fromUrl, { method: 'MOVE', headers: { Destination: toUrl } });
-      if (!res.ok) throw new Error('Move failed (' + res.status + ')');
+      const res = await infiniMoveWithRetry(fromUrl, toUrl);
+      if (!infiniWriteOk(res)) throw new Error('Move failed (' + (res && res.status) + ')');
       setStatus('Moved to ' + (destFolder || 'Root'), true);
       if (window.refreshCloudFiles) await window.refreshCloudFiles();
     } catch (e) { setStatus('Move: ' + (e.message || e), false); }
@@ -13339,7 +13351,27 @@ window.__dgxenInitVideoControls = function(vId) {
     return files;
   }
 
-  async function listInfiniFiles() {
+  
+  /** WebDAV MOVE with 301/302 Location retry — returns final Response */
+  async function infiniMoveWithRetry(fromUrl, toUrl) {
+    var res = await infiniFetch(fromUrl, { method: 'MOVE', headers: { Destination: toUrl, Overwrite: 'T' } });
+    if (res && (res.status === 301 || res.status === 302 || res.status === 307 || res.status === 308)) {
+      var loc = null;
+      try { loc = res.headers && res.headers.get && res.headers.get('Location'); } catch (e) {}
+      if (loc) {
+        res = await infiniFetch(loc, { method: 'MOVE', headers: { Destination: toUrl, Overwrite: 'T' } });
+      }
+    }
+    return res;
+  }
+  /** True if WebDAV write succeeded (or already gone for DELETE) */
+  function infiniWriteOk(res) {
+    if (!res) return false;
+    var s = res.status;
+    return !!(res.ok || s === 201 || s === 204 || s === 200 || s === 404);
+  }
+
+async function listInfiniFiles() {
     if (!infini.user || !infini.pass) throw new Error('Add Infini Connection ID + Apps Password, then SAVE & CONNECT');
     const cwd = cloudCwd();
     let base = cwd ? cloudPathUrl(cwd) : infiniBaseUrl();
@@ -15306,17 +15338,27 @@ async function listAllFiles(forcedProvider) {
                     start = data.nextFileName || null;
                   } while (start);
                 } else if (getActiveCloudProvider() === 'infini') {
-                  // Depth-1 list under this folder and sum file sizes (recursive light walk)
-                  var prev = window.__cloudCwd;
-                  window.__cloudCwd = path;
+                  // Depth-1 PROPFIND on folder path — NEVER touch global __cloudCwd
+                  // (parallel folder-size jobs used to race and leave user stuck inside a folder)
                   try {
-                    var items = await listInfiniFiles();
-                    (items || []).forEach(function(f) {
-                      if (f && !f._isFolder) bytes += Number(f.contentLength || f.size) || 0;
+                    var base = cloudPathUrl(path);
+                    if (!base.endsWith('/')) base += '/';
+                    var resSz = await infiniFetch(base, {
+                      method: 'PROPFIND',
+                      headers: {
+                        'Depth': '1',
+                        'Content-Type': 'application/xml; charset=utf-8'
+                      },
+                      body: '<?xml version="1.0" encoding="utf-8" ?><d:propfind xmlns:d="DAV:"><d:prop><d:getcontentlength/><d:resourcetype/></d:prop></d:propfind>'
                     });
-                  } finally {
-                    window.__cloudCwd = prev;
-                  }
+                    if (resSz && resSz.ok) {
+                      var xmlSz = await resSz.text().catch(function(){ return ''; });
+                      var itemsSz = parseWebDavPropfind(xmlSz, base, path);
+                      (itemsSz || []).forEach(function(f) {
+                        if (f && !f._isFolder) bytes += Number(f.contentLength || f.size) || 0;
+                      });
+                    }
+                  } catch (eSz) {}
                 }
                 if (m && m.isConnected) m.textContent = 'Folder · ' + formatBytes(bytes);
               } catch (e) {
