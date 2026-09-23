@@ -6466,20 +6466,69 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
   /** Resolve a playable/viewable URL for any provider. Returns { url, blob }. */
   async function urlFor(info, signal) {
     if (!bridge()) throw new Error('Cloud not ready');
-    var rel = String((info && (info.rel || info.name)) || '');
+    var rel = String((info && (info.rel || info.name)) || '').replace(/^\/+/, '').trim();
     if (!rel) throw new Error('Missing file path');
-    var provider = B.getActiveCloudProvider ? B.getActiveCloudProvider() : 'b2';
+    // Decode any HTML entities left in data-rel
+    try {
+      var ta = doc.createElement('textarea');
+      ta.innerHTML = rel;
+      rel = ta.value || rel;
+    } catch (eDec) {}
+    var provider = (B && B.getActiveCloudProvider) ? B.getActiveCloudProvider() : 'b2';
+    var nameOnly = rel.split('/').pop();
+
     if (provider === 'infini') {
       if (!B.getInfiniPreviewUrl) throw new Error('Infini preview not available');
-      var blobUrl = await B.getInfiniPreviewUrl(rel, signal);
-      if (signal && signal.aborted) throw new Error('cancelled');
-      // getInfiniPreviewUrl returns a blob: URL string
-      return { url: blobUrl, blob: true };
+      var lastErr = null;
+      var tryList = [rel];
+      if (nameOnly && nameOnly !== rel) tryList.push(nameOnly);
+      for (var ti = 0; ti < tryList.length; ti++) {
+        try {
+          var blobUrl = await B.getInfiniPreviewUrl(tryList[ti], signal);
+          if (signal && signal.aborted) throw new Error('cancelled');
+          return { url: blobUrl, blob: true };
+        } catch (eTry) {
+          lastErr = eTry;
+          var msg = String((eTry && eTry.message) || eTry || '');
+          // Only retry on 404 / not found
+          if (msg.indexOf('404') < 0 && msg.toLowerCase().indexOf('not found') < 0) break;
+        }
+      }
+      throw lastErr || new Error('Infini preview failed for ' + rel);
     }
-    // B2 — authorized download URL (no Class B full download into memory for media)
+
+    // ---- B2: same auth URL as downloadCloudFile, then blob for <video>/<img> reliability ----
     if (!B.authorizeB2 || !B.b2Fetch || !B.b2) throw new Error('B2 not ready');
     await B.authorizeB2(false);
     var b2c = B.b2();
+    if (!b2c || !b2c.downloadUrl || !b2c.bucketName) throw new Error('B2 not configured');
+
+    async function b2BlobFromUrl(directUrl) {
+      var res = await fetch(directUrl, { method: 'GET', signal: signal, mode: 'cors', credentials: 'omit' });
+      if (!res.ok) throw new Error('Preview fetch failed (' + res.status + ')');
+      var buf = await res.arrayBuffer();
+      if (signal && signal.aborted) throw new Error('cancelled');
+      if (!buf || !buf.byteLength) throw new Error('Empty file');
+      var ct = (res.headers.get('content-type') || '').split(';')[0].trim();
+      if (!ct || ct === 'application/octet-stream') {
+        ct = (B.guessMime && B.guessMime(rel)) || 'application/octet-stream';
+      }
+      return { url: URL.createObjectURL(new Blob([buf], { type: ct })), blob: true };
+    }
+
+    // 1) Prefer download-by-id when we have a real fileId
+    var fid = String((info && info.id) || '').trim();
+    if (fid && fid.indexOf('folder:') !== 0 && fid.indexOf('http') !== 0) {
+      try {
+        var byId = b2c.downloadUrl.replace(/\/$/, '') + '/b2api/v2/b2_download_file_by_id?fileId=' +
+          encodeURIComponent(fid) + '&Authorization=' + encodeURIComponent(b2c.authToken);
+        return await b2BlobFromUrl(byId);
+      } catch (eId) {
+        // fall through to by-name
+      }
+    }
+
+    // 2) by-name authorized URL (same as downloadCloudFile)
     var authRes = await B.b2Fetch(b2c.apiUrl + '/b2api/v2/b2_get_download_authorization', {
       method: 'POST',
       headers: { Authorization: b2c.authToken, 'Content-Type': 'application/json' },
@@ -6491,10 +6540,21 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     });
     var authData = await authRes.json().catch(function () { return {}; });
     if (!authRes.ok) throw new Error(authData.message || ('B2 auth failed ' + authRes.status));
-    var path = rel.split('/').map(encodeURIComponent).join('/');
-    var direct = b2c.downloadUrl + '/file/' + encodeURIComponent(b2c.bucketName) + '/' + path +
+    var pathEnc = rel.split('/').map(encodeURIComponent).join('/');
+    var direct = b2c.downloadUrl.replace(/\/$/, '') + '/file/' + encodeURIComponent(b2c.bucketName) + '/' + pathEnc +
       '?Authorization=' + encodeURIComponent(authData.authorizationToken);
-    return { url: direct, blob: false };
+    try {
+      return await b2BlobFromUrl(direct);
+    } catch (eName) {
+      // 3) last resort: nameOnly under same auth if rel had folders wrong
+      if (nameOnly && nameOnly !== rel) {
+        var path2 = encodeURIComponent(nameOnly);
+        var direct2 = b2c.downloadUrl.replace(/\/$/, '') + '/file/' + encodeURIComponent(b2c.bucketName) + '/' + path2 +
+          '?Authorization=' + encodeURIComponent(authData.authorizationToken);
+        return await b2BlobFromUrl(direct2);
+      }
+      throw new Error((eName && eName.message) || ('Preview failed for ' + rel));
+    }
   }
 
   function playerHtml(kind, id, src, mime) {
@@ -13823,10 +13883,28 @@ window.__dgxenInitVideoControls = function(vId) {
 
   async function getInfiniPreviewUrl(fileName, signal) {
     // Support paths inside folders — pass AbortSignal so close stops net usage
-    const rel = (fileName.indexOf('/') >= 0) ? fileName : cloudJoinPath(cloudCwd(), fileName);
-    const res = await infiniFetch(cloudPathUrl(rel), { method: 'GET', signal: signal });
-    if (signal && signal.aborted) throw new Error('cancelled');
-    if (!res.ok) throw new Error('Preview fetch failed (' + res.status + ')');
+    const raw = String(fileName || '').replace(/^\/+/, '');
+    const candidates = [];
+    // Prefer explicit relative path; also try cwd-join and basename
+    if (raw.indexOf('/') >= 0) {
+      candidates.push(raw);
+      candidates.push(cloudJoinPath(cloudCwd(), raw.split('/').pop()));
+    } else {
+      candidates.push(cloudJoinPath(cloudCwd(), raw));
+      candidates.push(raw);
+    }
+    let res = null, rel = candidates[0], lastStatus = 0;
+    for (let ci = 0; ci < candidates.length; ci++) {
+      rel = candidates[ci];
+      res = await infiniFetch(cloudPathUrl(rel), { method: 'GET', signal: signal });
+      if (signal && signal.aborted) throw new Error('cancelled');
+      if (res.ok) break;
+      lastStatus = res.status;
+      res = null;
+    }
+    if (!res || !res.ok) {
+      throw new Error('Preview fetch failed (' + (lastStatus || 404) + ') path=' + rel);
+    }
     const hdrCt = (res.headers.get('content-type') || '').split(';')[0].trim();
     const declaredLen = Number(res.headers.get('content-length'));
     const buf = await res.arrayBuffer();
