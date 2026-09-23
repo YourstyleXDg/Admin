@@ -3873,24 +3873,92 @@ body.cat-world-active .cat-mode-bar{display:block}
 
 /* Cloud preview fullscreen + always-visible controls */
 .cp-ctl { display: flex !important; visibility: visible !important; opacity: 1 !important; flex: 0 0 auto; z-index: 8; min-height: 48px; }
+/* Fullscreen player: video letterboxed (no crop/zoom), controls docked bottom */
+#cpFsOverlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483645 !important;
+  background: #000 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+#cpFsOverlay .cp-player,
 .cp-player.cp-fs-active {
-  position: fixed !important; inset: 0 !important; width: 100vw !important; height: 100dvh !important;
-  max-height: none !important; border-radius: 0 !important; z-index: 2147483646 !important;
-  background: #000 !important; display: flex !important; flex-direction: column !important; justify-content: center !important;
-  margin: 0 !important; border: 0 !important; overflow: visible !important;
-}
-.cp-player.cp-fs-active video,
-#cpFsOverlay video {
+  position: relative !important;
+  inset: auto !important;
   flex: 1 1 auto !important;
-  width: 100% !important; height: 100% !important;
-  max-width: 100% !important; max-height: 100% !important;
-  margin: 0 !important; object-fit: contain !important; background: #000;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #000 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+  overflow: hidden !important;
+  z-index: 1 !important;
 }
+#cpFsOverlay video,
+.cp-player.cp-fs-active video {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 auto !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  background: #000 !important;
+  /* kill any accidental scale */
+  transform: none !important;
+}
+#cpFsOverlay .cp-ctl,
 .cp-player.cp-fs-active .cp-ctl {
-  flex: 0 0 auto !important; display: flex !important; width: 100%; min-height: 56px;
-  padding: 12px 16px; background: rgba(0,0,0,.88) !important;
+  flex: 0 0 auto !important;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 30 !important;
+  width: 100% !important;
+  min-height: 56px !important;
+  padding: 10px 12px max(14px, env(safe-area-inset-bottom, 0px)) !important;
+  background: rgba(0,0,0,.94) !important;
+  box-sizing: border-box !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+}
+#cpFsOverlay .cp-ctl .cp-seek,
+.cp-player.cp-fs-active .cp-ctl .cp-seek {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 80px !important;
+  max-width: none !important;
+}
+#cpFsOverlay .cp-ctl button,
+.cp-player.cp-fs-active .cp-ctl button {
+  flex-shrink: 0 !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
 }
 body.cp-fs-lock { overflow: hidden !important; touch-action: none !important; }
+.cloud-file-row.cp-gesture-arm {
+  outline: 2px solid rgba(0, 200, 255, .85);
+  outline-offset: -2px;
+  background: rgba(0, 180, 255, .12) !important;
+}
 
 
 /* Kill bottom outgrowth / leftover chips when idle */
@@ -6731,21 +6799,25 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
               ov.id = 'cpFsOverlay';
               document.body.appendChild(ov);
             }
+            // Stop any previous bg media so second video isn't doubled/zoomed
+            try { if (window.stopCpBgMedia) window.stopCpBgMedia(); } catch (eS) {}
             ov.innerHTML = '';
             ov.appendChild(pl);
             pl.classList.add('cp-fs-active');
-            pl.style.cssText = 'flex:1;width:100%;height:100%;display:flex;flex-direction:column;background:#000;';
+            pl.style.cssText = '';
             try { document.body.classList.add('cp-fs-lock'); } catch (e) {}
             var vid = pl.querySelector('video');
             function layoutVid() {
               if (!vid) return;
-              var vw = vid.videoWidth || 9, vh = vid.videoHeight || 16;
+              var vw = vid.videoWidth || 16, vh = vid.videoHeight || 9;
               pl.classList.remove('cp-fs-landscape', 'cp-fs-portrait');
               pl.classList.add(vw >= vh ? 'cp-fs-landscape' : 'cp-fs-portrait');
-              vid.style.cssText = 'flex:1;width:100%;height:100%;object-fit:contain;background:#000;';
+              // NEVER force height:100% — that zooms/crops portrait & landscape
+              vid.style.cssText = 'flex:1 1 0;min-height:0;width:100%;height:auto;max-height:100%;object-fit:contain;object-position:center;background:#000;transform:none;';
             }
             if (vid) {
               vid.setAttribute('data-cp-bg', '1');
+              vid.removeAttribute('controls'); // use our bar only
               if (vid.readyState >= 1) layoutVid();
               else vid.addEventListener('loadedmetadata', layoutVid, { once: true });
               vid.play().catch(function(){});
@@ -6754,7 +6826,10 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             var ctlEl = pl.querySelector('.cp-ctl');
             if (ctlEl) {
               ctlEl.classList.remove('cp-ctl-hidden');
-              ctlEl.style.cssText = 'display:flex!important;visibility:visible!important;opacity:1!important;z-index:20;flex:0 0 auto;width:100%;min-height:56px;padding:12px 16px;background:rgba(0,0,0,.9);';
+              ctlEl.style.cssText = 'display:flex!important;visibility:visible!important;opacity:1!important;z-index:30;flex:0 0 auto;width:100%;min-height:56px;align-items:center;gap:8px;padding:10px 12px max(14px, env(safe-area-inset-bottom, 0px));background:rgba(0,0,0,.94);box-sizing:border-box;';
+              // Ensure seek is flexible on phone
+              var sk = ctlEl.querySelector('.cp-seek');
+              if (sk) sk.style.cssText = 'flex:1 1 auto;width:auto;min-width:80px;';
             }
             // Always-visible close on overlay
             var closeFs = document.createElement('button');
@@ -6838,18 +6913,23 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     // Swipe RIGHT + hold on file row → fullscreen / bg audio preview
     if (!box.__cpSwipeHold) {
       box.__cpSwipeHold = true;
-      var sh = { row: null, x0: 0, y0: 0, armed: false, timer: null, done: false };
-      function shClear() {
+      var sh = { row: null, x0: 0, y0: 0, armed: false, timer: null, holdTimer: null, done: false, pid: null };
+      function shClear(keepRow) {
         if (sh.timer) { clearTimeout(sh.timer); sh.timer = null; }
-        sh.row = null; sh.armed = false; sh.done = false;
+        if (sh.holdTimer) { clearTimeout(sh.holdTimer); sh.holdTimer = null; }
+        if (sh.row) try { sh.row.classList.remove('cp-gesture-arm'); } catch (e) {}
+        if (!keepRow) { sh.row = null; }
+        sh.armed = false; sh.done = false; sh.pid = null;
       }
       function shFire(row) {
         if (!row || sh.done) return;
         sh.done = true;
         var info = rowInfo(row); if (!info || info.isFolder) { shClear(); return; }
         var ex = extOf(info.name);
-        try { if (navigator.vibrate) navigator.vibrate(18); } catch (eV) {}
-        // Gesture = play continues after preview close (bg mini)
+        try { if (navigator.vibrate) navigator.vibrate([12, 30, 12]); } catch (eV) {}
+        try { row.classList.remove('cp-gesture-arm'); } catch (e2) {}
+        // Stop previous bg so next video isn't stacked/zoomed
+        try { if (window.stopCpBgMedia) window.stopCpBgMedia(); } catch (e3) {}
         openPreview(row, {
           forceFs: (VIDEO_EXT.indexOf(ex) >= 0 || IMG_EXT.indexOf(ex) >= 0),
           bgAudio: true,
@@ -6867,14 +6947,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
               m.play().catch(function () {});
             });
           } catch (eM) {}
-          // Audio: promote to mini bar immediately (no need to keep drawer open)
           if (AUDIO_EXT.indexOf(ex) >= 0) {
             setTimeout(function () {
               if (!openPreviews[info.rel]) return;
               closePreview(info.rel, { keepPlaying: true });
-            }, 80);
+            }, 60);
           }
-          // Video: stay in FS; when user closes → keepPlaying promotes to mini
         });
         shClear();
       }
@@ -6882,25 +6960,40 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         if (sel.size()) return;
         if (e.target.closest('button')) return;
         var row = e.target.closest('.cloud-file-row'); if (!row) return;
+        var info = rowInfo(row); if (!info || info.isFolder) return;
         shClear();
         sh.row = row; sh.x0 = e.clientX; sh.y0 = e.clientY; sh.armed = false; sh.done = false;
+        sh.pid = e.pointerId;
+        try { row.setPointerCapture(e.pointerId); } catch (eC) {}
+        // Long-press fallback (no swipe needed) — 550ms on row body
+        sh.holdTimer = setTimeout(function () {
+          if (!sh.row || sh.done) return;
+          var dx = 0, dy = 0;
+          // if finger barely moved, treat as long-press gesture play
+          shFire(sh.row);
+        }, 550);
+        try { row.classList.add('cp-gesture-arm'); } catch (eA) {}
       }, true);
       box.addEventListener('pointermove', function (e) {
         if (!sh.row || sh.done) return;
         var dx = e.clientX - sh.x0, dy = e.clientY - sh.y0;
-        // Must be clearly RIGHT swipe, not vertical scroll
-        if (!sh.armed && dx > 36 && Math.abs(dx) > Math.abs(dy) * 1.4) {
-          sh.armed = true;
-          sh.timer = setTimeout(function () { shFire(sh.row); }, 480);
+        // Cancel long-press if user is clearly scrolling
+        if (Math.abs(dy) > 28 && Math.abs(dy) > Math.abs(dx)) {
+          if (sh.holdTimer) { clearTimeout(sh.holdTimer); sh.holdTimer = null; }
+          try { sh.row.classList.remove('cp-gesture-arm'); } catch (eR) {}
         }
-        // Cancel if finger drifts back or goes vertical
-        if (sh.armed && (dx < 20 || Math.abs(dy) > 50)) {
+        // Swipe-right arm: easier thresholds
+        if (!sh.armed && dx > 22 && Math.abs(dx) > Math.abs(dy) * 1.1) {
+          sh.armed = true;
+          if (sh.holdTimer) { clearTimeout(sh.holdTimer); sh.holdTimer = null; }
+          sh.timer = setTimeout(function () { shFire(sh.row); }, 280);
+        }
+        if (sh.armed && (dx < 10 || Math.abs(dy) > 60)) {
           shClear();
         }
       }, true);
       box.addEventListener('pointerup', function () { shClear(); }, true);
       box.addEventListener('pointercancel', function () { shClear(); }, true);
-      box.addEventListener('pointerleave', function () { shClear(); }, true);
     }
   }
   function closeAllPreviews() { Object.keys(openPreviews).forEach(closePreview); }
