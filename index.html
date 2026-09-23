@@ -6325,7 +6325,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       } catch (e3) {}
     }
 
-    p.urls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) {} });
+    if (bgMedia) {
+      // Keep blob URLs alive for background media; store on media element
+      try { bgMedia.__cpBlobUrls = (p.urls || []).slice(); } catch (eBu) {}
+    } else {
+      (p.urls || []).forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) {} });
+    }
     if (p.drawer && p.drawer.parentNode) p.drawer.parentNode.removeChild(p.drawer);
     try {
       if (p.overlay && p.overlay.parentNode) p.overlay.parentNode.removeChild(p.overlay);
@@ -6376,6 +6381,9 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       var m = window.__cpBgMedia;
       if (m) {
         try { m.pause(); m.removeAttribute('src'); m.load(); } catch (e) {}
+        try {
+          (m.__cpBlobUrls || []).forEach(function (u) { try { URL.revokeObjectURL(u); } catch (eR) {} });
+        } catch (eR2) {}
         try { if (m.parentNode) m.parentNode.removeChild(m); } catch (e2) {}
       }
     } catch (e3) {}
@@ -6387,7 +6395,41 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
   }
   window.stopCpBgMedia = stopCpBgMedia;
 
-    function playerHtml(kind, id, src, mime) {
+  /** Resolve a playable/viewable URL for any provider. Returns { url, blob }. */
+  async function urlFor(info, signal) {
+    if (!bridge()) throw new Error('Cloud not ready');
+    var rel = String((info && (info.rel || info.name)) || '');
+    if (!rel) throw new Error('Missing file path');
+    var provider = B.getActiveCloudProvider ? B.getActiveCloudProvider() : 'b2';
+    if (provider === 'infini') {
+      if (!B.getInfiniPreviewUrl) throw new Error('Infini preview not available');
+      var blobUrl = await B.getInfiniPreviewUrl(rel, signal);
+      if (signal && signal.aborted) throw new Error('cancelled');
+      // getInfiniPreviewUrl returns a blob: URL string
+      return { url: blobUrl, blob: true };
+    }
+    // B2 — authorized download URL (no Class B full download into memory for media)
+    if (!B.authorizeB2 || !B.b2Fetch || !B.b2) throw new Error('B2 not ready');
+    await B.authorizeB2(false);
+    var b2c = B.b2();
+    var authRes = await B.b2Fetch(b2c.apiUrl + '/b2api/v2/b2_get_download_authorization', {
+      method: 'POST',
+      headers: { Authorization: b2c.authToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bucketId: b2c.bucketId,
+        fileNamePrefix: rel,
+        validDurationInSeconds: 7200
+      })
+    });
+    var authData = await authRes.json().catch(function () { return {}; });
+    if (!authRes.ok) throw new Error(authData.message || ('B2 auth failed ' + authRes.status));
+    var path = rel.split('/').map(encodeURIComponent).join('/');
+    var direct = b2c.downloadUrl + '/file/' + encodeURIComponent(b2c.bucketName) + '/' + path +
+      '?Authorization=' + encodeURIComponent(authData.authorizationToken);
+    return { url: direct, blob: false };
+  }
+
+  function playerHtml(kind, id, src, mime) {
     var el = kind === 'video'
       ? '<video id="' + id + '" playsinline webkit-playsinline preload="metadata" src="' + src + '" style="object-fit:contain;"></video>'
       : '<audio id="' + id + '" preload="metadata" src="' + src + '"></audio>';
