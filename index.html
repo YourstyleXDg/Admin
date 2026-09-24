@@ -2552,8 +2552,8 @@
 }
 #cpOpenWith {
   position: fixed; inset: 0; z-index: 2147483000;
-  background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center;
-  padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom));
+  background: rgba(0,0,0,.55); display: flex; align-items: flex-start; justify-content: center;
+  padding: 16px; padding-top: max(72px, calc(env(safe-area-inset-top) + 56px));
 }
 #cpOpenWith .cp-ow-card {
   width: min(420px, 100%); background: rgba(22,24,30,.96);
@@ -2637,6 +2637,48 @@
         }
         
 /* CRITICAL: gesture / fullscreen media must never overflow the viewport */
+.media-wrap.cp-img-fs,
+.cp-img-wrap.cp-img-fs,
+div.cp-img-fs {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-width: 100vw !important;
+  max-height: 100dvh !important;
+  min-width: 100vw !important;
+  min-height: 100dvh !important;
+  z-index: 2147483646 !important;
+  background: #000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+  transform: none !important;
+  box-sizing: border-box !important;
+}
+.media-wrap.cp-img-fs > img,
+.cp-img-wrap.cp-img-fs > img,
+.cp-img-fs > img,
+div.cp-img-fs img {
+  position: relative !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+  margin: 0 auto !important;
+  transform: none !important;
+  cursor: zoom-out;
+  flex: 0 1 auto !important;
+}
 #cpFsOverlay, .cp-player.cp-fs-active {
   max-width: 100vw !important;
   max-height: 100dvh !important;
@@ -2646,14 +2688,7 @@
 }
 #cpFsOverlay img, #cpFsOverlay video,
 .cp-player.cp-fs-active img, .cp-player.cp-fs-active video,
-.cp-img-fs, img.cp-img-fs {
-  max-width: min(100vw, 100%) !important;
-  max-height: min(100dvh, 100vh) !important;
-  width: auto !important;
-  height: auto !important;
-  object-fit: contain !important;
-  object-position: center center !important;
-}
+
 .cloud-preview-drawer {
   max-width: 100% !important;
   box-sizing: border-box !important;
@@ -4175,8 +4210,8 @@ body.cp-fs-lock { overflow: hidden !important; touch-action: none !important; }
   width: 100vw !important;
   height: 100vh !important;
   height: 100dvh !important;
-  max-width: none !important;
-  max-height: none !important;
+  max-width: 100vw !important;
+  max-height: 100dvh !important;
   min-height: 0 !important;
   z-index: 2147483646 !important;
   background: #000 !important;
@@ -4184,7 +4219,7 @@ body.cp-fs-lock { overflow: hidden !important; touch-action: none !important; }
   align-items: center !important;
   justify-content: center !important;
   margin: 0 !important;
-  padding: 0 !important;
+  padding: 8px !important;
   border: 0 !important;
   border-radius: 0 !important;
   overflow: hidden !important;
@@ -6916,6 +6951,18 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             document.body.appendChild(wrap);
           }
           wrap.classList.add('cp-img-fs');
+          try {
+            var imgR = wrap.querySelector('img');
+            if (imgR) {
+              imgR.style.transform = 'none';
+              imgR.style.maxWidth = '100%';
+              imgR.style.maxHeight = '100%';
+              imgR.style.width = 'auto';
+              imgR.style.height = 'auto';
+              imgR.style.objectFit = 'contain';
+            }
+            wrap.style.transform = 'none';
+          } catch (eZ) {}
           try {
             document.body.classList.add('cp-fs-lock', 'cp-img-fs-on');
           } catch (e) {}
@@ -13048,14 +13095,97 @@ window.__dgxenInitVideoControls = function(vId) {
         if (!window.CloudProAdapters || !window.__cloudBridge) throw new Error('Cloud module not ready — reload the page');
         const A = window.CloudProAdapters.makeB2(window.__cloudBridge);
         if (isFolder) {
-          const files = await A.walk(relPath);
-          for (const f of files) {
-            var suffix = String(f.rel || '').slice(String(relPath).length);
-            if (suffix.charAt(0) !== '/') suffix = suffix ? ('/' + suffix) : '';
-            const destN = (newRelPath + suffix).replace(/\/+/g, '/');
-            await A.move(f.rel, destN);
+          // B2 folder rename with retries (HTTP 520 from proxy is transient)
+          async function listPrefixFiles(prefix) {
+            var out = [], start = null, guard = 0;
+            prefix = String(prefix || '').replace(/\/+$/, '') + '/';
+            await authorizeB2(false);
+            do {
+              var body = { bucketId: b2.bucketId, prefix: prefix, maxFileCount: 200 };
+              if (start) body.startFileName = start;
+              var lr = null, ld = {}, attempt = 0;
+              while (attempt < 4) {
+                attempt++;
+                try {
+                  lr = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_list_file_names', {
+                    method: 'POST',
+                    headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                  });
+                  ld = await lr.json().catch(function(){ return {}; });
+                  if (lr.ok) break;
+                  if (lr.status === 520 || lr.status === 502 || lr.status === 503 || lr.status === 401) {
+                    await authorizeB2(true);
+                    await new Promise(function(r){ setTimeout(r, 400 * attempt); });
+                    continue;
+                  }
+                  throw new Error(ld.message || ('B2 list failed HTTP ' + lr.status));
+                } catch (eL) {
+                  if (attempt >= 4) throw eL;
+                  await new Promise(function(r){ setTimeout(r, 400 * attempt); });
+                }
+              }
+              if (!lr || !lr.ok) throw new Error((ld && ld.message) || 'B2 list failed');
+              (ld.files || []).forEach(function(f) {
+                var fn = String(f.fileName || '');
+                if (!fn || fn.indexOf(prefix) !== 0) return;
+                out.push(f);
+              });
+              start = ld.nextFileName || null;
+            } while (start && ++guard < 100);
+            return out;
           }
-          try { if (A.removeTree) await A.removeTree(relPath); } catch (eRT) {}
+          var oldPref = String(relPath).replace(/\/+$/, '') + '/';
+          var newPref = String(newRelPath).replace(/\/+$/, '') + '/';
+          var toMove = await listPrefixFiles(relPath);
+          if (!toMove.length) {
+            // try without forcing trailing structure via adapter walk once
+            try {
+              var walked = await A.walk(relPath);
+              for (var wi = 0; wi < walked.length; wi++) {
+                toMove.push({ fileName: walked[wi].rel, fileId: walked[wi].id });
+              }
+            } catch (eW) {}
+          }
+          if (!toMove.length) throw new Error('Folder empty or list failed (HTTP 520). Try again in a few seconds.');
+          var moved = 0;
+          for (var mi = 0; mi < toMove.length; mi++) {
+            var f = toMove[mi];
+            var fn = String(f.fileName || f.rel || '');
+            var rest = fn.indexOf(oldPref) === 0 ? fn.slice(oldPref.length) : fn.split('/').slice(1).join('/');
+            var destFn = newPref + rest;
+            var srcId = f.fileId || f.id;
+            if (!srcId || String(srcId).indexOf('folder:') === 0) continue;
+            var copyRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_copy_file', {
+              method: 'POST',
+              headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sourceFileId: srcId, fileName: destFn, metadataDirective: 'COPY' })
+            });
+            var copyData = await copyRes.json().catch(function(){ return {}; });
+            if (!copyRes.ok) throw new Error(copyData.message || ('Copy failed ' + copyRes.status));
+            try {
+              await b2Fetch(b2.apiUrl + '/b2api/v2/b2_delete_file_version', {
+                method: 'POST',
+                headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileName: fn, fileId: srcId })
+              });
+            } catch (eDel) {}
+            moved++;
+          }
+          // purge any leftover under old prefix (.keep etc.)
+          try {
+            var left = await listPrefixFiles(relPath);
+            for (var li = 0; li < left.length; li++) {
+              try {
+                await b2Fetch(b2.apiUrl + '/b2api/v2/b2_delete_file_version', {
+                  method: 'POST',
+                  headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ fileName: left[li].fileName, fileId: left[li].fileId })
+                });
+              } catch (eL2) {}
+            }
+          } catch (ePurge) {}
+          setStatus('Folder renamed (' + moved + ' files)', true);
         } else {
           await A.move(relPath, newRelPath);
         }
@@ -13238,97 +13368,179 @@ window.__dgxenInitVideoControls = function(vId) {
   /** Drive-style Open with: load file (full speed), then offer system players / browser / download */
   window.openCloudWithPlayer = async function(relPath, fileName) {
     const name = String(fileName || relPath || 'file').split('/').pop();
-    const rel = String(relPath || fileName || '');
-    setStatus('Preparing “' + name + '” for Open with…', null);
-    var overlay = document.createElement('div');
+    let rel = String(relPath || fileName || '').replace(/^\/+/, '');
+    if (rel.indexOf('/') < 0 && typeof cloudCwd === 'function' && cloudCwd()) {
+      rel = cloudJoinPath(cloudCwd(), rel);
+    }
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    let mime = 'application/octet-stream';
+    if (['mp4','m4v'].indexOf(ext) >= 0) mime = 'video/mp4';
+    else if (ext === 'webm') mime = 'video/webm';
+    else if (ext === 'mkv') mime = 'video/x-matroska';
+    else if (ext === 'mov') mime = 'video/quicktime';
+    else if (ext === 'mp3') mime = 'audio/mpeg';
+    else if (ext === 'm4a') mime = 'audio/mp4';
+    else if (ext === 'wav') mime = 'audio/wav';
+    else if (['jpg','jpeg'].indexOf(ext) >= 0) mime = 'image/jpeg';
+    else if (ext === 'png') mime = 'image/png';
+    else if (ext === 'heic' || ext === 'heif') mime = 'image/heic';
+    else if (ext === 'pdf') mime = 'application/pdf';
+
+    // Sheet higher on screen for easy reach
+    var overlay = document.getElementById('cpOpenWith');
+    if (overlay) try { overlay.remove(); } catch (e0) {}
+    overlay = document.createElement('div');
     overlay.id = 'cpOpenWith';
-    overlay.innerHTML = '<div class="cp-ow-card"><div class="cp-ow-title">Open with</div><div class="cp-ow-name"></div><div class="cp-ow-status">Loading file…</div><div class="cp-ow-actions"></div><button type="button" class="cp-ow-x">Close</button></div>';
+    overlay.innerHTML =
+      '<div class="cp-ow-card">' +
+      '<div class="cp-ow-title">Open with</div>' +
+      '<div class="cp-ow-name"></div>' +
+      '<div class="cp-ow-status">Getting secure link…</div>' +
+      '<div class="cp-ow-actions"></div>' +
+      '<button type="button" class="cp-ow-x">Close</button></div>';
     document.body.appendChild(overlay);
     overlay.querySelector('.cp-ow-name').textContent = name;
     overlay.querySelector('.cp-ow-x').onclick = function() {
-      try { if (overlay.__url) URL.revokeObjectURL(overlay.__url); } catch (e) {}
+      try { if (overlay.__blobUrl) URL.revokeObjectURL(overlay.__blobUrl); } catch (e) {}
       overlay.remove();
     };
-    try {
-      var blob;
+    setStatus('Open with: preparing…', null);
+
+    async function getHttpsUrl() {
       if (getActiveCloudProvider() === 'infini') {
-        // reuse download path as blob
-        const target = cloudPathUrl(rel.indexOf('/') >= 0 ? rel : cloudJoinPath(cloudCwd(), rel));
-        const res = await infiniFetch(target, { method: 'GET' });
-        if (!res.ok) throw new Error('Fetch failed (' + res.status + ')');
-        blob = await res.blob();
-      } else {
-        await authorizeB2(false);
-        const authRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_download_authorization', {
-          method: 'POST',
-          headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bucketId: b2.bucketId, fileNamePrefix: rel, validDurationInSeconds: 3600 })
-        });
-        const authData = await authRes.json().catch(function(){ return {}; });
-        if (!authRes.ok) throw new Error(authData.message || 'Auth failed');
-        const path = rel.split('/').map(encodeURIComponent).join('/');
-        const url = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path +
-          '?Authorization=' + encodeURIComponent(authData.authorizationToken);
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Fetch failed (' + res.status + ')');
-        blob = await res.blob();
+        const target = cloudPathUrl(rel);
+        const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
+        const authB64 = btoa(unescape(encodeURIComponent((infini.user || '') + ':' + (infini.pass || ''))));
+        if (proxy) {
+          return proxy + '?url=' + encodeURIComponent(target) +
+            '&a=' + encodeURIComponent(authB64) +
+            '&filename=' + encodeURIComponent(name);
+        }
+        return target;
       }
-      var mime = blob.type || 'application/octet-stream';
-      var ext = (name.split('.').pop() || '').toLowerCase();
-      if (!mime || mime === 'application/octet-stream') {
-        if (['mp4','webm','mkv','mov','m4v'].indexOf(ext) >= 0) mime = 'video/' + (ext === 'mp4' || ext === 'm4v' ? 'mp4' : ext);
-        else if (['mp3','m4a','wav','ogg'].indexOf(ext) >= 0) mime = 'audio/' + (ext === 'mp3' ? 'mpeg' : ext);
-        else if (['jpg','jpeg'].indexOf(ext) >= 0) mime = 'image/jpeg';
-        else if (ext === 'png') mime = 'image/png';
-        else if (ext === 'heic' || ext === 'heif') mime = 'image/heic';
-        blob = new Blob([blob], { type: mime });
+      await authorizeB2(false);
+      const authRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_download_authorization', {
+        method: 'POST',
+        headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bucketId: b2.bucketId, fileNamePrefix: rel, validDurationInSeconds: 3600 })
+      });
+      const authData = await authRes.json().catch(function(){ return {}; });
+      if (!authRes.ok) throw new Error(authData.message || 'Auth failed');
+      const path = rel.split('/').map(encodeURIComponent).join('/');
+      return b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path +
+        '?Authorization=' + encodeURIComponent(authData.authorizationToken);
+    }
+
+    function androidIntent(httpsUrl, pkg) {
+      try {
+        var u = new URL(httpsUrl);
+        var pathAndQuery = u.pathname + u.search;
+        var intent = 'intent://' + u.host + pathAndQuery +
+          '#Intent;scheme=' + u.protocol.replace(':', '') +
+          ';type=' + mime +
+          (pkg ? (';package=' + pkg) : '') +
+          ';S.browser_fallback_url=' + encodeURIComponent(httpsUrl) +
+          ';end';
+        return intent;
+      } catch (e) {
+        return httpsUrl;
       }
-      var objUrl = URL.createObjectURL(blob);
-      overlay.__url = objUrl;
-      overlay.querySelector('.cp-ow-status').textContent = formatBytes(blob.size) + ' ready';
+    }
+
+    try {
+      var httpsUrl = await getHttpsUrl();
+      overlay.__httpsUrl = httpsUrl;
+      overlay.querySelector('.cp-ow-status').textContent = 'Ready · choose how to open';
       var actions = overlay.querySelector('.cp-ow-actions');
       function btn(label, fn) {
         var b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'cp-ow-btn';
-        b.textContent = label;
-        b.onclick = fn;
+        b.type = 'button'; b.className = 'cp-ow-btn'; b.textContent = label;
+        b.onclick = function(ev) { ev.preventDefault(); fn(); };
         actions.appendChild(b);
       }
-      btn('Open in browser', function() { window.open(objUrl, '_blank'); });
-      btn('Download', function() {
-        var a = document.createElement('a');
-        a.href = objUrl; a.download = name; a.click();
+
+      // 1) System share sheet (Drive-style) — apps like VLC/MX appear here with real file
+      btn('Share / Open in app…', async function() {
+        try {
+          overlay.querySelector('.cp-ow-status').textContent = 'Loading file for share…';
+          var res = await fetch(httpsUrl, getActiveCloudProvider() === 'infini' ? {} : {});
+          // Infini proxy already has auth in URL; for direct may need headers — use infiniFetch when needed
+          if (getActiveCloudProvider() === 'infini') {
+            res = await infiniFetch(cloudPathUrl(rel), { method: 'GET' });
+          }
+          if (!res.ok) throw new Error('Load failed (' + res.status + ')');
+          var blob = await res.blob();
+          if (!blob.type || blob.type === 'application/octet-stream') {
+            blob = new Blob([blob], { type: mime });
+          }
+          var file = new File([blob], name, { type: mime });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: name, text: name });
+            setStatus('Shared', true);
+            return;
+          }
+          if (navigator.share) {
+            await navigator.share({ title: name, url: httpsUrl, text: name });
+            setStatus('Shared link', true);
+            return;
+          }
+          setStatus('Share not supported — use Download', false);
+        } catch (e) {
+          if (e && e.name === 'AbortError') return;
+          setStatus('Share: ' + ((e && e.message) || e), false);
+          overlay.querySelector('.cp-ow-status').textContent = 'Share failed — try Download';
+        }
       });
+
+      btn('Download (' + (ext || 'file') + ')', async function() {
+        try {
+          overlay.querySelector('.cp-ow-status').textContent = 'Downloading…';
+          var res;
+          if (getActiveCloudProvider() === 'infini') {
+            res = await infiniFetch(cloudPathUrl(rel), { method: 'GET' });
+          } else {
+            res = await fetch(httpsUrl);
+          }
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          var blob = await res.blob();
+          var a = document.createElement('a');
+          var bu = URL.createObjectURL(blob);
+          a.href = bu;
+          a.download = name; // forces correct .heic / .mp4 name
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function(){ try { URL.revokeObjectURL(bu); a.remove(); } catch (e) {} }, 2000);
+          setStatus('Download started: ' + name, true);
+          overlay.querySelector('.cp-ow-status').textContent = 'Saved as ' + name;
+        } catch (e) {
+          setStatus('Download failed: ' + ((e && e.message) || e), false);
+        }
+      });
+
+      btn('Open in browser', function() {
+        window.open(httpsUrl, '_blank');
+      });
+
       if (mime.indexOf('video/') === 0 || mime.indexOf('audio/') === 0) {
         btn('VLC', function() {
-          // Android intent / iOS scheme fallback
-          var intent = 'intent:' + objUrl + '#Intent;action=android.intent.action.VIEW;type=' + mime + ';scheme=https;end';
-          window.location.href = intent;
-          setTimeout(function(){ window.open(objUrl, '_blank'); }, 800);
+          // HTTPS intent — blob: cannot be read by external apps
+          window.location.href = androidIntent(httpsUrl, 'org.videolan.vlc');
         });
         btn('MX Player', function() {
-          var intent = 'intent:' + objUrl + '#Intent;action=android.intent.action.VIEW;type=' + mime + ';package=com.mxtech.videoplayer.ad;end';
-          window.location.href = intent;
-          setTimeout(function(){ window.open(objUrl, '_blank'); }, 800);
+          window.location.href = androidIntent(httpsUrl, 'com.mxtech.videoplayer.ad');
         });
-        btn('System player', function() {
-          window.location.href = objUrl;
+        btn('Any video app', function() {
+          window.location.href = androidIntent(httpsUrl, null);
         });
       }
-      if (mime.indexOf('image/') === 0) {
-        btn('View image', function() { window.open(objUrl, '_blank'); });
-      }
-      setStatus('Ready — choose an app', true);
+      setStatus('Choose an option', true);
     } catch (e) {
       overlay.querySelector('.cp-ow-status').textContent = 'Failed: ' + ((e && e.message) || e);
       setStatus('Open with failed: ' + ((e && e.message) || e), false);
     }
   };
 
-
-  // ===== STORAGE BREAKDOWN BY FILE TYPE =====
-  window.toggleCloudStatsDrop = async function() {
+window.toggleCloudStatsDrop = async function() {
     const drop = document.getElementById('cloudStatsDrop');
     const chev = document.getElementById('cloudStatsChevron');
     if (!drop) return;
@@ -14278,7 +14490,7 @@ async function listInfiniFiles() {
     }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = fileName.split('/').pop() || 'download';
+    a.download = (String(fileName||'').split('/').pop() || 'download').replace(/[^\w.\-()+ ]+/g, '_');
     document.body.appendChild(a);
     a.click();
     setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
