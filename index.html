@@ -7013,6 +7013,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
           }
           imgEl.style.touchAction = 'none';
           imgEl.addEventListener('touchstart', function(e){
+            if (imgEl.__fsTimer) { clearTimeout(imgEl.__fsTimer); imgEl.__fsTimer = null; }
             if (e.touches.length === 2) {
               e.preventDefault();
               var dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -7044,23 +7045,24 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
           // Double-tap toggle 2x zoom
           imgEl.addEventListener('click', function(e){
             var now = Date.now();
-            if (now - lastTap < 280) {
+            if (now - lastTap < 320) {
               e.stopPropagation();
               if (imgEl.__fsTimer) { clearTimeout(imgEl.__fsTimer); imgEl.__fsTimer = null; }
-              if (scale > 1.2) { scale = 1; tx = 0; ty = 0; }
-              else { scale = 2.2; }
+              if (scale > 1.15) { scale = 1; tx = 0; ty = 0; }
+              else { scale = 2.5; }
               imgEl.style.transition = 'transform .2s ease';
               apply();
               lastTap = 0;
               return;
             }
             lastTap = now;
-            // single tap → fullscreen after double-tap window
+            // single tap → fullscreen only if not zoomed
             if (imgEl.__fsTimer) clearTimeout(imgEl.__fsTimer);
             imgEl.__fsTimer = setTimeout(function(){
               imgEl.__fsTimer = null;
+              if (scale > 1.05) return; // user is zoomed — don't yank to FS
               try { enterImgFs(); } catch (eF) {}
-            }, 300);
+            }, 340);
           }, true);
         })();
         openPreviews[key].exitImgFs = exitImgFs;
@@ -10622,7 +10624,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                         </div>
                         <div class="user-id copyable" style="cursor:pointer;" title="Click to copy ID" data-copy="${user.id}">ID: ${user.id}</div>
                         ${nativeId ? `<div class="copyable" style="font-size:10px;color:var(--text-dim);margin:0 0 8px;font-family:monospace;cursor:pointer;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Click to copy native id" data-copy="${String(nativeId).replace(/"/g,'&quot;')}">Dev: ${nativeId}</div>` : ''}
-                        <div class="copyable" style="font-size:11px;font-weight:800;color:var(--accent);margin:0 0 12px;padding:6px 10px;border-radius:8px;background:rgba(0,255,136,0.1);cursor:pointer;" title="${vCode != null ? 'Click to copy version code' : 'This device has not reported a version code yet'}" data-copy="${vCode != null ? vCode : ''}">${vCode != null ? ('code ' + vCode) : 'no version code'}</div>
+                        <div class="copyable" style="font-size:11px;font-weight:800;color:var(--accent);margin:0 0 6px;padding:6px 10px;border-radius:8px;background:rgba(0,255,136,0.1);cursor:pointer;" title="${vCode != null ? 'Click to copy version code' : 'This device has not reported a version code yet'}" data-copy="${vCode != null ? vCode : ''}">${vCode != null ? ('code ' + vCode) : 'no version code'}</div>
+                        <div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:0 0 12px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.04);">Key generated: <span style="color:var(--text-main);font-weight:800;">${(user.keyGenCount != null ? user.keyGenCount : (user.keysGenerated != null ? user.keysGenerated : (user.lastGeneratedKey ? 1 : 0)))}</span> time(s)</div>
                         <button type="button" class="btn-full bg-warn" data-action="ban-device" data-user-id="${user.id}" onclick="openBanModal('${user.id}')">BAN DEVICE</button>
                     </div>`;
                 }
@@ -12822,21 +12825,76 @@ window.__dgxenInitVideoControls = function(vId) {
       window.__cloudStarredPaths = {};
     }
   }
-  window.toggleCloudStar = async function(relPath) {
+  window.toggleCloudStar = async function(relPath, isFolderHint) {
     const rel = String(relPath || '').replace(/^\/+/, '');
     const key = cloudStarKey(rel);
     if (!key) return;
     const starred = window.__cloudStarredSet.has(key);
     try {
-      await set(ref(db, 'settings/cloudStarred/' + key), starred ? null : { path: rel, at: Date.now() });
       if (starred) {
+        // Unstar folder → also unstar all children under this path
+        await set(ref(db, 'settings/cloudStarred/' + key), null);
         window.__cloudStarredSet.delete(key);
         delete window.__cloudStarredPaths[key];
+        if (isFolderHint || (rel && !/\.[a-z0-9]{1,5}$/i.test(rel.split('/').pop() || ''))) {
+          try { if (window.__cpForceUnstar) await window.__cpForceUnstar(rel); } catch (eU) {}
+        }
+        setStatus('Unstarred', true);
       } else {
+        await set(ref(db, 'settings/cloudStarred/' + key), { path: rel, at: Date.now() });
         window.__cloudStarredSet.add(key);
         window.__cloudStarredPaths[key] = rel;
+        // Star folder → star all current children (Depth 1 listing)
+        var looksFolder = !!isFolderHint || (rel && !/\.[a-z0-9]{1,5}$/i.test(rel.split('/').pop() || ''));
+        if (looksFolder && typeof bridge === 'function' && bridge()) {
+          try {
+            var kids = [];
+            if (getActiveCloudProvider() === 'infini') {
+              var base = cloudPathUrl(rel);
+              var res = await infiniFetch(base.endsWith('/') ? base : base + '/', {
+                method: 'PROPFIND',
+                headers: { Depth: '1', 'Content-Type': 'application/xml; charset=utf-8' },
+                body: '<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:displayname/><d:getcontentlength/><d:resourcetype/></d:prop></d:propfind>'
+              });
+              var xml = await res.text().catch(function(){ return ''; });
+              var parsed = parseWebDavPropfind(xml, base.endsWith('/') ? base : base + '/', rel);
+              (parsed || []).forEach(function(f) {
+                if (f && !f._isFolder) {
+                  var childRel = String(f._relPath || (rel + '/' + f.fileName)).replace(/^\/+/, '');
+                  kids.push(childRel);
+                }
+              });
+            } else {
+              await authorizeB2(false);
+              var pref = rel.replace(/\/+$/, '') + '/';
+              var lr = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_list_file_names', {
+                method: 'POST',
+                headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bucketId: b2.bucketId, prefix: pref, maxFileCount: 1000 })
+              });
+              var ld = await lr.json().catch(function(){ return {}; });
+              (ld.files || []).forEach(function(f) {
+                var fn = String(f.fileName || '');
+                if (fn && fn.indexOf(pref) === 0 && !/\/$/.test(fn)) kids.push(fn);
+              });
+            }
+            for (var ci = 0; ci < kids.length; ci++) {
+              var ck = cloudStarKey(kids[ci]);
+              if (!ck || window.__cloudStarredSet.has(ck)) continue;
+              try {
+                await set(ref(db, 'settings/cloudStarred/' + ck), { path: kids[ci], at: Date.now() });
+                window.__cloudStarredSet.add(ck);
+                window.__cloudStarredPaths[ck] = kids[ci];
+              } catch (eC) {}
+            }
+            setStatus('Folder starred · ' + kids.length + ' file(s)', true);
+          } catch (eKids) {
+            setStatus('Starred (folder)', true);
+          }
+        } else {
+          setStatus('Starred', true);
+        }
       }
-      setStatus(starred ? 'Unstarred' : 'Starred', true);
       if (window.refreshCloudFiles) await window.refreshCloudFiles();
     } catch (e) { setStatus('Star: ' + (e.message || e), false); }
   };
@@ -13282,8 +13340,8 @@ window.__dgxenInitVideoControls = function(vId) {
       var bulkLabel = multi ? (' · ' + selCount) : '';
       add(isStarred ? 'Unstar' : 'Star', function() {
         if (multi && window.__cpSelected) {
-          window.__cpSelected.list().forEach(function(it){ if (window.toggleCloudStar) window.toggleCloudStar(it.rel || it.name); });
-        } else if (window.toggleCloudStar) window.toggleCloudStar(rel);
+          window.__cpSelected.list().forEach(function(it){ if (window.toggleCloudStar) window.toggleCloudStar(it.rel || it.name, !!it.isFolder); });
+        } else if (window.toggleCloudStar) window.toggleCloudStar(rel, isFolder);
       });
       if (!multi) {
         add('Rename', function() {
@@ -13364,13 +13422,14 @@ window.__dgxenInitVideoControls = function(vId) {
     else if (ext === 'webm') mime = 'video/webm';
     else if (ext === 'mkv') mime = 'video/x-matroska';
     else if (ext === 'mov') mime = 'video/quicktime';
-    else if (['mp3'].indexOf(ext) >= 0) mime = 'audio/mpeg';
+    else if (ext === 'mp3') mime = 'audio/mpeg';
     else if (ext === 'm4a') mime = 'audio/mp4';
     else if (ext === 'wav') mime = 'audio/wav';
     else if (ext === 'ogg') mime = 'audio/ogg';
     else if (ext === 'flac') mime = 'audio/flac';
     else if (['jpg','jpeg'].indexOf(ext) >= 0) mime = 'image/jpeg';
     else if (ext === 'png') mime = 'image/png';
+    else if (ext === 'gif' || ext === 'webp') mime = 'image/' + ext;
     else if (ext === 'heic' || ext === 'heif') mime = 'image/heic';
     else if (ext === 'pdf') mime = 'application/pdf';
 
@@ -13386,25 +13445,26 @@ window.__dgxenInitVideoControls = function(vId) {
       '<div class="cp-ow-card">' +
       '<div class="cp-ow-title">Open with</div>' +
       '<div class="cp-ow-name"></div>' +
-      '<div class="cp-ow-status">Loading file at full speed…</div>' +
+      '<div class="cp-ow-status">Loading…</div>' +
       '<div class="cp-ow-actions" style="display:none"></div>' +
       '<button type="button" class="cp-ow-x">Close</button></div>';
     document.body.appendChild(overlay);
-    overlay.querySelector('.cp-ow-name').textContent = name + (kind !== 'file' ? ' · ' + kind : '');
+    overlay.querySelector('.cp-ow-name').textContent = name + ' · ' + kind;
     overlay.querySelector('.cp-ow-x').onclick = function() {
       try { if (overlay.__blobUrl) URL.revokeObjectURL(overlay.__blobUrl); } catch (e) {}
       overlay.remove();
     };
 
-    async function getHttpsUrl() {
+    async function getHttpsUrl(forDownload) {
       if (getActiveCloudProvider() === 'infini') {
         const target = cloudPathUrl(rel);
         const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
         const authB64 = btoa(unescape(encodeURIComponent((infini.user || '') + ':' + (infini.pass || ''))));
         if (proxy) {
-          return proxy + '?url=' + encodeURIComponent(target) +
-            '&a=' + encodeURIComponent(authB64) +
-            '&filename=' + encodeURIComponent(name);
+          var u = proxy + '?url=' + encodeURIComponent(target) + '&a=' + encodeURIComponent(authB64);
+          // filename forces Content-Disposition:attachment → only for download/share
+          if (forDownload) u += '&filename=' + encodeURIComponent(name);
+          return u;
         }
         return target;
       }
@@ -13428,79 +13488,113 @@ window.__dgxenInitVideoControls = function(vId) {
       function btn(label, fn) {
         var b = document.createElement('button');
         b.type = 'button'; b.className = 'cp-ow-btn'; b.textContent = label;
-        b.onclick = function(ev) {
-          ev.preventDefault();
-          ev.stopPropagation();
-          fn();
-        };
+        b.onclick = function(ev) { ev.preventDefault(); ev.stopPropagation(); fn(); };
         actions.appendChild(b);
       }
 
-      // 1) Share FILE (not link) — must call share() WITHOUT await before it (user gesture)
+      // 1) Share FILE — call share() synchronously in click (file already loaded)
       btn('Share file', function() {
         if (!overlay.__file) {
-          overlay.querySelector('.cp-ow-status').textContent = 'Still loading… try again in a moment';
-          return;
-        }
-        if (!navigator.share) {
-          overlay.querySelector('.cp-ow-status').textContent = 'Share not supported on this browser';
-          return;
-        }
-        try {
-          var p = navigator.share({ files: [overlay.__file], title: name, text: name });
-          if (p && p.then) p.then(function(){ setStatus('Shared', true); }).catch(function(e){
-            if (e && e.name === 'AbortError') return;
-            // fallback share URL
-            if (overlay.__httpsUrl) {
-              navigator.share({ title: name, url: overlay.__httpsUrl }).catch(function(){});
-            }
-            setStatus('Share: ' + ((e && e.message) || e), false);
-          });
-        } catch (e) {
-          setStatus('Share failed: ' + ((e && e.message) || e), false);
-        }
-      });
-
-      // 2) Open in browser
-      btn('Open in browser', function() {
-        if (overlay.__httpsUrl) window.open(overlay.__httpsUrl, '_blank');
-        else if (overlay.__blobUrl) window.open(overlay.__blobUrl, '_blank');
-      });
-
-      // 3) Open with — native chooser (download with correct name → system open-with by MIME)
-      btn('Open with…', function() {
-        if (!overlay.__blobUrl && !overlay.__httpsUrl) {
           overlay.querySelector('.cp-ow-status').textContent = 'Still loading…';
           return;
         }
+        if (!navigator.share) {
+          overlay.querySelector('.cp-ow-status').textContent = 'Share not supported — use Open with…';
+          return;
+        }
         try {
-          // Prefer blob+download so Android uses real filename + MIME → correct players (music/video/gallery)
-          var a = document.createElement('a');
-          a.href = overlay.__blobUrl || overlay.__httpsUrl;
-          a.download = name;
-          a.target = '_blank';
-          a.rel = 'noopener';
-          document.body.appendChild(a);
-          a.click();
-          setTimeout(function(){ try { a.remove(); } catch (e) {} }, 500);
-          overlay.querySelector('.cp-ow-status').textContent =
-            'Saved as ' + name + ' · open it from Downloads to pick app';
-          setStatus('Open with: ' + name, true);
+          // Must NOT await before share — user gesture
+          var req = { title: name, text: name };
+          if (navigator.canShare && navigator.canShare({ files: [overlay.__file] })) {
+            req.files = [overlay.__file];
+          } else if (overlay.__httpsDl) {
+            req.url = overlay.__httpsDl;
+          }
+          var p = navigator.share(req);
+          if (p && p.then) {
+            p.then(function(){ setStatus('Shared', true); })
+             .catch(function(e){
+               if (e && e.name === 'AbortError') return;
+               // Permission denied common in WebView — fall back to download so user can share from Files
+               overlay.querySelector('.cp-ow-status').textContent = 'Share blocked by browser · file downloaded — share from Downloads';
+               try {
+                 var a = document.createElement('a');
+                 a.href = overlay.__blobUrl || overlay.__httpsDl;
+                 a.download = name;
+                 document.body.appendChild(a); a.click(); a.remove();
+               } catch (e2) {}
+               setStatus('Share blocked — use Downloads', false);
+             });
+          }
         } catch (e) {
-          if (overlay.__httpsUrl) window.location.href = overlay.__httpsUrl;
+          setStatus('Share: ' + ((e && e.message) || e), false);
         }
       });
+
+      // 2) Open in browser — VIEW only (no download attr, no filename disposition)
+      btn('Open in browser', function() {
+        var viewUrl = overlay.__httpsView || overlay.__blobUrl;
+        if (!viewUrl) {
+          overlay.querySelector('.cp-ow-status').textContent = 'Link not ready';
+          return;
+        }
+        // window.open without download → browser plays/shows media
+        var w = window.open(viewUrl, '_blank');
+        if (!w) {
+          // popup blocked — navigate same tab fallback
+          location.href = viewUrl;
+        }
+        setStatus('Opened in browser', true);
+      });
+
+      // 3) Open with… — native chooser via share-files OR intent (NO forced re-download if share works)
+      btn('Open with…', function() {
+        if (overlay.__file && navigator.share && navigator.canShare && navigator.canShare({ files: [overlay.__file] })) {
+          try {
+            var p = navigator.share({ files: [overlay.__file], title: name });
+            if (p && p.then) p.catch(function(e){
+              if (e && e.name === 'AbortError') return;
+              openWithFallback();
+            });
+            return;
+          } catch (e) {}
+        }
+        openWithFallback();
+      });
+
+      function openWithFallback() {
+        // Android intent with VIEW url (https) — apps that handle this MIME appear
+        var url = overlay.__httpsView || overlay.__httpsDl || overlay.__blobUrl;
+        if (!url) { overlay.querySelector('.cp-ow-status').textContent = 'Not ready'; return; }
+        try {
+          if (String(url).indexOf('http') === 0) {
+            var u = new URL(url);
+            var intent = 'intent://' + u.host + u.pathname + u.search +
+              '#Intent;scheme=' + u.protocol.replace(':','') +
+              ';type=' + mime +
+              ';action=android.intent.action.VIEW' +
+              ';S.browser_fallback_url=' + encodeURIComponent(url) +
+              ';end';
+            window.location.href = intent;
+            overlay.querySelector('.cp-ow-status').textContent = 'Opening native apps…';
+            return;
+          }
+        } catch (eI) {}
+        // last resort: open blob/https in new tab (view)
+        window.open(url, '_blank');
+      }
     }
 
     try {
-      var httpsUrl = await getHttpsUrl();
-      overlay.__httpsUrl = httpsUrl;
-      // Prefetch blob at full speed so Share is gesture-safe later
+      // View URL = no attachment disposition; Dl URL = with filename for share fallback
+      overlay.__httpsView = await getHttpsUrl(false);
+      overlay.__httpsDl = await getHttpsUrl(true);
+      // Prefetch file blob for Share / Open with
       var res;
       if (getActiveCloudProvider() === 'infini') {
         res = await infiniFetch(cloudPathUrl(rel), { method: 'GET' });
       } else {
-        res = await fetch(httpsUrl);
+        res = await fetch(overlay.__httpsView);
       }
       if (!res.ok) throw new Error('Load failed (' + res.status + ')');
       var blob = await res.blob();
@@ -13509,17 +13603,14 @@ window.__dgxenInitVideoControls = function(vId) {
       } else {
         mime = blob.type || mime;
       }
-      var file = new File([blob], name, { type: mime });
-      overlay.__file = file;
+      overlay.__file = new File([blob], name, { type: mime });
       overlay.__blobUrl = URL.createObjectURL(blob);
-      overlay.querySelector('.cp-ow-status').textContent =
-        formatBytes(blob.size) + ' ready · ' + kind;
+      overlay.querySelector('.cp-ow-status').textContent = formatBytes(blob.size) + ' ready · ' + kind;
       showActions();
       setStatus('Ready', true);
     } catch (e) {
       overlay.querySelector('.cp-ow-status').textContent = 'Failed: ' + ((e && e.message) || e);
-      // still allow browser open via https if we got it
-      if (overlay.__httpsUrl) showActions();
+      if (overlay.__httpsView) showActions();
       setStatus('Open with failed: ' + ((e && e.message) || e), false);
     }
   };
@@ -15793,25 +15884,38 @@ async function listAllFiles(forcedProvider) {
         if (window.__cloudStarredFilterOn) {
           const starred = window.__cloudStarredSet || new Set();
           const pathMap = window.__cloudStarredPaths || {};
-          function folderHasStarredChild(folderRel) {
+          // Folder appears in star view ONLY if the folder itself was starred (not just a child file)
+          function isFolderExplicitlyStarred(folderRel) {
             const base = String(folderRel || '').replace(/^\/+|\/+$/g, '');
             if (!base) return false;
-            if (starred.has(cloudStarKey(base))) return true;
-            const prefix = base + '/';
+            return starred.has(cloudStarKey(base));
+          }
+          function isRelStarred(rel) {
+            const r = String(rel || '').replace(/^\/+/, '');
+            if (!r) return false;
+            if (starred.has(cloudStarKey(r))) return true;
+            // also match pathMap values
             for (const k of starred) {
-              const p = String(pathMap[k] || '');
-              if (p === base || p.indexOf(prefix) === 0) return true;
-              if (String(k).indexOf(cloudStarKey(base) + '/') === 0) return true;
+              if (String(pathMap[k] || '') === r) return true;
             }
             return false;
           }
           const kept = [];
           const keptRels = new Set();
+          var cwdStar = (typeof cloudCwd === 'function' ? cloudCwd() : (window.__cloudCwd || '')) || '';
           visibleFiles.forEach(function(f) {
-            const rel = String(f._relPath || f.fileName || '').replace(/^\/+/, '');
+            const nameOnly = String(f.fileName || '').replace(/^\/+/, '');
+            var rel = String(f._relPath || '').replace(/^\/+/, '');
+            // Inside a folder, listing may only have short names — rebuild full path
+            if ((!rel || rel.indexOf('/') < 0) && cwdStar) {
+              rel = (cwdStar.replace(/\/+$/, '') + '/' + (rel || nameOnly)).replace(/^\/+/, '');
+            }
+            if (!rel) rel = nameOnly;
             if (f._isFolder) {
-              if (folderHasStarredChild(rel)) { kept.push(f); keptRels.add(rel); }
-            } else if (starred.has(cloudStarKey(rel))) {
+              if (isFolderExplicitlyStarred(rel) || isFolderExplicitlyStarred(nameOnly)) {
+                kept.push(f); keptRels.add(rel);
+              }
+            } else if (isRelStarred(rel) || isRelStarred(nameOnly) || (cwdStar && isRelStarred(cwdStar + '/' + nameOnly))) {
               kept.push(f); keptRels.add(rel);
             }
           });
@@ -16495,7 +16599,7 @@ async function listAllFiles(forcedProvider) {
       } else if (pointOver('cloudStarredFilterBtn', x, y)) {
         if (window.__cpSelected && window.__cpSelected.size && window.__cpSelected.size() > 1) {
           var manyStar = window.__cpSelected.list();
-          manyStar.forEach(function(it) { if (window.toggleCloudStar) window.toggleCloudStar(it.rel || it.name); });
+          manyStar.forEach(function(it) { if (window.toggleCloudStar) window.toggleCloudStar(it.rel || it.name, !!it.isFolder); });
         } else if (window.toggleCloudStar) window.toggleCloudStar(info.rel || info.name);
       } else {
         const folder = findFolderRowUnder(x, y, row);
@@ -17323,8 +17427,8 @@ async function listAllFiles(forcedProvider) {
         setCloudBgUpload(true, tag + ': starting…', 0, provider);
       }
 
-      // Parallel multi-upload (up to 3 at once) — each file reports its own line
-      const CONC = Math.min(3, files.length);
+      // Parallel multi-upload — all files at the same time (cap 8 to avoid browser choke)
+      const CONC = Math.min(8, Math.max(1, files.length));
       const fileProg = {}; // index -> percent
       let nextIdx = 0;
       let cancelledBatch = false;
@@ -17339,10 +17443,6 @@ async function listAllFiles(forcedProvider) {
           else lines.push((i + 1) + '/' + files.length + ' ' + files[i].name + ' ' + Math.round(p) + '%');
         }
         const active = lines.filter(function(l) { return l.indexOf('✓') !== 0 && l.indexOf('✗') !== 0; });
-        const label = tag + ' · ' + completed + '/' + files.length + ' done'
-          + (active.length ? (' · ' + active[0]) : '');
-        if (prog) prog.textContent = label;
-        setStatus(label, null);
         const avg = (function() {
           let s = 0, n = 0;
           for (let i = 0; i < files.length; i++) {
@@ -17350,6 +17450,10 @@ async function listAllFiles(forcedProvider) {
           }
           return n ? s / n : 0;
         })();
+        const label = tag + ' · avg ' + Math.round(avg) + '% · ' + completed + '/' + files.length + ' done'
+          + (active.length ? (' · ' + active.length + ' active') : '');
+        if (prog) prog.textContent = label;
+        setStatus(label, null);
         if (typeof setCloudProviderProgress === 'function') {
           setCloudProviderProgress(provider, true, label, avg);
         }
