@@ -7531,9 +7531,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             var cores = 0;
             try { cores = navigator.hardwareConcurrency || 0; } catch (eC) {}
             var android = /Android/i.test(s);
-            var osLabel = android ? ('Android' + (cores ? (' · ' + cores + ' cores') : '')) : browser;
-            // Prefer Android device line for login history; browser only as fallback on desktop
-            return { os: osLabel, model: '', browser: browser, cores: cores, android: android };
+            return { os: browser, model: '', browser: browser, cores: cores, android: android };
         }
 
         // Many Android browsers (Via, and others) ship a User-Agent string that is
@@ -8390,15 +8388,16 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     }
                     var coresShow = Number(r.cores) || dm.cores || 0;
                     try { if (!coresShow) coresShow = navigator.hardwareConcurrency || 0; } catch (eN) {}
-                    var deviceLabel = '';
-                    if (r.android === true || dm.android || /Android/i.test(String(r.ua||''))) {
-                      deviceLabel = 'Android' + (coresShow ? (' · ' + coresShow + ' cores') : '');
-                    } else if (dm.os && dm.os.indexOf('Android') === 0) {
-                      deviceLabel = dm.os;
-                    } else if (dm.browser || dm.os) {
-                      // Desktop: show browser only, no fake model
-                      deviceLabel = dm.browser || dm.os;
-                    }
+                    var isAndroid = (r.android === true || dm.android || /Android/i.test(String(r.ua||'')));
+                    // Format: Chrome · Android · 8 cores  (browser always first)
+                    var browserName = dm.browser || dm.os || 'Browser';
+                    // Clean unverified suffix for display
+                    if (browserName === 'Chrome (unverified)' && r.chromeVerified === true) browserName = 'Chrome';
+                    if (r.isBrave === true) browserName = 'Brave';
+                    var parts = [browserName];
+                    if (isAndroid) parts.push('Android');
+                    if (coresShow) parts.push(coresShow + ' cores');
+                    var deviceLabel = parts.join(' · ');
                     return '<div class="mk-item" style="padding:16px 18px;"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;"><div style="font-size:15px;font-weight:800;">' + (r
                         .method || 'login') + '<div style="font-size:12px;color:var(--text-dim);margin-top:6px;">' +
                         when + '</div></div>' +
@@ -10718,25 +10717,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             box.addEventListener('click', function(e) {
                 const arrow = e.target.closest('.device-info-arrow');
                 if (!arrow) return;
-                e.preventDefault();
-                e.stopPropagation();
-                // Only expand THIS card — never sibling cards
-                const card = arrow.closest('.user-card') || arrow.closest('.glass-panel') || arrow.parentElement;
-                if (!card) return;
-                const row = card.querySelector('.device-info-row');
+                const uid = arrow.getAttribute('data-user-id');
+                const row = box.querySelector('.device-info-row[data-user-id="' + CSS.escape(uid) + '"]');
                 if (!row) return;
-                const isOpen = row.style.display === 'block' || window.getComputedStyle(row).display !== 'none' && row.style.display !== 'none' && row.offsetParent !== null && row.style.display !== '';
-                // Prefer explicit toggle via dataset
-                const open = row.getAttribute('data-open') === '1';
-                if (open) {
-                  row.style.display = 'none';
-                  row.setAttribute('data-open', '0');
-                  arrow.style.transform = 'rotate(0deg)';
-                } else {
-                  row.style.display = 'block';
-                  row.setAttribute('data-open', '1');
-                  arrow.style.transform = 'rotate(180deg)';
-                }
+                const opening = row.style.display === 'none' || !row.style.display;
+                row.style.display = opening ? 'block' : 'none';
+                arrow.style.transform = opening ? 'rotate(180deg)' : 'rotate(0deg)';
             });
         }
 
@@ -17459,7 +17445,7 @@ async function listAllFiles(forcedProvider) {
   // UPLOAD MULTIPLE FILES
   // =========================================================
 
-  window.
+  
   // ===== Background upload notification (long-running, system tray) =====
   window.__cloudUploadNotif = null;
   window.__cloudNotifPermAsked = false;
@@ -17513,7 +17499,7 @@ async function listAllFiles(forcedProvider) {
     } catch (e) {}
   };
 
-  uploadCloudFiles =
+  window.uploadCloudFiles = 
     async function(
       fileList
     ) {
