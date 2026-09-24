@@ -6942,77 +6942,56 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         var imgFsBtn = drawer.querySelector('.cp-img-fs-btn');
         var xb = drawer.querySelector('.cp-x');
         function enterImgFs() {
-          if (!wrap) return;
-          // Reparent to body so FS is whole screen (not clipped by cloud panel)
-          if (!wrap.__cpHome) {
-            wrap.__cpHome = { parent: wrap.parentNode, next: wrap.nextSibling };
+          var imgR = wrap && wrap.querySelector('img');
+          if (!imgR || !imgR.src) return;
+          var ov = document.getElementById('cpImgFsOverlay');
+          if (!ov) {
+            ov = document.createElement('div');
+            ov.id = 'cpImgFsOverlay';
+            ov.innerHTML = '<img alt="" draggable="false"/><button type="button" class="cp-img-fs-x" aria-label="Close">✕</button>';
+            document.body.appendChild(ov);
+            ov.addEventListener('click', function(ev) {
+              if (ev.target === ov || (ev.target && ev.target.classList && ev.target.classList.contains('cp-img-fs-x'))) {
+                exitImgFs();
+              }
+            });
           }
-          if (wrap.parentNode !== document.body) {
-            document.body.appendChild(wrap);
-          }
-          wrap.classList.add('cp-img-fs');
-          try {
-            var imgR = wrap.querySelector('img');
-            if (imgR) {
-              imgR.style.transform = 'none';
-              imgR.style.maxWidth = '100%';
-              imgR.style.maxHeight = '100%';
-              imgR.style.width = 'auto';
-              imgR.style.height = 'auto';
-              imgR.style.objectFit = 'contain';
-            }
-            wrap.style.transform = 'none';
-          } catch (eZ) {}
-          try {
-            document.body.classList.add('cp-fs-lock', 'cp-img-fs-on');
-          } catch (e) {}
-          // Floating close on body
-          var xb2 = drawer.querySelector('.cp-x');
-          if (xb2) {
-            xb2.__cpHome = { parent: xb2.parentNode, next: xb2.nextSibling };
-            document.body.appendChild(xb2);
-            xb2.style.cssText = 'position:fixed!important;top:max(12px,env(safe-area-inset-top,0px))!important;right:14px!important;z-index:2147483647!important;width:44px!important;height:44px!important;border-radius:50%!important;border:0!important;background:rgba(0,0,0,.75)!important;color:#fff!important;font-size:18px!important;';
-          }
+          var oImg = ov.querySelector('img');
+          oImg.onload = function() {
+            oImg.style.transform = 'none';
+            oImg.style.maxWidth = '100%';
+            oImg.style.maxHeight = '100%';
+            oImg.style.width = 'auto';
+            oImg.style.height = 'auto';
+            oImg.style.objectFit = 'contain';
+          };
+          oImg.src = imgR.currentSrc || imgR.src;
+          oImg.style.cssText = 'max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;transform:none;';
+          ov.style.cssText = 'position:fixed;inset:0;z-index:2147483646;background:#000;display:flex;align-items:center;justify-content:center;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));margin:0;border:0;box-sizing:border-box;';
+          var xb = ov.querySelector('.cp-img-fs-x');
+          if (xb) xb.style.cssText = 'position:fixed;top:max(12px,env(safe-area-inset-top));right:14px;z-index:2147483647;width:48px;height:48px;border-radius:50%;border:0;background:rgba(0,0,0,.75);color:#fff;font-size:20px;cursor:pointer;';
+          try { document.body.classList.add('cp-fs-lock', 'cp-img-fs-on'); } catch (e) {}
+          ov.__active = true;
         }
         function exitImgFs() {
-          if (!wrap) return;
-          wrap.classList.remove('cp-img-fs');
-          try {
-            document.body.classList.remove('cp-fs-lock', 'cp-img-fs-on');
-          } catch (e) {}
-          // Restore wrap into card
-          if (wrap.__cpHome && wrap.__cpHome.parent) {
-            if (wrap.__cpHome.next && wrap.__cpHome.next.parentNode === wrap.__cpHome.parent) {
-              wrap.__cpHome.parent.insertBefore(wrap, wrap.__cpHome.next);
-            } else {
-              wrap.__cpHome.parent.appendChild(wrap);
-            }
+          var ov = document.getElementById('cpImgFsOverlay');
+          if (ov) {
+            ov.style.display = 'none';
+            ov.__active = false;
+            try {
+              var oImg = ov.querySelector('img');
+              if (oImg) oImg.removeAttribute('src');
+            } catch (e) {}
           }
-          var xb2 = document.body.querySelector('.cp-img-card .cp-x, body > .cp-x');
-          // restore close btn
-          var xbCard = drawer.querySelector('.cp-img-card');
-          var xb = document.body.querySelector(':scope > .cp-x');
-          if (!xb) xb = drawer.querySelector('.cp-x');
-          if (xb && xb.__cpHome && xb.__cpHome.parent) {
-            xb.style.cssText = '';
-            if (xb.__cpHome.next && xb.__cpHome.next.parentNode === xb.__cpHome.parent) {
-              xb.__cpHome.parent.insertBefore(xb, xb.__cpHome.next);
-            } else {
-              xb.__cpHome.parent.insertBefore(xb, xb.__cpHome.parent.firstChild);
-            }
-          }
-        }
-        if (imgEl) {
-          imgEl.addEventListener('click', function (e) {
-            e.stopPropagation();
-            if (wrap.classList.contains('cp-img-fs')) exitImgFs();
-            else enterImgFs();
-          });
+          try { document.body.classList.remove('cp-fs-lock', 'cp-img-fs-on', 'dgxen-fs-lock'); } catch (e) {}
+          // also clean legacy reparent class if any
+          if (wrap) wrap.classList.remove('cp-img-fs');
         }
         if (imgFsBtn) {
           imgFsBtn.onclick = function (e) {
             e.stopPropagation();
-            if (wrap.classList.contains('cp-img-fs')) exitImgFs();
+            var ov = document.getElementById('cpImgFsOverlay');
+            if (ov && ov.__active) exitImgFs();
             else enterImgFs();
           };
         }
@@ -7067,6 +7046,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             var now = Date.now();
             if (now - lastTap < 280) {
               e.stopPropagation();
+              if (imgEl.__fsTimer) { clearTimeout(imgEl.__fsTimer); imgEl.__fsTimer = null; }
               if (scale > 1.2) { scale = 1; tx = 0; ty = 0; }
               else { scale = 2.2; }
               imgEl.style.transition = 'transform .2s ease';
@@ -7075,6 +7055,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
               return;
             }
             lastTap = now;
+            // single tap → fullscreen after double-tap window
+            if (imgEl.__fsTimer) clearTimeout(imgEl.__fsTimer);
+            imgEl.__fsTimer = setTimeout(function(){
+              imgEl.__fsTimer = null;
+              try { enterImgFs(); } catch (eF) {}
+            }, 300);
           }, true);
         })();
         openPreviews[key].exitImgFs = exitImgFs;
@@ -13378,15 +13364,20 @@ window.__dgxenInitVideoControls = function(vId) {
     else if (ext === 'webm') mime = 'video/webm';
     else if (ext === 'mkv') mime = 'video/x-matroska';
     else if (ext === 'mov') mime = 'video/quicktime';
-    else if (ext === 'mp3') mime = 'audio/mpeg';
+    else if (['mp3'].indexOf(ext) >= 0) mime = 'audio/mpeg';
     else if (ext === 'm4a') mime = 'audio/mp4';
     else if (ext === 'wav') mime = 'audio/wav';
+    else if (ext === 'ogg') mime = 'audio/ogg';
+    else if (ext === 'flac') mime = 'audio/flac';
     else if (['jpg','jpeg'].indexOf(ext) >= 0) mime = 'image/jpeg';
     else if (ext === 'png') mime = 'image/png';
     else if (ext === 'heic' || ext === 'heif') mime = 'image/heic';
     else if (ext === 'pdf') mime = 'application/pdf';
 
-    // Sheet higher on screen for easy reach
+    var kind = mime.indexOf('video/') === 0 ? 'video'
+      : mime.indexOf('audio/') === 0 ? 'audio'
+      : mime.indexOf('image/') === 0 ? 'image' : 'file';
+
     var overlay = document.getElementById('cpOpenWith');
     if (overlay) try { overlay.remove(); } catch (e0) {}
     overlay = document.createElement('div');
@@ -13395,16 +13386,15 @@ window.__dgxenInitVideoControls = function(vId) {
       '<div class="cp-ow-card">' +
       '<div class="cp-ow-title">Open with</div>' +
       '<div class="cp-ow-name"></div>' +
-      '<div class="cp-ow-status">Getting secure link…</div>' +
-      '<div class="cp-ow-actions"></div>' +
+      '<div class="cp-ow-status">Loading file at full speed…</div>' +
+      '<div class="cp-ow-actions" style="display:none"></div>' +
       '<button type="button" class="cp-ow-x">Close</button></div>';
     document.body.appendChild(overlay);
-    overlay.querySelector('.cp-ow-name').textContent = name;
+    overlay.querySelector('.cp-ow-name').textContent = name + (kind !== 'file' ? ' · ' + kind : '');
     overlay.querySelector('.cp-ow-x').onclick = function() {
       try { if (overlay.__blobUrl) URL.revokeObjectURL(overlay.__blobUrl); } catch (e) {}
       overlay.remove();
     };
-    setStatus('Open with: preparing…', null);
 
     async function getHttpsUrl() {
       if (getActiveCloudProvider() === 'infini') {
@@ -13431,111 +13421,105 @@ window.__dgxenInitVideoControls = function(vId) {
         '?Authorization=' + encodeURIComponent(authData.authorizationToken);
     }
 
-    function androidIntent(httpsUrl, pkg) {
-      try {
-        var u = new URL(httpsUrl);
-        var pathAndQuery = u.pathname + u.search;
-        var intent = 'intent://' + u.host + pathAndQuery +
-          '#Intent;scheme=' + u.protocol.replace(':', '') +
-          ';type=' + mime +
-          (pkg ? (';package=' + pkg) : '') +
-          ';S.browser_fallback_url=' + encodeURIComponent(httpsUrl) +
-          ';end';
-        return intent;
-      } catch (e) {
-        return httpsUrl;
+    function showActions() {
+      var actions = overlay.querySelector('.cp-ow-actions');
+      actions.style.display = 'flex';
+      actions.innerHTML = '';
+      function btn(label, fn) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'cp-ow-btn'; b.textContent = label;
+        b.onclick = function(ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          fn();
+        };
+        actions.appendChild(b);
       }
+
+      // 1) Share FILE (not link) — must call share() WITHOUT await before it (user gesture)
+      btn('Share file', function() {
+        if (!overlay.__file) {
+          overlay.querySelector('.cp-ow-status').textContent = 'Still loading… try again in a moment';
+          return;
+        }
+        if (!navigator.share) {
+          overlay.querySelector('.cp-ow-status').textContent = 'Share not supported on this browser';
+          return;
+        }
+        try {
+          var p = navigator.share({ files: [overlay.__file], title: name, text: name });
+          if (p && p.then) p.then(function(){ setStatus('Shared', true); }).catch(function(e){
+            if (e && e.name === 'AbortError') return;
+            // fallback share URL
+            if (overlay.__httpsUrl) {
+              navigator.share({ title: name, url: overlay.__httpsUrl }).catch(function(){});
+            }
+            setStatus('Share: ' + ((e && e.message) || e), false);
+          });
+        } catch (e) {
+          setStatus('Share failed: ' + ((e && e.message) || e), false);
+        }
+      });
+
+      // 2) Open in browser
+      btn('Open in browser', function() {
+        if (overlay.__httpsUrl) window.open(overlay.__httpsUrl, '_blank');
+        else if (overlay.__blobUrl) window.open(overlay.__blobUrl, '_blank');
+      });
+
+      // 3) Open with — native chooser (download with correct name → system open-with by MIME)
+      btn('Open with…', function() {
+        if (!overlay.__blobUrl && !overlay.__httpsUrl) {
+          overlay.querySelector('.cp-ow-status').textContent = 'Still loading…';
+          return;
+        }
+        try {
+          // Prefer blob+download so Android uses real filename + MIME → correct players (music/video/gallery)
+          var a = document.createElement('a');
+          a.href = overlay.__blobUrl || overlay.__httpsUrl;
+          a.download = name;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function(){ try { a.remove(); } catch (e) {} }, 500);
+          overlay.querySelector('.cp-ow-status').textContent =
+            'Saved as ' + name + ' · open it from Downloads to pick app';
+          setStatus('Open with: ' + name, true);
+        } catch (e) {
+          if (overlay.__httpsUrl) window.location.href = overlay.__httpsUrl;
+        }
+      });
     }
 
     try {
       var httpsUrl = await getHttpsUrl();
       overlay.__httpsUrl = httpsUrl;
-      overlay.querySelector('.cp-ow-status').textContent = 'Ready · choose how to open';
-      var actions = overlay.querySelector('.cp-ow-actions');
-      function btn(label, fn) {
-        var b = document.createElement('button');
-        b.type = 'button'; b.className = 'cp-ow-btn'; b.textContent = label;
-        b.onclick = function(ev) { ev.preventDefault(); fn(); };
-        actions.appendChild(b);
+      // Prefetch blob at full speed so Share is gesture-safe later
+      var res;
+      if (getActiveCloudProvider() === 'infini') {
+        res = await infiniFetch(cloudPathUrl(rel), { method: 'GET' });
+      } else {
+        res = await fetch(httpsUrl);
       }
-
-      // 1) System share sheet (Drive-style) — apps like VLC/MX appear here with real file
-      btn('Share / Open in app…', async function() {
-        try {
-          overlay.querySelector('.cp-ow-status').textContent = 'Loading file for share…';
-          var res = await fetch(httpsUrl, getActiveCloudProvider() === 'infini' ? {} : {});
-          // Infini proxy already has auth in URL; for direct may need headers — use infiniFetch when needed
-          if (getActiveCloudProvider() === 'infini') {
-            res = await infiniFetch(cloudPathUrl(rel), { method: 'GET' });
-          }
-          if (!res.ok) throw new Error('Load failed (' + res.status + ')');
-          var blob = await res.blob();
-          if (!blob.type || blob.type === 'application/octet-stream') {
-            blob = new Blob([blob], { type: mime });
-          }
-          var file = new File([blob], name, { type: mime });
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: name, text: name });
-            setStatus('Shared', true);
-            return;
-          }
-          if (navigator.share) {
-            await navigator.share({ title: name, url: httpsUrl, text: name });
-            setStatus('Shared link', true);
-            return;
-          }
-          setStatus('Share not supported — use Download', false);
-        } catch (e) {
-          if (e && e.name === 'AbortError') return;
-          setStatus('Share: ' + ((e && e.message) || e), false);
-          overlay.querySelector('.cp-ow-status').textContent = 'Share failed — try Download';
-        }
-      });
-
-      btn('Download (' + (ext || 'file') + ')', async function() {
-        try {
-          overlay.querySelector('.cp-ow-status').textContent = 'Downloading…';
-          var res;
-          if (getActiveCloudProvider() === 'infini') {
-            res = await infiniFetch(cloudPathUrl(rel), { method: 'GET' });
-          } else {
-            res = await fetch(httpsUrl);
-          }
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          var blob = await res.blob();
-          var a = document.createElement('a');
-          var bu = URL.createObjectURL(blob);
-          a.href = bu;
-          a.download = name; // forces correct .heic / .mp4 name
-          document.body.appendChild(a);
-          a.click();
-          setTimeout(function(){ try { URL.revokeObjectURL(bu); a.remove(); } catch (e) {} }, 2000);
-          setStatus('Download started: ' + name, true);
-          overlay.querySelector('.cp-ow-status').textContent = 'Saved as ' + name;
-        } catch (e) {
-          setStatus('Download failed: ' + ((e && e.message) || e), false);
-        }
-      });
-
-      btn('Open in browser', function() {
-        window.open(httpsUrl, '_blank');
-      });
-
-      if (mime.indexOf('video/') === 0 || mime.indexOf('audio/') === 0) {
-        btn('VLC', function() {
-          // HTTPS intent — blob: cannot be read by external apps
-          window.location.href = androidIntent(httpsUrl, 'org.videolan.vlc');
-        });
-        btn('MX Player', function() {
-          window.location.href = androidIntent(httpsUrl, 'com.mxtech.videoplayer.ad');
-        });
-        btn('Any video app', function() {
-          window.location.href = androidIntent(httpsUrl, null);
-        });
+      if (!res.ok) throw new Error('Load failed (' + res.status + ')');
+      var blob = await res.blob();
+      if (!blob.type || blob.type === 'application/octet-stream') {
+        blob = new Blob([blob], { type: mime });
+      } else {
+        mime = blob.type || mime;
       }
-      setStatus('Choose an option', true);
+      var file = new File([blob], name, { type: mime });
+      overlay.__file = file;
+      overlay.__blobUrl = URL.createObjectURL(blob);
+      overlay.querySelector('.cp-ow-status').textContent =
+        formatBytes(blob.size) + ' ready · ' + kind;
+      showActions();
+      setStatus('Ready', true);
     } catch (e) {
       overlay.querySelector('.cp-ow-status').textContent = 'Failed: ' + ((e && e.message) || e);
+      // still allow browser open via https if we got it
+      if (overlay.__httpsUrl) showActions();
       setStatus('Open with failed: ' + ((e && e.message) || e), false);
     }
   };
@@ -13845,26 +13829,72 @@ window.toggleCloudStatsDrop = async function() {
         let rel = normalized;
         if (basePath && rel.indexOf(basePath) === 0) rel = rel.slice(basePath.length);
         rel = rel.replace(/^\/+/, '');
-        const segs = rel.split('/').filter(Boolean);
+        let segs = rel.split('/').filter(Boolean);
         if (!segs.length) continue;
-        // Promote parent as folder when we only see "Folder/.keep" or nested paths
+        // If path still has multiple segments after stripping basePath, the listing base
+        // may have mismatched encoding — use the LAST segment as the entry name and
+        // rebuild relPath under cwdPrefix so folder-share / Depth:1 does not drop files.
         if (segs.length > 1) {
-          const parent = segs[0];
-          if (parent && parent !== '.' && parent !== '..' && !seen[parent]) {
-            seen[parent] = 1;
-            var parentFull = cwdPrefix ? (cwdPrefix + '/' + parent) : parent;
+          // Only promote intermediate folders when listing ROOT-like paths (no cwdPrefix depth match)
+          var looksNestedChild = cwdPrefix && rel.indexOf(cwdPrefix.replace(/^\/+/, '')) < 0;
+          if (!cwdPrefix || segs.length > 2) {
+            const parent = segs[0];
+            if (parent && parent !== '.' && parent !== '..' && !seen['dir:' + parent]) {
+              seen['dir:' + parent] = 1;
+              var parentFull = cwdPrefix ? (cwdPrefix + '/' + parent) : parent;
+              files.push({
+                fileName: parent,
+                fileId: 'infini:' + parentFull,
+                contentLength: 0,
+                uploadTimestamp: Date.now(),
+                fileInfo: {},
+                _provider: 'infini',
+                _href: href,
+                _isFolder: true,
+                _relPath: parentFull
+              });
+            }
+            // Still register the leaf file so folder share gets all files
+            const leaf = segs[segs.length - 1];
+            if (!leaf || leaf === '.' || leaf === '..' || leaf === '.keep') continue;
+            if (isCollection) continue;
+            if (seen[leaf]) continue;
+            seen[leaf] = 1;
+            var leafFull = cwdPrefix ? (cwdPrefix + '/' + leaf) : segs.join('/');
+            const lenElN = findProp('getcontentlength');
+            const sizeN = lenElN ? Number(lenElN.textContent) || 0 : 0;
             files.push({
-              fileName: parent,
-              fileId: 'infini:' + parentFull,
-              contentLength: 0,
+              fileName: leaf,
+              fileId: 'infini:' + leafFull,
+              contentLength: sizeN,
               uploadTimestamp: Date.now(),
               fileInfo: {},
               _provider: 'infini',
               _href: href,
-              _isFolder: true,
-              _relPath: parentFull
+              _isFolder: false,
+              _relPath: leafFull
             });
+            continue;
           }
+          // cwdPrefix set and 2 segments: treat as file named segs[1] under folder segs[0]
+          const leaf2 = segs[segs.length - 1];
+          if (!leaf2 || leaf2 === '.keep') continue;
+          if (seen[leaf2]) continue;
+          seen[leaf2] = 1;
+          var leafFull2 = cwdPrefix ? (cwdPrefix + '/' + leaf2) : segs.join('/');
+          const lenEl2 = findProp('getcontentlength');
+          const size2 = lenEl2 ? Number(lenEl2.textContent) || 0 : 0;
+          files.push({
+            fileName: leaf2,
+            fileId: 'infini:' + leafFull2,
+            contentLength: size2,
+            uploadTimestamp: Date.now(),
+            fileInfo: {},
+            _provider: 'infini',
+            _href: href,
+            _isFolder: !!isCollection,
+            _relPath: leafFull2
+          });
           continue;
         }
         const name = segs[0];
@@ -16231,10 +16261,16 @@ async function listAllFiles(forcedProvider) {
           const rows = [];
           for (let i = 0; i < files.length; i++) {
             const target = cloudPathUrl(files[i].rel);
-            const href = proxy
-              ? (proxy + '?url=' + encodeURIComponent(target) + '&a=' + encodeURIComponent(authB64))
-              : target;
-            rows.push({ name: files[i].name, href: href, size: files[i].size });
+            const fname = files[i].name || String(files[i].rel || '').split('/').pop() || 'file';
+            var href;
+            if (proxy) {
+              href = proxy + '?url=' + encodeURIComponent(target) +
+                '&a=' + encodeURIComponent(authB64) +
+                '&filename=' + encodeURIComponent(fname);
+            } else {
+              href = target;
+            }
+            rows.push({ name: fname, href: href, size: files[i].size });
           }
           const html = buildFolderShareHtml(rel, rows);
           const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
@@ -16347,7 +16383,7 @@ async function listAllFiles(forcedProvider) {
       const n = String(r.name || 'file').replace(/[<>&]/g, '');
       const h = String(r.href || '#').replace(/"/g, '&quot;');
       const sz = r.size ? (' · ' + (r.size > 1048576 ? (r.size/1048576).toFixed(1)+' MB' : (r.size/1024).toFixed(0)+' KB')) : '';
-      return '<a class="f" href="' + h + '" target="_blank" rel="noopener">' + n + '<span>' + sz + '</span></a>';
+      return '<a class="f" href="' + h + '" target="_blank" rel="noopener" download="' + n.replace(/"/g, '') + '">' + n + '<span>' + sz + '</span></a>';
     }).join('');
     return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
       '<title>' + title + '</title><style>' +
