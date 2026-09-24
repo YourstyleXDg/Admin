@@ -2637,6 +2637,20 @@
         }
         
 /* CRITICAL: gesture / fullscreen media must never overflow the viewport */
+
+/* Image pinch-zoom must not be clipped by parent */
+.cp-img-wrap, .media-wrap.cp-img-wrap {
+  overflow: visible !important;
+  touch-action: none !important;
+}
+.cp-img-wrap img, .media-wrap.cp-img-wrap img {
+  transform-origin: center center !important;
+  will-change: transform;
+  touch-action: none !important;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
 .media-wrap.cp-img-fs,
 .cp-img-wrap.cp-img-fs,
 div.cp-img-fs {
@@ -7012,14 +7026,18 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             imgEl.style.transition = 'none';
           }
           imgEl.style.touchAction = 'none';
+          imgEl.style.webkitUserDrag = 'none';
+          if (wrap) { wrap.style.touchAction = 'none'; wrap.style.overflow = 'visible'; }
           imgEl.addEventListener('touchstart', function(e){
             if (imgEl.__fsTimer) { clearTimeout(imgEl.__fsTimer); imgEl.__fsTimer = null; }
             if (e.touches.length === 2) {
               e.preventDefault();
+              e.stopPropagation();
               var dx = e.touches[0].clientX - e.touches[1].clientX;
               var dy = e.touches[0].clientY - e.touches[1].clientY;
-              p0 = { dist: Math.hypot(dx, dy), scale: scale };
-            } else if (e.touches.length === 1 && scale > 1) {
+              p0 = { dist: Math.hypot(dx, dy) || 1, scale: scale, tx: tx, ty: ty };
+            } else if (e.touches.length === 1 && scale > 1.02) {
+              e.preventDefault();
               p0 = { x: e.touches[0].clientX - tx, y: e.touches[0].clientY - ty, pan: true };
             }
           }, { passive: false });
@@ -7510,7 +7528,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             else if (/wv\)/i.test(s) && /Chrome\//i.test(s)) browser = 'Android WebView';
             else if (/Chrome\//i.test(s)) browser = 'Chrome (unverified)';
             else if (/Safari\//i.test(s) && /Version\//i.test(s)) browser = 'Safari';
-            return { os: browser, model: 'unknown model' };
+            var cores = 0;
+            try { cores = navigator.hardwareConcurrency || 0; } catch (eC) {}
+            var android = /Android/i.test(s);
+            var osLabel = android ? ('Android' + (cores ? (' · ' + cores + ' cores') : '')) : browser;
+            // Prefer Android device line for login history; browser only as fallback on desktop
+            return { os: osLabel, model: '', browser: browser, cores: cores, android: android };
         }
 
         // Many Android browsers (Via, and others) ship a User-Agent string that is
@@ -8326,7 +8349,9 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     fpId: fpId || '',
                     ua: (navigator.userAgent || '').slice(0, 300),
                     isBrave: isBrave,
-                    chromeVerified: chromeVerified
+                    chromeVerified: chromeVerified,
+                    cores: (function(){ try { return navigator.hardwareConcurrency || 0; } catch(e){ return 0; } })(),
+                    android: /Android/i.test(navigator.userAgent || '')
                 });
             } catch (e) {}
         }
@@ -8363,7 +8388,17 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                         if (r.chromeVerified === true) dm.os = 'Chrome';
                         // chromeVerified === false or null/undefined: leave as "Chrome (unverified)"
                     }
-                    const deviceLabel = (dm.os || dm.model) ? [dm.os, dm.model].filter(Boolean).join(' · ') : '';
+                    var coresShow = Number(r.cores) || dm.cores || 0;
+                    try { if (!coresShow) coresShow = navigator.hardwareConcurrency || 0; } catch (eN) {}
+                    var deviceLabel = '';
+                    if (r.android === true || dm.android || /Android/i.test(String(r.ua||''))) {
+                      deviceLabel = 'Android' + (coresShow ? (' · ' + coresShow + ' cores') : '');
+                    } else if (dm.os && dm.os.indexOf('Android') === 0) {
+                      deviceLabel = dm.os;
+                    } else if (dm.browser || dm.os) {
+                      // Desktop: show browser only, no fake model
+                      deviceLabel = dm.browser || dm.os;
+                    }
                     return '<div class="mk-item" style="padding:16px 18px;"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;"><div style="font-size:15px;font-weight:800;">' + (r
                         .method || 'login') + '<div style="font-size:12px;color:var(--text-dim);margin-top:6px;">' +
                         when + '</div></div>' +
@@ -10683,12 +10718,25 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             box.addEventListener('click', function(e) {
                 const arrow = e.target.closest('.device-info-arrow');
                 if (!arrow) return;
-                const uid = arrow.getAttribute('data-user-id');
-                const row = box.querySelector('.device-info-row[data-user-id="' + CSS.escape(uid) + '"]');
+                e.preventDefault();
+                e.stopPropagation();
+                // Only expand THIS card — never sibling cards
+                const card = arrow.closest('.user-card') || arrow.closest('.glass-panel') || arrow.parentElement;
+                if (!card) return;
+                const row = card.querySelector('.device-info-row');
                 if (!row) return;
-                const opening = row.style.display === 'none' || !row.style.display;
-                row.style.display = opening ? 'block' : 'none';
-                arrow.style.transform = opening ? 'rotate(180deg)' : 'rotate(0deg)';
+                const isOpen = row.style.display === 'block' || window.getComputedStyle(row).display !== 'none' && row.style.display !== 'none' && row.offsetParent !== null && row.style.display !== '';
+                // Prefer explicit toggle via dataset
+                const open = row.getAttribute('data-open') === '1';
+                if (open) {
+                  row.style.display = 'none';
+                  row.setAttribute('data-open', '0');
+                  arrow.style.transform = 'rotate(0deg)';
+                } else {
+                  row.style.display = 'block';
+                  row.setAttribute('data-open', '1');
+                  arrow.style.transform = 'rotate(180deg)';
+                }
             });
         }
 
@@ -13548,24 +13596,13 @@ window.__dgxenInitVideoControls = function(vId) {
       });
 
       // 3) Open with… — native chooser via share-files OR intent (NO forced re-download if share works)
+      // Open with… = native VIEW intent ONLY (never share sheet)
       btn('Open with…', function() {
-        if (overlay.__file && navigator.share && navigator.canShare && navigator.canShare({ files: [overlay.__file] })) {
-          try {
-            var p = navigator.share({ files: [overlay.__file], title: name });
-            if (p && p.then) p.catch(function(e){
-              if (e && e.name === 'AbortError') return;
-              openWithFallback();
-            });
-            return;
-          } catch (e) {}
+        var url = overlay.__httpsView || overlay.__blobUrl;
+        if (!url) {
+          overlay.querySelector('.cp-ow-status').textContent = 'Not ready';
+          return;
         }
-        openWithFallback();
-      });
-
-      function openWithFallback() {
-        // Android intent with VIEW url (https) — apps that handle this MIME appear
-        var url = overlay.__httpsView || overlay.__httpsDl || overlay.__blobUrl;
-        if (!url) { overlay.querySelector('.cp-ow-status').textContent = 'Not ready'; return; }
         try {
           if (String(url).indexOf('http') === 0) {
             var u = new URL(url);
@@ -13575,14 +13612,25 @@ window.__dgxenInitVideoControls = function(vId) {
               ';action=android.intent.action.VIEW' +
               ';S.browser_fallback_url=' + encodeURIComponent(url) +
               ';end';
-            window.location.href = intent;
-            overlay.querySelector('.cp-ow-status').textContent = 'Opening native apps…';
+            // iframe trick avoids navigating away from admin if intent fails
+            var ifr = document.createElement('iframe');
+            ifr.style.display = 'none';
+            ifr.src = intent;
+            document.body.appendChild(ifr);
+            setTimeout(function(){ try { ifr.remove(); } catch (e) {} }, 2000);
+            // also try location as backup after short delay if still focused
+            setTimeout(function(){
+              if (document.hasFocus && document.hasFocus()) {
+                // intent may have failed silently — open in new tab as viewer
+                window.open(url, '_blank');
+              }
+            }, 800);
+            overlay.querySelector('.cp-ow-status').textContent = 'Opening apps for ' + kind + '…';
             return;
           }
         } catch (eI) {}
-        // last resort: open blob/https in new tab (view)
         window.open(url, '_blank');
-      }
+      });
     }
 
     try {
@@ -13823,14 +13871,24 @@ window.toggleCloudStatsDrop = async function() {
   async function infiniFetch(url, opts) {
     opts = opts || {};
     const headers = Object.assign({}, opts.headers || {});
-    headers['Authorization'] = infiniAuthHeader();
+    // Always set Basic auth
+    try { headers['Authorization'] = infiniAuthHeader(); } catch (eA) {}
     let finalUrl = url;
     const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
     if (proxy) {
-      finalUrl = proxy + (proxy.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(url);
+      var aParam = '';
+      try {
+        var raw = String(infini.user || '') + ':' + String(infini.pass || '');
+        aParam = '&a=' + encodeURIComponent(btoa(unescape(encodeURIComponent(raw))));
+      } catch (eB) {}
+      finalUrl = proxy + '?url=' + encodeURIComponent(url) + aParam;
+    }
+    if (!(infini.user && infini.pass)) {
+      throw new Error('Infini credentials missing — set Connection ID + Apps Password in settings');
     }
     try {
-      return await fetch(finalUrl, Object.assign({}, opts, { headers }));
+      const res = await fetch(finalUrl, Object.assign({}, opts, { headers: headers }));
+      return res;
     } catch (e) {
       const msg = (e && e.message) ? e.message : String(e);
       throw new Error('Infini network/fetch failed: ' + msg + (proxy ? ' (via proxy)' : ' (no proxy set)'));
@@ -15996,12 +16054,26 @@ async function listAllFiles(forcedProvider) {
                 const hasPreview = !isFolder && ['jpg','jpeg','png','gif','webp','svg','heic','heif','mp3','wav','ogg','m4a','mp4','webm','mov','mkv','m4v','pdf','txt','md','json','csv','log','html','js','css'].includes(ext);
                 const relPath = String(f._relPath || name).replace(/"/g, '&quot;');
                 const _starRel = String(f._relPath || name || '').replace(/^\/+/, '');
+                var _cwdB = (typeof cloudCwd === 'function' ? cloudCwd() : (window.__cloudCwd || '')) || '';
+                var _fullStarRel = _starRel;
+                if (_cwdB && _starRel && _starRel.indexOf('/') < 0) {
+                  _fullStarRel = (_cwdB.replace(/\/+$/, '') + '/' + _starRel).replace(/^\/+/, '');
+                }
                 const _starKey = cloudStarKey(_starRel);
-                let isStarred = !!(window.__cloudStarredSet && (window.__cloudStarredSet.has(_starKey) || window.__cloudStarredSet.has(cloudStarKey(name))));
+                const _starKeyFull = cloudStarKey(_fullStarRel);
+                let isStarred = !!(window.__cloudStarredSet && (
+                  window.__cloudStarredSet.has(_starKey) ||
+                  window.__cloudStarredSet.has(_starKeyFull) ||
+                  window.__cloudStarredSet.has(cloudStarKey(name))
+                ));
                 if (!isStarred && window.__cloudStarredPaths) {
                   try {
                     Object.keys(window.__cloudStarredPaths).forEach(function(k) {
-                      if (String(window.__cloudStarredPaths[k] || '') === _starRel) isStarred = true;
+                      var p = String(window.__cloudStarredPaths[k] || '');
+                      if (p === _starRel || p === _fullStarRel || p === name ||
+                          (name && p.length >= name.length && p.slice(-name.length) === name && (p.length === name.length || p.charAt(p.length - name.length - 1) === '/'))) {
+                        isStarred = true;
+                      }
                     });
                   } catch (eSt) {}
                 }
@@ -17387,7 +17459,61 @@ async function listAllFiles(forcedProvider) {
   // UPLOAD MULTIPLE FILES
   // =========================================================
 
-  window.uploadCloudFiles =
+  window.
+  // ===== Background upload notification (long-running, system tray) =====
+  window.__cloudUploadNotif = null;
+  window.__cloudNotifPermAsked = false;
+  async function ensureCloudNotifPermission() {
+    try {
+      if (!('Notification' in window)) return false;
+      if (Notification.permission === 'granted') return true;
+      if (Notification.permission === 'denied') return false;
+      if (window.__cloudNotifPermAsked) return false;
+      window.__cloudNotifPermAsked = true;
+      var p = await Notification.requestPermission();
+      return p === 'granted';
+    } catch (e) { return false; }
+  }
+  window.updateCloudUploadNotification = function(title, body) {
+    try {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      // tag replaces previous so one ongoing notification for the batch
+      var opts = {
+        body: body || '',
+        tag: 'dgxen-cloud-upload',
+        renotify: false,
+        requireInteraction: true,
+        silent: true
+      };
+      try {
+        if (window.__cloudUploadNotif && window.__cloudUploadNotif.close) {
+          try { window.__cloudUploadNotif.close(); } catch (eC) {}
+        }
+      } catch (e0) {}
+      window.__cloudUploadNotif = new Notification(title || 'Cloud upload', opts);
+    } catch (e) {}
+  };
+  window.clearCloudUploadNotification = function(finalTitle, finalBody) {
+    try {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      if (window.__cloudUploadNotif && window.__cloudUploadNotif.close) {
+        try { window.__cloudUploadNotif.close(); } catch (eC) {}
+      }
+      if (finalTitle) {
+        window.__cloudUploadNotif = new Notification(finalTitle, {
+          body: finalBody || '',
+          tag: 'dgxen-cloud-upload-done',
+          requireInteraction: false,
+          silent: true
+        });
+        setTimeout(function(){
+          try { if (window.__cloudUploadNotif) window.__cloudUploadNotif.close(); } catch (e) {}
+        }, 8000);
+      }
+    } catch (e) {}
+  };
+
+  uploadCloudFiles =
     async function(
       fileList
     ) {
@@ -17421,6 +17547,7 @@ async function listAllFiles(forcedProvider) {
       let completed = 0;
       window.__cloudUploading = true;
       window.__cloudActiveProvider = provider;
+      try { ensureCloudNotifPermission(); } catch (eP) {}
       if (typeof setCloudProviderProgress === 'function') {
         setCloudProviderProgress(provider, true, tag + ': starting…', 0);
       } else if (typeof setCloudBgUpload === 'function') {
@@ -17457,6 +17584,14 @@ async function listAllFiles(forcedProvider) {
         if (typeof setCloudProviderProgress === 'function') {
           setCloudProviderProgress(provider, true, label, avg);
         }
+        try {
+          if (window.updateCloudUploadNotification) {
+            window.updateCloudUploadNotification(
+              tag + ' uploading… ' + Math.round(avg) + '%',
+              completed + '/' + files.length + ' done' + (active.length ? (' · ' + active.length + ' active') : '')
+            );
+          }
+        } catch (eN) {}
       }
 
       async function worker() {
@@ -17510,6 +17645,14 @@ async function listAllFiles(forcedProvider) {
       if (prog) {
         prog.textContent = completed + '/' + files.length + ' file(s) uploaded (' + tag + ').';
       }
+      try {
+        if (window.clearCloudUploadNotification) {
+          window.clearCloudUploadNotification(
+            completed > 0 ? (tag + ' upload complete') : (tag + ' upload ended'),
+            completed + '/' + files.length + ' file(s)'
+          );
+        }
+      } catch (eDone) {}
       if (typeof setCloudProviderProgress === 'function') {
         if (completed > 0) setCloudProviderProgress(provider, true, tag + ': ' + completed + '/' + files.length + ' done', 100);
         setTimeout(function() {
