@@ -2529,6 +2529,53 @@
             background: rgba(255,255,255,.08);
         }
 
+.cloud-more-menu {
+  min-width: 200px !important;
+  padding: 8px !important;
+  border-radius: 16px !important;
+  backdrop-filter: blur(20px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  box-shadow: 0 16px 40px rgba(0,0,0,.45) !important;
+}
+.cloud-more-menu-item {
+  font-size: 14px !important;
+  font-weight: 650 !important;
+  letter-spacing: .01em;
+  padding: 12px 14px !important;
+  border-radius: 12px !important;
+  color: var(--text-main) !important;
+}
+.cloud-more-menu-item.danger { color: #ff6b6b !important; }
+.cloud-more-menu-item:hover, .cloud-more-menu-item:active {
+  background: rgba(255,255,255,.08) !important;
+}
+#cpOpenWith {
+  position: fixed; inset: 0; z-index: 2147483000;
+  background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center;
+  padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+#cpOpenWith .cp-ow-card {
+  width: min(420px, 100%); background: rgba(22,24,30,.96);
+  border: 1px solid rgba(255,255,255,.1); border-radius: 20px 20px 16px 16px;
+  padding: 18px 16px 14px; box-shadow: 0 -8px 40px rgba(0,0,0,.4);
+  backdrop-filter: blur(20px);
+}
+#cpOpenWith .cp-ow-title { font-size: 13px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em; }
+#cpOpenWith .cp-ow-name { font-size: 16px; font-weight: 800; margin: 6px 0 4px; word-break: break-all; }
+#cpOpenWith .cp-ow-status { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; }
+#cpOpenWith .cp-ow-actions { display: flex; flex-direction: column; gap: 8px; }
+#cpOpenWith .cp-ow-btn {
+  width: 100%; padding: 13px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.06); color: var(--text-main); font-weight: 700; font-size: 14px; cursor: pointer;
+}
+#cpOpenWith .cp-ow-btn:active { transform: scale(.98); }
+#cpOpenWith .cp-ow-x {
+  margin-top: 10px; width: 100%; padding: 12px; border: 0; border-radius: 12px;
+  background: transparent; color: var(--text-dim); font-weight: 700; cursor: pointer;
+}
+
+
         .cloud-preview-drawer {
             width: 100% !important;
             max-width: 100%;
@@ -2588,7 +2635,47 @@
             background: #000;
             border: 1px solid var(--glass-border);
         }
-        .cloud-preview-drawer img {
+        
+/* CRITICAL: gesture / fullscreen media must never overflow the viewport */
+#cpFsOverlay, .cp-player.cp-fs-active {
+  max-width: 100vw !important;
+  max-height: 100dvh !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+#cpFsOverlay img, #cpFsOverlay video,
+.cp-player.cp-fs-active img, .cp-player.cp-fs-active video,
+.cp-img-fs, img.cp-img-fs {
+  max-width: min(100vw, 100%) !important;
+  max-height: min(100dvh, 100vh) !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
+  object-position: center center !important;
+}
+.cloud-preview-drawer {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+.cloud-preview-drawer img,
+.cloud-preview-drawer video {
+  max-width: 100% !important;
+  max-height: min(72vh, 72dvh) !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
+  margin: 0 auto !important;
+  display: block !important;
+}
+.cloud-preview-drawer .cp-x {
+  width: 48px !important;
+  height: 48px !important;
+  font-size: 22px !important;
+  top: 10px !important;
+  right: 10px !important;
+}
+.cloud-preview-drawer img {
             display: block;
             width: 100%;
             height: auto;
@@ -3755,10 +3842,37 @@ body.cat-world-active .cat-mode-bar{display:block}
 #cpBulkBar .cp-count { font: 800 14px/1 system-ui, sans-serif; color: #9cc8ff; padding: 0 10px; }
 
 /* --- (4) storage bar: used grows from the LEFT, trash from the RIGHT, they can never overlap --- */
-.cloud-stat-bar.cp-bar { position: relative; display: block; }
-.cloud-stat-bar.cp-bar > #cloudUsedBar { position: absolute; left: 0; top: 0; }
-.cloud-stat-bar.cp-bar > #cpTrashBar { position: absolute; right: 0; top: 0; display: block; height: 100%; width: 0; border-radius: 99px 0 0 99px;
-  background: repeating-linear-gradient(45deg, #ff9f43 0 6px, #ff7a1a 6px 12px); transition: width .4s ease; }
+.cloud-stat-bar.cp-bar {
+  position: relative !important;
+  display: block !important;
+  height: 10px !important;
+  min-height: 10px !important;
+  overflow: hidden !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+.cloud-stat-bar.cp-bar > #cloudUsedBar {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  height: 100% !important;
+  min-height: 10px !important;
+  display: block !important;
+  border-radius: 99px 0 0 99px;
+  transition: width .35s ease;
+}
+.cloud-stat-bar.cp-bar > #cpTrashBar {
+  position: absolute !important;
+  right: 0 !important;
+  top: 0 !important;
+  display: block !important;
+  height: 100% !important;
+  min-height: 10px !important;
+  width: 0;
+  border-radius: 0 99px 99px 0;
+  background: repeating-linear-gradient(45deg, #ff9f43 0 6px, #ff7a1a 6px 12px);
+  transition: width .35s ease;
+}
 .cloud-stat-bar.cp-full { box-shadow: 0 0 0 1px rgba(255,80,80,.7); }
 .cp-trash-lab { color: #ff9f43; font-weight: 800; }
 .cp-trash-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 6px; font-weight: 800; font-size: 13px; color: #ff9f43; }
@@ -6167,8 +6281,11 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     showMovingChip(items);
     status('Moving ' + items.length + ' file' + (items.length === 1 ? '' : 's') + ' to trash…', null);
     for (var i = 0; i < items.length; i++) {
-      try { items[i].isFolder ? await T.trashFolder(items[i].rel) : await T.trashFile(items[i]); ok++; }
-      catch (e) { fail++; lastErr = (e && e.message) || String(e); console.error('[trash]', items[i].rel, e); }
+      try {
+        items[i].isFolder ? await T.trashFolder(items[i].rel) : await T.trashFile(items[i]);
+        ok++;
+        try { if (typeof root.__cpForceUnstar === 'function') root.__cpForceUnstar(items[i].rel || items[i].name); } catch (eS) {}
+      } catch (e) { fail++; lastErr = (e && e.message) || String(e); console.error('[trash]', items[i].rel, e); }
     }
     sel.clear(); paintSelection(); hideMovingChip();
     status(fail ? ('Trashed ' + ok + ', failed ' + fail + ': ' + lastErr) : ('Moved ' + ok + ' item(s) to trash · auto-deleted after 7 days'), !fail);
@@ -12690,6 +12807,27 @@ window.__dgxenInitVideoControls = function(vId) {
       if (window.refreshCloudFiles) await window.refreshCloudFiles();
     } catch (e) { setStatus('Star: ' + (e.message || e), false); }
   };
+  window.__cpForceUnstar = async function(relPath) {
+    const rel = String(relPath || '').replace(/^\/+/, '');
+    const pathMap = window.__cloudStarredPaths || {};
+    const prefix = rel ? (rel.replace(/\/+$/, '') + '/') : '';
+    const toDrop = [];
+    window.__cloudStarredSet.forEach(function(k) {
+      const p = String(pathMap[k] || k || '');
+      if (!rel) return;
+      if (p === rel || (prefix && p.indexOf(prefix) === 0) || k === cloudStarKey(rel)) toDrop.push(k);
+    });
+    // also exact key
+    var key = cloudStarKey(rel);
+    if (key && window.__cloudStarredSet.has(key) && toDrop.indexOf(key) < 0) toDrop.push(key);
+    for (var i = 0; i < toDrop.length; i++) {
+      try {
+        await set(ref(db, 'settings/cloudStarred/' + toDrop[i]), null);
+        window.__cloudStarredSet.delete(toDrop[i]);
+        delete window.__cloudStarredPaths[toDrop[i]];
+      } catch (e2) {}
+    }
+  };
 
   window.goCloudAllFiles = function() {
     window.__cloudStarredFilterOn = false;
@@ -12912,9 +13050,12 @@ window.__dgxenInitVideoControls = function(vId) {
         if (isFolder) {
           const files = await A.walk(relPath);
           for (const f of files) {
-            const dest = newRelPath + f.rel.slice(relPath.length);
-            await A.move(f.rel, dest);
+            var suffix = String(f.rel || '').slice(String(relPath).length);
+            if (suffix.charAt(0) !== '/') suffix = suffix ? ('/' + suffix) : '';
+            const destN = (newRelPath + suffix).replace(/\/+/g, '/');
+            await A.move(f.rel, destN);
           }
+          try { if (A.removeTree) await A.removeTree(relPath); } catch (eRT) {}
         } else {
           await A.move(relPath, newRelPath);
         }
@@ -13013,71 +13154,178 @@ window.__dgxenInitVideoControls = function(vId) {
     const menu = document.createElement('div');
     menu.className = 'cloud-more-menu';
     const items = [];
+    function add(label, fn, kind) { items.push({ label: label, fn: fn, kind: kind || '' }); }
     if (inTrash) {
-      items.push(['↩️ Restore', () => window.restoreCloudItem(rel)]);
-      items.push(['🗑️ Delete permanently', () => window.permanentlyDeleteCloudItem(name, (btn.closest('.cloud-file-row') && btn.closest('.cloud-file-row').querySelector('[data-dl-id]')) ? btn.closest('.cloud-file-row').querySelector('[data-dl-id]').getAttribute('data-dl-id') : '', rel)]);
+      add('Restore', function() { window.restoreCloudItem(rel); });
+      add('Delete forever', function() {
+        window.permanentlyDeleteCloudItem(name, (btn.closest('.cloud-file-row') && btn.closest('.cloud-file-row').querySelector('[data-dl-id]')) ? btn.closest('.cloud-file-row').querySelector('[data-dl-id]').getAttribute('data-dl-id') : '', rel);
+      }, 'danger');
     } else {
       var selCount = 0; try { if (window.__cpSelected && window.__cpSelected.size) selCount = window.__cpSelected.size(); } catch(e){}
       var multi = selCount > 1;
-      var bulkLabel = multi ? (' (' + selCount + ' selected)') : '';
-      items.push([isStarred ? 'Unstar' : '☆ Star', function() {
+      var bulkLabel = multi ? (' · ' + selCount) : '';
+      add(isStarred ? 'Unstar' : 'Star', function() {
         if (multi && window.__cpSelected) {
           window.__cpSelected.list().forEach(function(it){ if (window.toggleCloudStar) window.toggleCloudStar(it.rel || it.name); });
         } else if (window.toggleCloudStar) window.toggleCloudStar(rel);
-      }]);
+      });
       if (!multi) {
-        items.push(['✏️ Rename', function() { window.promptRenameCloudItem(rel, name, isFolder, (btn.closest('.cloud-file-row') && btn.closest('.cloud-file-row').querySelector('[data-dl-id]')) ? btn.closest('.cloud-file-row').querySelector('[data-dl-id]').getAttribute('data-dl-id') : null); }]);
+        add('Rename', function() {
+          var fid = null;
+          try {
+            var row = btn.closest('.cloud-file-row');
+            var dl = row && row.querySelector('[data-dl-id]');
+            fid = dl ? dl.getAttribute('data-dl-id') : null;
+          } catch (e) {}
+          window.promptRenameCloudItem(rel, name, isFolder, fid);
+        });
+        add('Copy link', function() {
+          if (typeof copyCloudFileLink === 'function') copyCloudFileLink(rel || name, isFolder);
+        });
+        if (!isFolder) {
+          add('Open with…', function() {
+            if (window.openCloudWithPlayer) window.openCloudWithPlayer(rel || name, name);
+          });
+        }
       }
-      items.push(['Move to…' + bulkLabel, function() {
+      add('Move to…' + bulkLabel, function() {
         if (multi && window.__cpSelected) {
           var many = window.__cpSelected.list();
-          window.promptMoveCloudItem(many[0].rel || many[0].name, many[0].name, !!many[0].isFolder);
-          // store bulk for move picker
           window.__cpPendingBulkMove = many;
+          window.promptMoveCloudItem(many[0].rel || many[0].name, many[0].name, !!many[0].isFolder);
         } else {
           window.__cpPendingBulkMove = null;
           window.promptMoveCloudItem(rel, name, isFolder);
         }
-      }]);
-      items.push(['🗑️ Delete' + bulkLabel, function() {
+      });
+      add('Move to trash' + bulkLabel, function() {
         var row = btn.closest('.cloud-file-row');
         var dlBtn = row && row.querySelector('[data-dl-id]');
         var fid = dlBtn ? dlBtn.getAttribute('data-dl-id') : '';
         if (multi && window.__cpSelected) {
           var many = window.__cpSelected.list();
-          showConfirm('Delete ' + many.length + ' items?', 'Move ' + many.length + ' selected items to trash?', function() {
+          showConfirm('Move to trash?', many.length + ' selected items will be moved to trash.', function() {
             if (window.cpTrashItems) window.cpTrashItems(many);
-            else if (window.softDeleteCloudFile) {
-              many.forEach(function(it){ window.softDeleteCloudFile(it.name, it.id, it.rel); });
-            }
           });
         } else {
-          showConfirm('Delete file?', 'Delete "' + name + '" permanently?', function() {
+          showConfirm('Move to trash?', '"' + name + '" will be moved to trash.', function() {
             if (window.softDeleteCloudFile) window.softDeleteCloudFile(name, fid, rel);
-            else if (window.deleteCloudFile) window.deleteCloudFile(name, fid, rel);
           });
         }
-      }]);
+      }, 'danger');
     }
-    items.forEach(([label, fn]) => {
+    items.forEach(function(it) {
       const item = document.createElement('button');
       item.type = 'button';
-      item.className = 'cloud-more-menu-item';
-      item.textContent = label;
-      item.onclick = (e) => { e.stopPropagation(); menu.remove(); fn(); };
+      item.className = 'cloud-more-menu-item' + (it.kind === 'danger' ? ' danger' : '');
+      item.textContent = it.label;
+      item.onclick = function(e) { e.stopPropagation(); menu.remove(); it.fn(); };
       menu.appendChild(item);
     });
     document.body.appendChild(menu);
     const r = btn.getBoundingClientRect();
     menu.style.position = 'fixed';
-    menu.style.top = Math.min(r.bottom + 4, window.innerHeight - (items.length * 42 + 16)) + 'px';
-    menu.style.left = Math.max(8, r.right - 180) + 'px';
-    setTimeout(() => {
+    menu.style.zIndex = '100000';
+    menu.style.top = Math.min(r.bottom + 6, window.innerHeight - (items.length * 44 + 20)) + 'px';
+    menu.style.left = Math.max(8, Math.min(r.right - 200, window.innerWidth - 208)) + 'px';
+    setTimeout(function() {
       document.addEventListener('click', function closeIt(e) {
         if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', closeIt); }
       });
     }, 10);
   };
+
+  /** Drive-style Open with: load file (full speed), then offer system players / browser / download */
+  window.openCloudWithPlayer = async function(relPath, fileName) {
+    const name = String(fileName || relPath || 'file').split('/').pop();
+    const rel = String(relPath || fileName || '');
+    setStatus('Preparing “' + name + '” for Open with…', null);
+    var overlay = document.createElement('div');
+    overlay.id = 'cpOpenWith';
+    overlay.innerHTML = '<div class="cp-ow-card"><div class="cp-ow-title">Open with</div><div class="cp-ow-name"></div><div class="cp-ow-status">Loading file…</div><div class="cp-ow-actions"></div><button type="button" class="cp-ow-x">Close</button></div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('.cp-ow-name').textContent = name;
+    overlay.querySelector('.cp-ow-x').onclick = function() {
+      try { if (overlay.__url) URL.revokeObjectURL(overlay.__url); } catch (e) {}
+      overlay.remove();
+    };
+    try {
+      var blob;
+      if (getActiveCloudProvider() === 'infini') {
+        // reuse download path as blob
+        const target = cloudPathUrl(rel.indexOf('/') >= 0 ? rel : cloudJoinPath(cloudCwd(), rel));
+        const res = await infiniFetch(target, { method: 'GET' });
+        if (!res.ok) throw new Error('Fetch failed (' + res.status + ')');
+        blob = await res.blob();
+      } else {
+        await authorizeB2(false);
+        const authRes = await b2Fetch(b2.apiUrl + '/b2api/v2/b2_get_download_authorization', {
+          method: 'POST',
+          headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bucketId: b2.bucketId, fileNamePrefix: rel, validDurationInSeconds: 3600 })
+        });
+        const authData = await authRes.json().catch(function(){ return {}; });
+        if (!authRes.ok) throw new Error(authData.message || 'Auth failed');
+        const path = rel.split('/').map(encodeURIComponent).join('/');
+        const url = b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path +
+          '?Authorization=' + encodeURIComponent(authData.authorizationToken);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Fetch failed (' + res.status + ')');
+        blob = await res.blob();
+      }
+      var mime = blob.type || 'application/octet-stream';
+      var ext = (name.split('.').pop() || '').toLowerCase();
+      if (!mime || mime === 'application/octet-stream') {
+        if (['mp4','webm','mkv','mov','m4v'].indexOf(ext) >= 0) mime = 'video/' + (ext === 'mp4' || ext === 'm4v' ? 'mp4' : ext);
+        else if (['mp3','m4a','wav','ogg'].indexOf(ext) >= 0) mime = 'audio/' + (ext === 'mp3' ? 'mpeg' : ext);
+        else if (['jpg','jpeg'].indexOf(ext) >= 0) mime = 'image/jpeg';
+        else if (ext === 'png') mime = 'image/png';
+        else if (ext === 'heic' || ext === 'heif') mime = 'image/heic';
+        blob = new Blob([blob], { type: mime });
+      }
+      var objUrl = URL.createObjectURL(blob);
+      overlay.__url = objUrl;
+      overlay.querySelector('.cp-ow-status').textContent = formatBytes(blob.size) + ' ready';
+      var actions = overlay.querySelector('.cp-ow-actions');
+      function btn(label, fn) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'cp-ow-btn';
+        b.textContent = label;
+        b.onclick = fn;
+        actions.appendChild(b);
+      }
+      btn('Open in browser', function() { window.open(objUrl, '_blank'); });
+      btn('Download', function() {
+        var a = document.createElement('a');
+        a.href = objUrl; a.download = name; a.click();
+      });
+      if (mime.indexOf('video/') === 0 || mime.indexOf('audio/') === 0) {
+        btn('VLC', function() {
+          // Android intent / iOS scheme fallback
+          var intent = 'intent:' + objUrl + '#Intent;action=android.intent.action.VIEW;type=' + mime + ';scheme=https;end';
+          window.location.href = intent;
+          setTimeout(function(){ window.open(objUrl, '_blank'); }, 800);
+        });
+        btn('MX Player', function() {
+          var intent = 'intent:' + objUrl + '#Intent;action=android.intent.action.VIEW;type=' + mime + ';package=com.mxtech.videoplayer.ad;end';
+          window.location.href = intent;
+          setTimeout(function(){ window.open(objUrl, '_blank'); }, 800);
+        });
+        btn('System player', function() {
+          window.location.href = objUrl;
+        });
+      }
+      if (mime.indexOf('image/') === 0) {
+        btn('View image', function() { window.open(objUrl, '_blank'); });
+      }
+      setStatus('Ready — choose an app', true);
+    } catch (e) {
+      overlay.querySelector('.cp-ow-status').textContent = 'Failed: ' + ((e && e.message) || e);
+      setStatus('Open with failed: ' + ((e && e.message) || e), false);
+    }
+  };
+
 
   // ===== STORAGE BREAKDOWN BY FILE TYPE =====
   window.toggleCloudStatsDrop = async function() {
@@ -14235,17 +14483,36 @@ async function listInfiniFiles() {
         'cloudQuotaLabel'
       );
 
-    if (bar)
-      bar.style.width =
-        pct.toFixed(1) + '%';
-
-    if (usedL)
-      usedL.textContent =
-        formatBytes(used) + ' used';
-
+    if (bar) {
+      bar.style.width = pct.toFixed(1) + '%';
+      bar.style.display = 'block';
+      bar.style.height = '100%';
+      bar.style.minHeight = '10px';
+    }
+    try {
+      var sbar = document.querySelector('.cloud-stat-bar');
+      if (sbar) {
+        sbar.style.display = 'block';
+        sbar.style.visibility = 'visible';
+        sbar.style.opacity = '1';
+        sbar.style.height = '10px';
+      }
+    } catch (eBar) {}
+    // Keep total for folder/star navigation — never lose the root total
+    if (used > 0) window.__cloudTotalUsedBytes = used;
+    if (usedL) {
+      var trashPart = '';
+      try {
+        if (window.CloudPro && window.CloudPro._state) {
+          var st = window.CloudPro._state();
+          if (st && st.trashBytes > 0) trashPart = ' · ' + formatBytes(st.trashBytes) + ' trash';
+        }
+      } catch (eT) {}
+      usedL.textContent = formatBytes(used) + ' used' + trashPart;
+    }
     if (freeL)
-      freeL.textContent =
-        'Free: ' + formatBytes(free);
+      freeL.textContent = 'Free: ' + formatBytes(free);
+    try { if (window.CloudPro && typeof window.CloudPro.paintBar === 'function') window.CloudPro.paintBar(); } catch (ePB) {}
 
     if (qL)
       qL.textContent =
@@ -15252,7 +15519,9 @@ async function listAllFiles(forcedProvider) {
         } else {
           used = Number(window.__cloudTotalUsedBytes) || used;
         }
-        paintUsage(used);
+        if (used > 0) window.__cloudTotalUsedBytes = used;
+        paintUsage(Number(window.__cloudTotalUsedBytes) || used);
+        try { if (window.CloudPro && window.CloudPro.paintBar) window.CloudPro.paintBar(); } catch (ePB2) {}
 
         if (typeof paintCloudPathBar === 'function') paintCloudPathBar();
 
@@ -15310,6 +15579,13 @@ async function listAllFiles(forcedProvider) {
               Object.keys(pathMap).forEach(function(k) {
                 const p = String(pathMap[k] || '').replace(/^\/+/, '');
                 if (!p || keptRels.has(p)) return;
+                if (p.indexOf('.trash/') === 0 || p === '.trash') {
+                  // stale star after delete
+                  try { if (window.__cpForceUnstar) window.__cpForceUnstar(p); } catch (eZ) {}
+                  return;
+                }
+                // Already represented as real file in kept
+                if (keptRels.has(p)) return;
                 const base = p.split('/').pop() || p;
                 kept.push({
                   fileName: base,
@@ -15317,7 +15593,8 @@ async function listAllFiles(forcedProvider) {
                   _isFolder: false,
                   contentLength: 0,
                   fileId: 'star:' + k,
-                  uploadTimestamp: Date.now()
+                  uploadTimestamp: Date.now(),
+                  _starGhost: true
                 });
                 keptRels.add(p);
               });
@@ -15372,7 +15649,16 @@ async function listAllFiles(forcedProvider) {
                 const isFolder = !!f._isFolder;
                 const hasPreview = !isFolder && ['jpg','jpeg','png','gif','webp','svg','heic','heif','mp3','wav','ogg','m4a','mp4','webm','mov','mkv','m4v','pdf','txt','md','json','csv','log','html','js','css'].includes(ext);
                 const relPath = String(f._relPath || name).replace(/"/g, '&quot;');
-                const isStarred = !!(window.__cloudStarredSet && window.__cloudStarredSet.has(cloudStarKey(f._relPath || name)));
+                const _starRel = String(f._relPath || name || '').replace(/^\/+/, '');
+                const _starKey = cloudStarKey(_starRel);
+                let isStarred = !!(window.__cloudStarredSet && (window.__cloudStarredSet.has(_starKey) || window.__cloudStarredSet.has(cloudStarKey(name))));
+                if (!isStarred && window.__cloudStarredPaths) {
+                  try {
+                    Object.keys(window.__cloudStarredPaths).forEach(function(k) {
+                      if (String(window.__cloudStarredPaths[k] || '') === _starRel) isStarred = true;
+                    });
+                  } catch (eSt) {}
+                }
 
                 return (
                   '<div class="cloud-file-row' + (isFolder ? ' is-folder' : '') + '" data-size="' + (Number(f.contentLength)||0) + '" data-search-name="' + name.toLowerCase().replace(/"/g,'&quot;') + '">' +
@@ -15411,7 +15697,7 @@ async function listAllFiles(forcedProvider) {
                   fid +
                   '" data-dl-rel="' + relPath + '">DL</button>')) +
 
-                  '<button class="btn cloud-more-btn" type="button" data-more-name="' + name + '" data-more-rel="' + relPath + '" data-more-folder="' + (isFolder ? '1' : '0') + '" data-more-starred="' + (isStarred ? '1' : '0') + '" title="More actions">⋮</button>' +
+                  '<button class="btn cloud-more-btn" type="button" data-more-name="' + name + '" data-more-rel="' + relPath + '" data-more-folder="' + (isFolder ? '1' : '0') + '" data-more-starred="' + (isStarred ? '1' : '0') + '" title="More actions" style="font-size:18px;letter-spacing:1px;min-width:40px;">•••</button>' +
 
                   '</div>'
                 );
@@ -15577,7 +15863,7 @@ async function listAllFiles(forcedProvider) {
           false
         );
 
-        paintUsage(0);
+        try { paintUsage(Number(window.__cloudTotalUsedBytes) || 0); } catch (ePu) {}
       }
     };
 
@@ -15795,16 +16081,21 @@ async function listAllFiles(forcedProvider) {
         const target = cloudPathUrl(rel);
         const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
         const authB64 = btoa(unescape(encodeURIComponent((infini.user || '') + ':' + (infini.pass || ''))));
+        var baseName = rel.split('/').pop() || 'file';
+        // Prefer real path ending so browsers/downloaders pick correct name (not workers.dev)
         if (proxy) {
-          url = proxy + '?url=' + encodeURIComponent(target) + '&a=' + encodeURIComponent(authB64);
+          url = proxy + '?url=' + encodeURIComponent(target) +
+            '&a=' + encodeURIComponent(authB64) +
+            '&filename=' + encodeURIComponent(baseName) +
+            '&disposition=' + encodeURIComponent('attachment; filename="' + baseName.replace(/"/g, '') + '"');
         } else {
           url = target;
         }
         try {
           await navigator.clipboard.writeText(url);
-          setStatus('Public Infini link copied (anyone with link can open).', true);
+          setStatus('Link copied as "' + baseName + '" (open/download)', true);
         } catch (clipErr) {
-          window.prompt('Copy public Infini link:', url);
+          window.prompt('Copy link (' + baseName + '):', url);
         }
         return;
       }
