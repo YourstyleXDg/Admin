@@ -13859,7 +13859,10 @@ window.toggleCloudStatsDrop = async function() {
     const s = Number(status) || 0;
     const snip = String(bodySnippet || '').slice(0, 100);
     if (s === 401 || s === 403) {
-      return '401 Unauthorized — check Infini Connection ID + Apps Password. Re-SAVE credentials. Ensure Infini Proxy URL is the CORS worker (not B2 POST worker). WebDAV URL: https://aki.teracloud.jp/dav/';
+      return '401 Unauthorized — 1) My Page → turn ON Apps Connection 2) use Apps Password (NOT login password) 3) Connection ID = Infini user ID 4) WebDAV URL must be YOUR node from My Page (e.g. https://aki.teracloud.jp/dav/) 5) Proxy = Infini CORS worker only';
+    }
+    if (s === 405) {
+      return '405 Method Not Allowed — usually wrong WebDAV URL or Apps Connection OFF. Open Infini My Page, copy exact WebDAV URL (https://NODE.teracloud.jp/dav/), enable Apps Connection, use the generated Apps Password.';
     }
     if (s === 525) {
       return '525 SSL handshake failed — Cloudflare Worker cannot TLS-talk to Infini. Fix: Worker must fetch origin with valid SSL (or use a Worker that does not force origin SSL verify). Check WebDAV URL is https://aki.teracloud.jp/dav/…';
@@ -13877,31 +13880,30 @@ window.toggleCloudStatsDrop = async function() {
   async function infiniFetch(url, opts) {
     opts = opts || {};
     const headers = Object.assign({}, opts.headers || {});
-    // Always set Basic auth
-    try { headers['Authorization'] = infiniAuthHeader(); } catch (eA) {}
-    let finalUrl = url;
-    const proxy = (infini.proxyUrl || '').trim().replace(/\/$/, '');
-    if (proxy) {
-      var aParam = '';
-      try {
-        var raw = String(infini.user || '') + ':' + String(infini.pass || '');
-        aParam = '&a=' + encodeURIComponent(btoa(unescape(encodeURIComponent(raw))));
-      } catch (eB) {}
-      finalUrl = proxy + '?url=' + encodeURIComponent(url) + aParam;
-    }
+    // Normalize proxy (no trailing slash, no whitespace)
+    let proxy = String(infini.proxyUrl || '').trim().replace(/\/+$/, '');
     if (!(infini.user && infini.pass)) {
       throw new Error('Infini credentials missing — set Connection ID + Apps Password in settings');
     }
     if (!proxy) {
-      // Without CORS proxy, browser will block WebDAV — fail clearly
-      console.warn('[Infini] No proxyUrl set — requests may fail CORS/401');
+      throw new Error('Infini Proxy URL missing — paste https://infini-cloud-dgxen.….workers.dev (CORS worker, not B2)');
     }
+    // Build Basic token once
+    var authB64 = '';
+    try {
+      authB64 = btoa(unescape(encodeURIComponent(String(infini.user) + ':' + String(infini.pass))));
+    } catch (eB) {
+      throw new Error('Infini auth encode failed');
+    }
+    // Prefer query `a=` (most reliable through Workers); also set header
+    headers['Authorization'] = 'Basic ' + authB64;
+    var finalUrl = proxy + '?url=' + encodeURIComponent(url) + '&a=' + encodeURIComponent(authB64);
     try {
       const res = await fetch(finalUrl, Object.assign({}, opts, { headers: headers }));
       return res;
     } catch (e) {
       const msg = (e && e.message) ? e.message : String(e);
-      throw new Error('Infini network/fetch failed: ' + msg + (proxy ? ' (via proxy)' : ' (no proxy set)'));
+      throw new Error('Infini network/fetch failed: ' + msg + ' (proxy=' + proxy + ')');
     }
   }
 
@@ -14762,10 +14764,19 @@ async function listInfiniFiles() {
     infini.user = (document.getElementById('infiniUser')?.value || '').trim();
     infini.pass = (document.getElementById('infiniPass')?.value || '').trim();
     infini.quotaGb = Number(document.getElementById('infiniQuotaGb')?.value) || 20;
-    infini.proxyUrl = (document.getElementById('infiniProxyUrl')?.value || '').trim();
+    infini.davUrl = (document.getElementById('infiniDavUrl')?.value || infini.davUrl || '').trim();
+    if (infini.davUrl && !infini.davUrl.endsWith('/')) infini.davUrl += '/';
+    infini.proxyUrl = (document.getElementById('infiniProxyUrl')?.value || '').trim().replace(/\/+$/, '');
     if (!infini.user || !infini.pass) {
       setInfiniStatus('Connection ID + Apps Password required.', false);
       return;
+    }
+    if (!infini.proxyUrl) {
+      setInfiniStatus('Infini Proxy URL required (CORS worker). Example: https://infini-cloud-dgxen.….workers.dev', false);
+      return;
+    }
+    if (/b2|api-proxy/i.test(infini.proxyUrl) && !/infini/i.test(infini.proxyUrl)) {
+      setInfiniStatus('Warning: proxy URL looks like B2 worker. Use Infini CORS worker URL.', false);
     }
     try {
       await set(ref(db, 'settings/infini'), {
@@ -14776,11 +14787,14 @@ async function listInfiniFiles() {
       setInfiniStatus('Firebase save failed — still trying…', false);
     }
     try {
+      setInfiniStatus('Testing WebDAV…', true);
       await listInfiniFiles();
       setInfiniStatus('Connected to Infini Cloud.', true);
       if (window.refreshCloudFiles) await window.refreshCloudFiles();
     } catch (e) {
-      setInfiniStatus(explainFetchError(e), false);
+      var msg = explainFetchError(e);
+      setInfiniStatus(msg, false);
+      console.error('[Infini] connect failed', e);
     }
   };
 
@@ -15404,7 +15418,7 @@ function explainFetchError(e) {
         if (v.user) infini.user = String(v.user);
         if (v.pass) infini.pass = String(v.pass);
         if (v.quotaGb) infini.quotaGb = Number(v.quotaGb) || 20;
-        if (v.proxyUrl) infini.proxyUrl = String(v.proxyUrl);
+        if (v.proxyUrl) infini.proxyUrl = String(v.proxyUrl).trim().replace(/\/+$/, '');
       }
     } catch (e) {}
     try {
