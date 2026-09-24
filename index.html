@@ -6750,7 +6750,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
 
     async function b2BlobFromUrl(directUrl) {
       var res = await fetch(directUrl, { method: 'GET', signal: signal, mode: 'cors', credentials: 'omit' });
-      if (!res.ok) throw new Error('Preview fetch failed (' + res.status + ')');
+      if (!res.ok) throw new Error((res.status === 401 || res.status === 403) ? ('Auth failed (' + res.status + ') — check Infini credentials + Proxy URL') : ('Preview fetch failed (' + res.status + ')'));
       var buf = await res.arrayBuffer();
       if (signal && signal.aborted) throw new Error('cancelled');
       if (!buf || !buf.byteLength) throw new Error('Empty file');
@@ -7379,8 +7379,11 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') {
       // Tear down FS UI only — keep gesture background media playing
+      // CRITICAL: never abort active cloud uploads/downloads on hide
       try { unlockCloudMediaUi({ keepBg: true }); } catch (e) {}
     } else if (document.visibilityState === 'visible') {
+      // Re-acquire wake lock if upload still running
+      try { if (window.__cloudUploading) ensureCloudWakeLock(); } catch (eW) {}
       // Clear any stuck gray backdrop / FS residue after recent-apps
       try {
         unlockCloudMediaUi({ keepBg: true });
@@ -13491,8 +13494,22 @@ window.__dgxenInitVideoControls = function(vId) {
 
     async function getHttpsUrl(forDownload) {
       if (getActiveCloudProvider() === 'infini') {
-        const target = cloudPathUrl(rel);
-        const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
+        // Ensure credentials present
+        if (!infini.user || !infini.pass) {
+          throw new Error('Infini credentials missing — re-SAVE Connection ID + Apps Password');
+        }
+        if (!infini.proxyUrl) {
+          throw new Error('Infini Proxy URL missing — set CORS worker URL (not B2 worker)');
+        }
+        // Rebuild full path if needed
+        var fullRel = rel;
+        try {
+          if (fullRel.indexOf('/') < 0 && typeof cloudCwd === 'function' && cloudCwd()) {
+            fullRel = cloudJoinPath(cloudCwd(), fullRel);
+          }
+        } catch (eR) {}
+        const target = cloudPathUrl(fullRel);
+        const proxy = (infini.proxyUrl || '').trim().replace(/\/$/, '');
         const authB64 = btoa(unescape(encodeURIComponent((infini.user || '') + ':' + (infini.pass || ''))));
         if (proxy) {
           var u = proxy + '?url=' + encodeURIComponent(target) + '&a=' + encodeURIComponent(authB64);
@@ -13841,6 +13858,9 @@ window.toggleCloudStatsDrop = async function() {
   function explainInfiniHttp(status, bodySnippet) {
     const s = Number(status) || 0;
     const snip = String(bodySnippet || '').slice(0, 100);
+    if (s === 401 || s === 403) {
+      return '401 Unauthorized — check Infini Connection ID + Apps Password. Re-SAVE credentials. Ensure Infini Proxy URL is the CORS worker (not B2 POST worker). WebDAV URL: https://aki.teracloud.jp/dav/';
+    }
     if (s === 525) {
       return '525 SSL handshake failed — Cloudflare Worker cannot TLS-talk to Infini. Fix: Worker must fetch origin with valid SSL (or use a Worker that does not force origin SSL verify). Check WebDAV URL is https://aki.teracloud.jp/dav/…';
     }
@@ -13860,7 +13880,7 @@ window.toggleCloudStatsDrop = async function() {
     // Always set Basic auth
     try { headers['Authorization'] = infiniAuthHeader(); } catch (eA) {}
     let finalUrl = url;
-    const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
+    const proxy = (infini.proxyUrl || '').trim().replace(/\/$/, '');
     if (proxy) {
       var aParam = '';
       try {
@@ -13871,6 +13891,10 @@ window.toggleCloudStatsDrop = async function() {
     }
     if (!(infini.user && infini.pass)) {
       throw new Error('Infini credentials missing — set Connection ID + Apps Password in settings');
+    }
+    if (!proxy) {
+      // Without CORS proxy, browser will block WebDAV — fail clearly
+      console.warn('[Infini] No proxyUrl set — requests may fail CORS/401');
     }
     try {
       const res = await fetch(finalUrl, Object.assign({}, opts, { headers: headers }));
@@ -13884,9 +13908,16 @@ window.toggleCloudStatsDrop = async function() {
   // XHR variant — some Workers handle non-GET better via XHR than fetch
   function infiniXhr(method, url, headers, body) {
     return new Promise(function(resolve, reject) {
-      const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
+      const proxy = (infini.proxyUrl || '').trim().replace(/\/$/, '');
       let finalUrl = url;
-      if (proxy) finalUrl = proxy + (proxy.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(url);
+      if (proxy) {
+        var aParam = '';
+        try {
+          var raw = String(infini.user || '') + ':' + String(infini.pass || '');
+          aParam = '&a=' + encodeURIComponent(btoa(unescape(encodeURIComponent(raw))));
+        } catch (eA) {}
+        finalUrl = proxy + '?url=' + encodeURIComponent(url) + aParam;
+      }
       const xhr = new XMLHttpRequest();
       xhr.open(method, finalUrl, true);
       const hdrs = Object.assign({ Authorization: infiniAuthHeader() }, headers || {});
@@ -14333,7 +14364,7 @@ async function listInfiniFiles() {
   }
 
   function infiniProxyUrl(targetUrl) {
-    const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
+    const proxy = (infini.proxyUrl || '').trim().replace(/\/$/, '');
     if (!proxy) return targetUrl;
     return proxy + (proxy.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(targetUrl);
   }
@@ -14506,7 +14537,7 @@ async function listInfiniFiles() {
       } catch (e) {}
     }
     const url = isFolder ? (base + '/') : base;
-    console.log('[Infini] DELETE →', url, '| proxy:', (infini.proxyUrl || b2.proxyUrl || '(none)'));
+    console.log('[Infini] DELETE →', url, '| proxy:', (infini.proxyUrl || '(none)'));
 
     // ALWAYS go through the Worker. The old code first tried a DIRECT request to
     // the WebDAV server (blocked by CORS / never reached the Worker, so no logs)
@@ -14599,7 +14630,7 @@ async function listInfiniFiles() {
     const finalUrl = (typeof infiniProxyUrl === 'function')
       ? infiniProxyUrl(targetUrl)
       : (function() {
-          const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
+          const proxy = (infini.proxyUrl || '').trim().replace(/\/$/, '');
           if (!proxy) return targetUrl;
           return proxy + (proxy.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(targetUrl);
         })();
@@ -14696,7 +14727,7 @@ async function listInfiniFiles() {
       res = null;
     }
     if (!res || !res.ok) {
-      throw new Error('Preview fetch failed (' + (lastStatus || 404) + ') path=' + rel);
+      throw new Error((lastStatus === 401 || lastStatus === 403) ? ('Auth failed (401) — check Infini Connection ID + Apps Password + Infini Proxy URL. path=' + rel) : ('Preview fetch failed (' + (lastStatus || 404) + ') path=' + rel));
     }
     const hdrCt = (res.headers.get('content-type') || '').split(';')[0].trim();
     const declaredLen = Number(res.headers.get('content-length'));
@@ -16418,7 +16449,7 @@ async function listAllFiles(forcedProvider) {
           (parsed || []).forEach(function(f) {
             if (f && !f._isFolder) files.push({ rel: f._relPath || f.fileName, name: (f.fileName || '').split('/').pop(), size: f.contentLength || 0 });
           });
-          const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
+          const proxy = (infini.proxyUrl || '').trim().replace(/\/$/, '');
           const authB64 = btoa(unescape(encodeURIComponent((infini.user || '') + ':' + (infini.pass || ''))));
           const rows = [];
           for (let i = 0; i < files.length; i++) {
@@ -16489,7 +16520,7 @@ async function listAllFiles(forcedProvider) {
       let url = '';
       if (getActiveCloudProvider() === 'infini') {
         const target = cloudPathUrl(rel);
-        const proxy = (infini.proxyUrl || b2.proxyUrl || '').trim().replace(/\/$/, '');
+        const proxy = (infini.proxyUrl || '').trim().replace(/\/$/, '');
         const authB64 = btoa(unescape(encodeURIComponent((infini.user || '') + ':' + (infini.pass || ''))));
         var baseName = rel.split('/').pop() || 'file';
         // Prefer real path ending so browsers/downloaders pick correct name (not workers.dev)
@@ -17499,6 +17530,101 @@ async function listAllFiles(forcedProvider) {
     } catch (e) {}
   };
 
+  
+  // ===== Background upload keep-alive + Service Worker / Background Fetch =====
+  window.__cloudWakeLock = null;
+  window.__cloudSwReg = null;
+
+  async function ensureCloudWakeLock() {
+    try {
+      if (!('wakeLock' in navigator)) return;
+      if (window.__cloudWakeLock) return;
+      window.__cloudWakeLock = await navigator.wakeLock.request('screen');
+      window.__cloudWakeLock.addEventListener('release', function(){ window.__cloudWakeLock = null; });
+    } catch (e) {}
+  }
+  function releaseCloudWakeLock() {
+    try {
+      if (window.__cloudWakeLock) { window.__cloudWakeLock.release(); window.__cloudWakeLock = null; }
+    } catch (e) {}
+  }
+
+  async function ensureCloudServiceWorker() {
+    try {
+      if (!('serviceWorker' in navigator)) return null;
+      if (window.__cloudSwReg) return window.__cloudSwReg;
+      // Inline minimal SW via blob — handles backgroundfetch events + keeps scope
+      var swCode = [
+        "self.addEventListener('install', function(e){ self.skipWaiting(); });",
+        "self.addEventListener('activate', function(e){ e.waitUntil(self.clients.claim()); });",
+        "self.addEventListener('backgroundfetchsuccess', function(e){",
+        "  e.waitUntil((async function(){",
+        "    try {",
+        "      var bg = e.registration;",
+        "      var recs = await bg.matchAll();",
+        "      var channel = new BroadcastChannel('dgxen-bgfetch');",
+        "      channel.postMessage({ type: 'success', id: bg.id, count: recs.length });",
+        "      channel.close();",
+        "      try { await bg.unregister(); } catch (x) {}",
+        "    } catch (err) {}",
+        "  })());",
+        "});",
+        "self.addEventListener('backgroundfetchfail', function(e){",
+        "  e.waitUntil((async function(){",
+        "    try {",
+        "      var bg = e.registration;",
+        "      var channel = new BroadcastChannel('dgxen-bgfetch');",
+        "      channel.postMessage({ type: 'fail', id: bg.id });",
+        "      channel.close();",
+        "      try { await bg.unregister(); } catch (x) {}",
+        "    } catch (err) {}",
+        "  })());",
+        "});",
+        "self.addEventListener('backgroundfetchabort', function(e){",
+        "  try { var c = new BroadcastChannel('dgxen-bgfetch'); c.postMessage({ type: 'abort', id: e.registration && e.registration.id }); c.close(); } catch (x) {}",
+        "});"
+      ].join('\\n');
+      var blob = new Blob([swCode], { type: 'application/javascript' });
+      var swUrl = URL.createObjectURL(blob);
+      try {
+        window.__cloudSwReg = await navigator.serviceWorker.register(swUrl, { scope: './' });
+        await navigator.serviceWorker.ready;
+      } catch (eReg) {
+        // Blob SW may fail scope on file:// or strict hosts — ignore
+        window.__cloudSwReg = null;
+      }
+      return window.__cloudSwReg;
+    } catch (e) { return null; }
+  }
+
+  // Background Fetch for DOWNLOADS (API is download-oriented; uploads use wake-lock + no-abort)
+  window.downloadWithBackgroundFetch = async function(url, fileName) {
+    try {
+      if (!('serviceWorker' in navigator) || !('BackgroundFetchManager' in window)) {
+        return false; // not supported — caller falls back
+      }
+      var reg = await ensureCloudServiceWorker();
+      if (!reg || !reg.backgroundFetch) return false;
+      var id = 'dl-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+      await reg.backgroundFetch.fetch(id, [url], {
+        title: 'Downloading ' + (fileName || 'file'),
+        downloadTotal: 0,
+        icons: []
+      });
+      if (window.updateCloudUploadNotification) {
+        window.updateCloudUploadNotification('Downloading…', fileName || '');
+      }
+      return true;
+    } catch (e) {
+      console.warn('Background Fetch failed', e);
+      return false;
+    }
+  };
+
+  // Start SW early (non-blocking)
+  try { ensureCloudServiceWorker(); } catch (eSW) {}
+
+
   window.uploadCloudFiles = 
     async function(
       fileList
@@ -17534,6 +17660,8 @@ async function listAllFiles(forcedProvider) {
       window.__cloudUploading = true;
       window.__cloudActiveProvider = provider;
       try { ensureCloudNotifPermission(); } catch (eP) {}
+      try { ensureCloudWakeLock(); } catch (eW) {}
+      try { ensureCloudServiceWorker(); } catch (eS) {}
       if (typeof setCloudProviderProgress === 'function') {
         setCloudProviderProgress(provider, true, tag + ': starting…', 0);
       } else if (typeof setCloudBgUpload === 'function') {
@@ -17639,6 +17767,7 @@ async function listAllFiles(forcedProvider) {
           );
         }
       } catch (eDone) {}
+      try { releaseCloudWakeLock(); } catch (eWL) {}
       if (typeof setCloudProviderProgress === 'function') {
         if (completed > 0) setCloudProviderProgress(provider, true, tag + ': ' + completed + '/' + files.length + ' done', 100);
         setTimeout(function() {
