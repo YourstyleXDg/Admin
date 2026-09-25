@@ -663,12 +663,26 @@
         }
         .tab-section {
             display: none;
-            animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateX(0);
         }
         .tab-section.active {
             display: block;
+            animation: tabShiftInRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        .tab-section.active.dir-left {
+            animation: tabShiftInLeft 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        .tab-section.active.dir-right {
+            animation: tabShiftInRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        @keyframes tabShiftInRight {
+            from { opacity: 0; transform: translateX(32px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes tabShiftInLeft {
+            from { opacity: 0; transform: translateX(-32px); }
+            to { opacity: 1; transform: translateX(0); }
         }
         @keyframes slideUpFade {
             to {
@@ -9000,21 +9014,38 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 } else if (fileId === 'hook_smali') {
                     content =
                         '# ============================================================\n' +
-                        '# DGXEN UNIVERSAL HOOK + ACTION-LOCK\n' +
+                        '# DGXEN UNIVERSAL AUTH & ACTION-LOCK INTEGRATION GUIDE\n' +
                         '# ============================================================\n' +
-                        '# STEP A — onCreate (launcher Activity), RIGHT AFTER invoke-super:\n' +
+                        '# ARCHITECTURE\n' +
+                        '# 1) Dialog Trigger: launcher onCreate -> background check + dialog\n' +
+                        '# 2) Action Lock: core feature (Start / Apply / VPN / Service) blocked\n' +
+                        '#    until Auth.unlocked is true\n' +
+                        '# 3) False-positive free: do NOT block onCreate with unlocked checks\n' +
                         '#\n' +
+                        '# FILES: paste Auth.smali + dgauthupdate.smali into the APK dex.\n' +
+                        '# MANIFEST: <uses-permission android:name="android.permission.INTERNET" />\n' +
+                        '#\n' +
+                        '# ============================================================\n' +
+                        '# STEP A — launcher Activity onCreate, RIGHT AFTER invoke-super\n' +
+                        '# (no unlocked check / return-void in onCreate)\n' +
+                        '# ============================================================\n' +
+                        '\n' +
                         '    invoke-static {p0}, Ldg/auth/dgauthupdate;->start(Landroid/content/Context;)V\n' +
                         '\n' +
                         '    invoke-static {p0}, Lcom/dgxen/Auth;->show(Landroid/app/Activity;)V\n' +
-                        '#\n' +
-                        '# STEP B — CORE ACTION method (startVpn / onClick / apply…)\n' +
-                        '# Put this at the VERY TOP of that method. Set .registers high enough.\n' +
-                        '#\n' +
+                        '\n' +
+                        '# ============================================================\n' +
+                        '# STEP B — CORE ACTION method (first lines)\n' +
+                        '# Examples: checkVpn / startVpn / applyChanges / onStartClick /\n' +
+                        '#           startFloatingService / startDownload / onClick\n' +
+                        '# Set method header .registers 6 (or higher if needed).\n' +
+                        '# ============================================================\n' +
+                        '\n' +
                         '    # --- DGXEN ACTION LOCK (UNIVERSAL) ---\n' +
                         '    sget-boolean v0, Lcom/dgxen/Auth;->unlocked:Z\n' +
                         '    if-nez v0, :cond_dgxen_action_allowed\n' +
                         '\n' +
+                        '    # Untouchable Black Screen Overlay\n' +
                         '    new-instance v0, Landroid/widget/TextView;\n' +
                         '    invoke-direct {v0, p0}, Landroid/widget/TextView;-><init>(Landroid/content/Context;)V\n' +
                         '\n' +
@@ -9053,10 +9084,11 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                         '    check-cast v2, Landroid/view/ViewGroup;\n' +
                         '    invoke-virtual {v2, v0, v1}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V\n' +
                         '\n' +
+                        '    # Operation cancel/kill\n' +
                         '    return-void\n' +
                         '\n' +
                         '    :cond_dgxen_action_allowed\n' +
-                        '    # --- original method code continues below ---\n';
+                        '    # --- APP KA ORIGINAL ACTION CODE YAHAN SE RUN HOGA ---\n';
                     finalName = 'Hook.smali';
                 } else if (fileId === 'gen_index') {
                     const urls = [
@@ -9533,10 +9565,25 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         } catch (e) {}
 
         window.switchTab = function(tabId, el) {
-            document.querySelectorAll('.nav-link').forEach(nav => nav.classList.remove('active'));
-            el.classList.add('active');
-            document.querySelectorAll('.tab-section').forEach(sec => sec.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
+            const next = document.getElementById(tabId);
+            if (!next) return;
+            const prev = document.querySelector('.tab-section.active');
+            const navLinks = Array.from(document.querySelectorAll('.nav-link'));
+            const prevNav = document.querySelector('.nav-link.active');
+            let dir = 'dir-right';
+            try {
+                const prevIdx = prevNav ? navLinks.indexOf(prevNav) : -1;
+                const nextIdx = el ? navLinks.indexOf(el) : -1;
+                if (prevIdx >= 0 && nextIdx >= 0 && nextIdx < prevIdx) dir = 'dir-left';
+            } catch (e) {}
+            navLinks.forEach(nav => nav.classList.remove('active'));
+            if (el) el.classList.add('active');
+            document.querySelectorAll('.tab-section').forEach(sec => {
+                sec.classList.remove('active', 'dir-left', 'dir-right');
+            });
+            /* restart shift animation (OneDrive-style horizontal slide) */
+            void next.offsetWidth;
+            next.classList.add('active', dir);
             // Live preview + festival blocks always come back minimized whenever this tab
             // is (re)opened, even if they were left expanded earlier in the same session.
             if (tabId === 'atmosphere') {
@@ -10544,6 +10591,43 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             }
         }
 
+        /* Robust "how many times user generated a key" — covers every field
+           shape used across login / get-key / trial / legacy records. */
+        function resolveKeyGenCount(user) {
+            if (!user || typeof user !== 'object') return 0;
+            const nums = [];
+            const pushN = function(v) {
+                const n = Number(v);
+                if (Number.isFinite(n) && n >= 0) nums.push(Math.floor(n));
+            };
+            pushN(user.keyGenCount);
+            pushN(user.keysGenerated);
+            pushN(user.keyGenerateCount);
+            pushN(user.generateCount);
+            pushN(user.totalKeysGenerated);
+            pushN(user.key_count);
+            pushN(user.keys_count);
+            if (Array.isArray(user.keyHistory)) nums.push(user.keyHistory.length);
+            if (Array.isArray(user.generatedKeys)) nums.push(user.generatedKeys.length);
+            if (Array.isArray(user.keys)) nums.push(user.keys.length);
+            if (user.keyHistory && typeof user.keyHistory === 'object' && !Array.isArray(user.keyHistory)) {
+                nums.push(Object.keys(user.keyHistory).length);
+            }
+            if (user.generatedKeys && typeof user.generatedKeys === 'object' && !Array.isArray(user.generatedKeys)) {
+                nums.push(Object.keys(user.generatedKeys).length);
+            }
+            if (user.keys && typeof user.keys === 'object' && !Array.isArray(user.keys)) {
+                nums.push(Object.keys(user.keys).length);
+            }
+            if (user.keyGenLog && typeof user.keyGenLog === 'object') {
+                nums.push(Object.keys(user.keyGenLog).length);
+            }
+            let n = nums.length ? Math.max.apply(null, nums) : 0;
+            if (user.lastGeneratedKey && String(user.lastGeneratedKey).trim()) n = Math.max(n, 1);
+            if (user.trial && user.lastGeneratedKey) n = Math.max(n, 1);
+            return n;
+        }
+
         function renderUsersUI(snapshot) {
             const activeListDiv = document.getElementById('activeUserList');
             const bannedListDiv = document.getElementById('bannedUserList');
@@ -10611,6 +10695,19 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 });
                 const merged = Object.assign({}, ...sorted.slice().reverse());
                 merged.id = sorted[0].id;
+                /* key-gen count across duplicate records: max of each, or sum
+                   when distinct lastGeneratedKey values exist (true multi-gen). */
+                try {
+                    const counts = sorted.map(resolveKeyGenCount);
+                    let total = Math.max.apply(null, counts.concat([0]));
+                    const distinctKeys = new Set(
+                        sorted.map(u => String(u.lastGeneratedKey || '').trim()).filter(Boolean)
+                    );
+                    if (distinctKeys.size > 1) {
+                        total = Math.max(total, counts.reduce(function(s, c){ return s + c; }, 0));
+                    }
+                    merged.keyGenCount = total;
+                } catch (e) {}
                 return merged;
             });
             // Fire-and-forget: actually collapse any real duplicate groups
@@ -10676,7 +10773,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                         <div class="user-id copyable" style="cursor:pointer;" title="Click to copy ID" data-copy="${user.id}">ID: ${user.id}</div>
                         ${nativeId ? `<div class="copyable" style="font-size:10px;color:var(--text-dim);margin:0 0 8px;font-family:monospace;cursor:pointer;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Click to copy native id" data-copy="${String(nativeId).replace(/"/g,'&quot;')}">Dev: ${nativeId}</div>` : ''}
                         <div class="copyable" style="font-size:11px;font-weight:800;color:var(--accent);margin:0 0 6px;padding:6px 10px;border-radius:8px;background:rgba(0,255,136,0.1);cursor:pointer;" title="${vCode != null ? 'Click to copy version code' : 'This device has not reported a version code yet'}" data-copy="${vCode != null ? vCode : ''}">${vCode != null ? ('code ' + vCode) : 'no version code'}</div>
-                        <div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:0 0 12px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.04);">Key generated: <span style="color:var(--text-main);font-weight:800;">${(user.keyGenCount != null ? user.keyGenCount : (user.keysGenerated != null ? user.keysGenerated : (user.lastGeneratedKey ? 1 : 0)))}</span> time(s)</div>
+                        <div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:0 0 12px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.04);">Key generated: <span style="color:var(--text-main);font-weight:800;">${resolveKeyGenCount(user)}</span> time(s)</div>
                         <button type="button" class="btn-full bg-warn" data-action="ban-device" data-user-id="${user.id}" onclick="openBanModal('${user.id}')">BAN DEVICE</button>
                     </div>`;
                 }
