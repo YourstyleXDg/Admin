@@ -663,24 +663,20 @@
         }
         .tab-section {
             display: none;
+            animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(20px);
         }
         .tab-section.active {
             display: block;
         }
-        /* Horizontal shift only when entering via switchTab (class tab-enter-*) */
-        .tab-section.active.tab-enter-right {
-            animation: tabShiftInRight 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
-        }
-        .tab-section.active.tab-enter-left {
-            animation: tabShiftInLeft 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
-        }
         @keyframes tabShiftInRight {
-            0% { opacity: 0; transform: translateX(40px); }
-            100% { opacity: 1; transform: translateX(0); }
+            from { opacity: 0; transform: translateX(32px); }
+            to { opacity: 1; transform: translateX(0); }
         }
         @keyframes tabShiftInLeft {
-            0% { opacity: 0; transform: translateX(-40px); }
-            100% { opacity: 1; transform: translateX(0); }
+            from { opacity: 0; transform: translateX(-32px); }
+            to { opacity: 1; transform: translateX(0); }
         }
         @keyframes slideUpFade {
             to {
@@ -9081,8 +9077,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 }
 
                 if (content) {
-                    const blob = new Blob([content], { type: finalName.endsWith('.smali') ? 'text/plain;charset=utf-8' :
-                            'text/html;charset=utf-8' });
+                    const lower = (finalName || '').toLowerCase();
+                    let mime = 'text/plain;charset=utf-8';
+                    if (lower.endsWith('.html') || lower.endsWith('.htm')) mime = 'text/html;charset=utf-8';
+                    else if (lower.endsWith('.json')) mime = 'application/json;charset=utf-8';
+                    else if (lower.endsWith('.smali') || lower.endsWith('.txt')) mime = 'text/plain;charset=utf-8';
+                    const blob = new Blob([content], { type: mime });
                     triggerDownload(blob, finalName, btnElement, originalText);
                 }
 
@@ -9487,34 +9487,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         } catch (e) {}
 
         window.switchTab = function(tabId, el) {
-            const next = document.getElementById(tabId);
-            if (!next) return;
-            const navLinks = Array.from(document.querySelectorAll('.sidebar .nav-link, .nav-link'));
-            // de-dupe while preserving order
-            const seen = new Set();
-            const links = [];
-            navLinks.forEach(function(n) {
-                if (!seen.has(n.id || n)) { seen.add(n.id || n); links.push(n); }
-            });
-            const prevNav = document.querySelector('.nav-link.active');
-            let enterClass = 'tab-enter-right';
-            try {
-                const prevIdx = prevNav ? links.indexOf(prevNav) : -1;
-                const nextIdx = el ? links.indexOf(el) : -1;
-                if (prevIdx >= 0 && nextIdx >= 0 && nextIdx < prevIdx) enterClass = 'tab-enter-left';
-            } catch (e) {}
-            document.querySelectorAll('.nav-link').forEach(function(nav) { nav.classList.remove('active'); });
-            if (el) el.classList.add('active');
-            document.querySelectorAll('.tab-section').forEach(function(sec) {
-                sec.classList.remove('active', 'tab-enter-left', 'tab-enter-right', 'dir-left', 'dir-right');
-                try { sec.style.animation = ''; } catch (e) {}
-            });
-            // Force reflow so the enter animation always restarts
-            next.classList.add('active');
-            try { next.style.animation = 'none'; } catch (e) {}
-            void next.offsetWidth;
-            try { next.style.animation = ''; } catch (e) {}
-            next.classList.add(enterClass);
+            document.querySelectorAll('.nav-link').forEach(nav => nav.classList.remove('active'));
+            el.classList.add('active');
+            document.querySelectorAll('.tab-section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            // Live preview + festival blocks always come back minimized whenever this tab
+            // is (re)opened, even if they were left expanded earlier in the same session.
             if (tabId === 'atmosphere') {
                 ['atmPrevHd', 'atmFestHd'].forEach(function(hdId) {
                     const hd = document.getElementById(hdId);
