@@ -6612,6 +6612,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
   function closePreview(key, opts) {
     opts = opts || {};
     var p = openPreviews[key]; if (!p) return;
+    try { if (p._progHandler) window.removeEventListener('dgxen-preview-progress', p._progHandler); } catch (ePh) {}
     try { if (p.abort) p.abort.abort(); } catch (e0) {}
     try { if (p.xhr) p.xhr.abort(); } catch (e1) {}
 
@@ -6962,26 +6963,44 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     if (openPreviews[key] && !opts.forceFs) { closePreview(key); row.querySelector('.name') && row.querySelector('.name').setAttribute('aria-expanded', 'false'); return; }
     if (openPreviews[key]) closePreview(key);
     var drawer = doc.createElement('div'); drawer.className = 'cloud-preview-drawer cp-drawer'; drawer.setAttribute('data-preview-for', key);
-    drawer.innerHTML = '<div class="cp-load" id="cpLoadMsg">Loading preview…</div>'; row.after(drawer);
+    var loadId = 'cpLoad_' + String(key).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 48) + '_' + Date.now();
+    drawer.innerHTML = '<div class="cp-load" data-cp-load="' + loadId + '">Loading preview…</div>'; row.after(drawer);
     var ac = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     openPreviews[key] = { drawer: drawer, urls: [], abort: ac }; row.querySelector('.name') && row.querySelector('.name').setAttribute('aria-expanded', 'true');
-    // Live download progress (Infini stream) so large media doesn't look stuck
+    // Per-file progress only — never let another download move this drawer %s
+    var lastPct = -1;
+    function samePreviewRel(a, b) {
+      a = String(a || '').replace(/^\/+|\/+$/g, '').toLowerCase();
+      b = String(b || '').replace(/^\/+|\/+$/g, '').toLowerCase();
+      if (!a || !b) return false;
+      if (a === b) return true;
+      if (a.length > b.length ? a.slice(-b.length - 1) === '/' + b : b.slice(-a.length - 1) === '/' + a) return true;
+      var ba = a.split('/').pop(), bb = b.split('/').pop();
+      return !!(ba && bb && ba === bb);
+    }
     var onDlProg = function(ev) {
       try {
         if (!ev.detail || ev.detail.phase !== 'download') return;
-        var msg = drawer.querySelector('#cpLoadMsg, .cp-load');
-        if (!msg || !openPreviews[key]) return;
+        if (!openPreviews[key]) return;
+        // Match this drawer only
+        if (!samePreviewRel(ev.detail.rel, key) && !samePreviewRel(ev.detail.fileName, key) && !samePreviewRel(ev.detail.fileName, info.name)) return;
+        var msg = drawer.querySelector('[data-cp-load="' + loadId + '"]') || drawer.querySelector('.cp-load');
+        if (!msg) return;
         var tot = Number(ev.detail.total) || 0, ld = Number(ev.detail.loaded) || 0;
         if (tot > 0) {
           var pct = Math.min(99, Math.floor((ld / tot) * 100));
+          if (pct === lastPct) return; // throttle rapid dual-fire
+          lastPct = pct;
           msg.textContent = 'Loading preview… ' + pct + '%';
         }
       } catch (e) {}
     };
     try { window.addEventListener('dgxen-preview-progress', onDlProg); } catch (e) {}
+    if (openPreviews[key]) openPreviews[key]._progHandler = onDlProg;
     try {
       var ext = extOf(info.name), u = await urlFor(info, ac && ac.signal);
       try { window.removeEventListener('dgxen-preview-progress', onDlProg); } catch (e) {}
+      if (openPreviews[key]) openPreviews[key]._progHandler = null;
       if (!openPreviews[key]) { if (u.blob) URL.revokeObjectURL(u.url); return; }
       if (u.blob) openPreviews[key].urls.push(u.url);
       var closeBtn = '<button type="button" class="cp-x" aria-label="Close preview">✕</button>', pid = 'cpP_' + Date.now() + '_' + Math.floor(Math.random() * 1e5);
@@ -7246,6 +7265,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       }
       var x = drawer.querySelector('.cp-x'); if (x) x.onclick = function (e) { e.stopPropagation(); closePreview(key); var nm = row.querySelector('.name'); if (nm) nm.setAttribute('aria-expanded', 'false'); };
     } catch (e) {
+      try { window.removeEventListener('dgxen-preview-progress', onDlProg); } catch (eR) {}
+      if (openPreviews[key]) openPreviews[key]._progHandler = null;
       if (e && (e.name === 'AbortError' || String(e.message||'') === 'cancelled')) {
         closePreview(key); return;
       }
@@ -14868,7 +14889,7 @@ async function listInfiniFiles() {
         received += value.byteLength || value.length || 0;
         try {
           window.dispatchEvent(new CustomEvent('dgxen-preview-progress', {
-            detail: { rel: rel, loaded: received, total: declaredLen, phase: 'download' }
+            detail: { rel: rel, fileName: raw, loaded: received, total: declaredLen, phase: 'download' }
           }));
         } catch (e) {}
       }
