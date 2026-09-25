@@ -663,26 +663,24 @@
         }
         .tab-section {
             display: none;
-            opacity: 0;
-            transform: translateX(0);
         }
         .tab-section.active {
             display: block;
-            animation: tabShiftInRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
-        .tab-section.active.dir-left {
-            animation: tabShiftInLeft 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+        /* Horizontal shift only when entering via switchTab (class tab-enter-*) */
+        .tab-section.active.tab-enter-right {
+            animation: tabShiftInRight 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
-        .tab-section.active.dir-right {
-            animation: tabShiftInRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+        .tab-section.active.tab-enter-left {
+            animation: tabShiftInLeft 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
         @keyframes tabShiftInRight {
-            from { opacity: 0; transform: translateX(32px); }
-            to { opacity: 1; transform: translateX(0); }
+            0% { opacity: 0; transform: translateX(40px); }
+            100% { opacity: 1; transform: translateX(0); }
         }
         @keyframes tabShiftInLeft {
-            from { opacity: 0; transform: translateX(-32px); }
-            to { opacity: 1; transform: translateX(0); }
+            0% { opacity: 0; transform: translateX(-40px); }
+            100% { opacity: 1; transform: translateX(0); }
         }
         @keyframes slideUpFade {
             to {
@@ -5606,7 +5604,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                             <button class="btn dl-btn-small" onclick="downloadSpecificFile('auth_offline', this)">DL</button>
                         </div>
                         <div class="dl-file-row">
-                            <span class="dl-file-name">Hook.smali (Invoke Trigger)</span>
+                            <span class="dl-file-name">hook.txt (Integration Guide)</span>
                             <button class="btn dl-btn-small" onclick="downloadSpecificFile('hook_smali', this)">DL</button>
                         </div>
                     </div>
@@ -9012,84 +9010,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     }
                     content = smali;
                 } else if (fileId === 'hook_smali') {
-                    content =
-                        '# ============================================================\n' +
-                        '# DGXEN UNIVERSAL AUTH & ACTION-LOCK INTEGRATION GUIDE\n' +
-                        '# ============================================================\n' +
-                        '# ARCHITECTURE\n' +
-                        '# 1) Dialog Trigger: launcher onCreate -> background check + dialog\n' +
-                        '# 2) Action Lock: core feature (Start / Apply / VPN / Service) blocked\n' +
-                        '#    until Auth.unlocked is true\n' +
-                        '# 3) False-positive free: do NOT block onCreate with unlocked checks\n' +
-                        '#\n' +
-                        '# FILES: paste Auth.smali + dgauthupdate.smali into the APK dex.\n' +
-                        '# MANIFEST: <uses-permission android:name="android.permission.INTERNET" />\n' +
-                        '#\n' +
-                        '# ============================================================\n' +
-                        '# STEP A — launcher Activity onCreate, RIGHT AFTER invoke-super\n' +
-                        '# (no unlocked check / return-void in onCreate)\n' +
-                        '# ============================================================\n' +
-                        '\n' +
-                        '    invoke-static {p0}, Ldg/auth/dgauthupdate;->start(Landroid/content/Context;)V\n' +
-                        '\n' +
-                        '    invoke-static {p0}, Lcom/dgxen/Auth;->show(Landroid/app/Activity;)V\n' +
-                        '\n' +
-                        '# ============================================================\n' +
-                        '# STEP B — CORE ACTION method (first lines)\n' +
-                        '# Examples: checkVpn / startVpn / applyChanges / onStartClick /\n' +
-                        '#           startFloatingService / startDownload / onClick\n' +
-                        '# Set method header .registers 6 (or higher if needed).\n' +
-                        '# ============================================================\n' +
-                        '\n' +
-                        '    # --- DGXEN ACTION LOCK (UNIVERSAL) ---\n' +
-                        '    sget-boolean v0, Lcom/dgxen/Auth;->unlocked:Z\n' +
-                        '    if-nez v0, :cond_dgxen_action_allowed\n' +
-                        '\n' +
-                        '    # Untouchable Black Screen Overlay\n' +
-                        '    new-instance v0, Landroid/widget/TextView;\n' +
-                        '    invoke-direct {v0, p0}, Landroid/widget/TextView;-><init>(Landroid/content/Context;)V\n' +
-                        '\n' +
-                        '    const-string v1, "Security Lock Active\\n\\nSession Invalid or Bypassed.\\nPlease CLEAR APP DATA and Restart the App."\n' +
-                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V\n' +
-                        '\n' +
-                        '    const-string v1, "#000000"\n' +
-                        '    invoke-static {v1}, Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I\n' +
-                        '    move-result v1\n' +
-                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setBackgroundColor(I)V\n' +
-                        '\n' +
-                        '    const-string v1, "#CF6679"\n' +
-                        '    invoke-static {v1}, Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I\n' +
-                        '    move-result v1\n' +
-                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setTextColor(I)V\n' +
-                        '\n' +
-                        '    const/16 v1, 0x11\n' +
-                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setGravity(I)V\n' +
-                        '\n' +
-                        '    const/high16 v1, 0x41800000    # 16.0f\n' +
-                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setTextSize(F)V\n' +
-                        '\n' +
-                        '    const/4 v1, 0x1\n' +
-                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setClickable(Z)V\n' +
-                        '\n' +
-                        '    const/high16 v1, 0x42c80000    # 100.0f\n' +
-                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setElevation(F)V\n' +
-                        '\n' +
-                        '    new-instance v1, Landroid/view/ViewGroup$LayoutParams;\n' +
-                        '    const/4 v2, -0x1\n' +
-                        '    invoke-direct {v1, v2, v2}, Landroid/view/ViewGroup$LayoutParams;-><init>(II)V\n' +
-                        '\n' +
-                        '    const v2, 0x1020002\n' +
-                        '    invoke-virtual {p0, v2}, Landroid/app/Activity;->findViewById(I)Landroid/view/View;\n' +
-                        '    move-result-object v2\n' +
-                        '    check-cast v2, Landroid/view/ViewGroup;\n' +
-                        '    invoke-virtual {v2, v0, v1}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V\n' +
-                        '\n' +
-                        '    # Operation cancel/kill\n' +
-                        '    return-void\n' +
-                        '\n' +
-                        '    :cond_dgxen_action_allowed\n' +
-                        '    # --- APP KA ORIGINAL ACTION CODE YAHAN SE RUN HOGA ---\n';
-                    finalName = 'Hook.smali';
+                    content = "================================================================================\n           DGXEN UNIVERSAL AUTH & ACTION-LOCK INTEGRATION GUIDE\n================================================================================\n\n[ ARCHITECTURE OVERVIEW ]\nYeh guide kisi bhi general Android app mein DGXEN Login system integrate karne \nke liye hai:\n1. Dialog Trigger: Main activity start hote hi background me check & dialog open.\n2. Action Lock: App ka main primary feature (Start Button, Apply Button, Switch,\n   ya Service Start) tab tak trigger nahi hoga jab tak Auth verify na ho.\n3. False-Positive Free: onCreate par execution block nahi hoti, isliye genuine\n   users ko key verify karne ka pura time milta hai bina black screen glitch ke.\n\n--------------------------------------------------------------------------------\nSTEP 1: FILES COPY & MANIFEST SETUP\n--------------------------------------------------------------------------------\n1. Apne smali packages target APK ke dex me paste karein:\n   - `com/dgxen/Auth.smali`\n   - `dg/auth/dgauthupdate.smali`\n2. `AndroidManifest.xml` check karein, agar missing ho toh yeh permission add karein:\n   <uses-permission android:name=\"android.permission.INTERNET\" />\n\n--------------------------------------------------------------------------------\nSTEP 2: LAUNCHER ACTIVITY ENTRY HOOK (onCreate)\n--------------------------------------------------------------------------------\nTarget app ki main/launcher activity ka `onCreate` method open karein.\n`invoke-super {p0, ...}, ...->onCreate(...)` ke theek baad yeh trigger add karein:\n\n    # --- DGXEN DIALOG & UPDATE TRIGGER ---\n    invoke-static {p0}, Ldg/auth/dgauthupdate;->start(Landroid/content/Context;)V\n\n    invoke-static {p0}, Lcom/dgxen/Auth;->show(Landroid/app/Activity;)V\n\n*Note: onCreate me koi 'unlocked' check ya return-void mat lagana.*\n\n--------------------------------------------------------------------------------\nSTEP 3: CORE FEATURE IDENTIFY KARNA (Action Method)\n--------------------------------------------------------------------------------\nHar app ka ek \"Core Action Method\" hota hai jahan se main kam start hota hai.\nPehchano app kis category ki hai:\n\n- VPN App           -> checkVpn(), startVpn(), ya startEngine()\n- Injector / Tool   -> applyChanges(), injectFeature(), ya onStartClick()\n- Mod Menu / Float  -> startFloatingService(), showOverlay()\n- Media / Downloader-> startDownload(), playMedia(), processLink()\n- Generic Buttons   -> onClick(Landroid/view/View;)V (Start/Execute ID wala button)\n\n--------------------------------------------------------------------------------\nSTEP 4: UNIVERSAL ACTION LOCK INJECTION\n--------------------------------------------------------------------------------\nUpar chune gaye action method ke bilkul shuru me (first line par):\n1. Method header me `.registers 6` set karein.\n2. Niche diya gaya Universal Lock paste karein:\n\n    # --- DGXEN ACTION LOCK (UNIVERSAL) ---\n    sget-boolean v0, Lcom/dgxen/Auth;->unlocked:Z\n    if-nez v0, :cond_dgxen_action_allowed\n\n    # Untouchable Black Screen Overlay\n    new-instance v0, Landroid/widget/TextView;\n    invoke-direct {v0, p0}, Landroid/widget/TextView;-><init>(Landroid/content/Context;)V\n\n    const-string v1, \"Security Lock Active\\n\\nSession Invalid or Bypassed.\\nPlease CLEAR APP DATA and Restart the App.\"\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V\n\n    const-string v1, \"#000000\"\n    invoke-static {v1}, Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I\n    move-result v1\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setBackgroundColor(I)V\n\n    const-string v1, \"#CF6679\"\n    invoke-static {v1}, Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I\n    move-result v1\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setTextColor(I)V\n\n    const/16 v1, 0x11\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setGravity(I)V\n\n    const/high16 v1, 0x41800000    # 16.0f\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setTextSize(F)V\n\n    const/4 v1, 0x1\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setClickable(Z)V\n\n    const/high16 v1, 0x42c80000    # 100.0f\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setElevation(F)V\n\n    new-instance v1, Landroid/view/ViewGroup$LayoutParams;\n    const/4 v2, -0x1\n    invoke-direct {v1, v2, v2}, Landroid/view/ViewGroup$LayoutParams;-><init>(II)V\n\n    const v2, 0x1020002\n    invoke-virtual {p0, v2}, Landroid/app/Activity;->findViewById(I)Landroid/view/View;\n    move-result-object v2\n    check-cast v2, Landroid/view/ViewGroup;\n    invoke-virtual {v2, v0, v1}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V\n\n    # Operation cancel/kill\n    return-void\n\n    :cond_dgxen_action_allowed\n    # --- APP KA ORIGINAL ACTION CODE YAHAN SE RUN HOGA ---\n\n--------------------------------------------------------------------------------\nSECURITY SUMMARY:\n- Normal User Flow: App khulti hai -> Dialog me key verify hoti hai -> \n  unlocked variable true hota hai -> Button dabane par main feature smoothly chalta hai.\n- Bypasser / Crash Glitch Flow: Direct entry mil bhi gayi toh unlocked variable false \n  milega -> Jaise hi user kisi button/feature ko start karega, app black untouchable \n  parde ke sath lock ho jayegi.\n================================================================================\n";
+                    finalName = 'hook.txt';
                 } else if (fileId === 'gen_index') {
                     const urls = [
                         'https://yourstylexdg.github.io/DGXEN-KEY/index.html',
@@ -9567,25 +9489,32 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         window.switchTab = function(tabId, el) {
             const next = document.getElementById(tabId);
             if (!next) return;
-            const prev = document.querySelector('.tab-section.active');
-            const navLinks = Array.from(document.querySelectorAll('.nav-link'));
-            const prevNav = document.querySelector('.nav-link.active');
-            let dir = 'dir-right';
-            try {
-                const prevIdx = prevNav ? navLinks.indexOf(prevNav) : -1;
-                const nextIdx = el ? navLinks.indexOf(el) : -1;
-                if (prevIdx >= 0 && nextIdx >= 0 && nextIdx < prevIdx) dir = 'dir-left';
-            } catch (e) {}
-            navLinks.forEach(nav => nav.classList.remove('active'));
-            if (el) el.classList.add('active');
-            document.querySelectorAll('.tab-section').forEach(sec => {
-                sec.classList.remove('active', 'dir-left', 'dir-right');
+            const navLinks = Array.from(document.querySelectorAll('.sidebar .nav-link, .nav-link'));
+            // de-dupe while preserving order
+            const seen = new Set();
+            const links = [];
+            navLinks.forEach(function(n) {
+                if (!seen.has(n.id || n)) { seen.add(n.id || n); links.push(n); }
             });
-            /* restart shift animation (OneDrive-style horizontal slide) */
+            const prevNav = document.querySelector('.nav-link.active');
+            let enterClass = 'tab-enter-right';
+            try {
+                const prevIdx = prevNav ? links.indexOf(prevNav) : -1;
+                const nextIdx = el ? links.indexOf(el) : -1;
+                if (prevIdx >= 0 && nextIdx >= 0 && nextIdx < prevIdx) enterClass = 'tab-enter-left';
+            } catch (e) {}
+            document.querySelectorAll('.nav-link').forEach(function(nav) { nav.classList.remove('active'); });
+            if (el) el.classList.add('active');
+            document.querySelectorAll('.tab-section').forEach(function(sec) {
+                sec.classList.remove('active', 'tab-enter-left', 'tab-enter-right', 'dir-left', 'dir-right');
+                try { sec.style.animation = ''; } catch (e) {}
+            });
+            // Force reflow so the enter animation always restarts
+            next.classList.add('active');
+            try { next.style.animation = 'none'; } catch (e) {}
             void next.offsetWidth;
-            next.classList.add('active', dir);
-            // Live preview + festival blocks always come back minimized whenever this tab
-            // is (re)opened, even if they were left expanded earlier in the same session.
+            try { next.style.animation = ''; } catch (e) {}
+            next.classList.add(enterClass);
             if (tabId === 'atmosphere') {
                 ['atmPrevHd', 'atmFestHd'].forEach(function(hdId) {
                     const hd = document.getElementById(hdId);
