@@ -6764,11 +6764,14 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       throw lastErr || new Error('Infini preview failed for ' + rel);
     }
 
-    // ---- B2: same auth URL as downloadCloudFile, then blob for <video>/<img> reliability ----
+    // ---- B2: media uses authorized direct URL (browser Range / progressive);
+    // images & others still blob for reliability ----
     if (!B.authorizeB2 || !B.b2Fetch || !B.b2) throw new Error('B2 not ready');
     await B.authorizeB2(false);
     var b2c = B.b2();
     if (!b2c || !b2c.downloadUrl || !b2c.bucketName) throw new Error('B2 not configured');
+    var mediaExt = (nameOnly || '').split('.').pop().toLowerCase();
+    var isB2Media = ['mp4','webm','mov','mkv','m4v','mp3','wav','ogg','m4a','aac'].indexOf(mediaExt) >= 0;
 
     async function b2BlobFromUrl(directUrl) {
       var res = await fetch(directUrl, { method: 'GET', signal: signal, mode: 'cors', credentials: 'omit' });
@@ -6789,6 +6792,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       try {
         var byId = b2c.downloadUrl.replace(/\/$/, '') + '/b2api/v2/b2_download_file_by_id?fileId=' +
           encodeURIComponent(fid) + '&Authorization=' + encodeURIComponent(b2c.authToken);
+        // Video/audio: stream via authorized URL (browser handles Range) — no full download wait
+        if (isB2Media) return { url: byId, blob: false };
         return await b2BlobFromUrl(byId);
       } catch (eId) {
         // fall through to by-name
@@ -6811,6 +6816,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     var direct = b2c.downloadUrl.replace(/\/$/, '') + '/file/' + encodeURIComponent(b2c.bucketName) + '/' + pathEnc +
       '?Authorization=' + encodeURIComponent(authData.authorizationToken);
     try {
+      if (isB2Media) return { url: direct, blob: false };
       return await b2BlobFromUrl(direct);
     } catch (eName) {
       // 3) last resort: nameOnly under same auth if rel had folders wrong
@@ -6818,6 +6824,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         var path2 = encodeURIComponent(nameOnly);
         var direct2 = b2c.downloadUrl.replace(/\/$/, '') + '/file/' + encodeURIComponent(b2c.bucketName) + '/' + path2 +
           '?Authorization=' + encodeURIComponent(authData.authorizationToken);
+        if (isB2Media) return { url: direct2, blob: false };
         return await b2BlobFromUrl(direct2);
       }
       throw new Error((eName && eName.message) || ('Preview failed for ' + rel));
@@ -7109,8 +7116,45 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         if (opts.forceFs) setTimeout(enterImgFs, 30);
       } else if (AUDIO_EXT.indexOf(ext) >= 0) {
         drawer.innerHTML = closeBtn + playerHtml('audio', pid, u.url);
+        (function(relKey, mediaId){
+          function onProg(ev){
+            try {
+              if (!ev.detail || ev.detail.rel !== relKey || !ev.detail.url) return;
+              var m = doc.getElementById(mediaId);
+              if (!m) return;
+              var t = m.currentTime || 0, wasPlaying = !m.paused;
+              m.src = ev.detail.url;
+              m.addEventListener('loadedmetadata', function once(){
+                m.removeEventListener('loadedmetadata', once);
+                try { m.currentTime = t; } catch (e) {}
+                if (wasPlaying) m.play().catch(function(){});
+              });
+            } catch (e) {}
+          }
+          window.addEventListener('dgxen-preview-progress', onProg);
+          if (openPreviews[relKey]) openPreviews[relKey]._progHandler = onProg;
+        })(key, pid);
       } else if (VIDEO_EXT.indexOf(ext) >= 0) {
         drawer.innerHTML = closeBtn + playerHtml('video', pid, u.url);
+        // Progressive: when more bytes arrive, swap src and keep currentTime
+        (function(relKey, mediaId){
+          function onProg(ev){
+            try {
+              if (!ev.detail || ev.detail.rel !== relKey || !ev.detail.url) return;
+              var m = doc.getElementById(mediaId);
+              if (!m) return;
+              var t = m.currentTime || 0, wasPlaying = !m.paused;
+              m.src = ev.detail.url;
+              m.addEventListener('loadedmetadata', function once(){
+                m.removeEventListener('loadedmetadata', once);
+                try { m.currentTime = t; } catch (e) {}
+                if (wasPlaying) m.play().catch(function(){});
+              });
+            } catch (e) {}
+          }
+          window.addEventListener('dgxen-preview-progress', onProg);
+          if (openPreviews[relKey]) openPreviews[relKey]._progHandler = onProg;
+        })(key, pid);
       } else if (ext === 'pdf') {
         drawer.innerHTML = closeBtn + '<iframe src="' + u.url + '#toolbar=1&navpanes=0" title="PDF"></iframe>';
       } else if (TXT_EXT.indexOf(ext) >= 0) {
@@ -9987,18 +10031,50 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         // re-rendering the same data (e.g. after an unrelated log delete)
         // never re-fires a notification for something already seen.
         const __seenFastGenIds = new Set();
-        // Records the moment THIS admin session started watching — any
-        // flagged entry timestamped after this moment is "new" and worth
-        // a notification; anything at or before it was already sitting in
-        // the database before this session opened and shouldn't re-alert
-        // every time the panel is simply reopened. This replaces an
-        // earlier "have we rendered at least once yet" flag, which had a
-        // real gap: if a fast-gen entry landed in Firebase in the instant
-        // between the panel opening and its very first render, that
-        // render would be treated as the "baseline" one and the
-        // notification for a genuinely brand-new entry would be silently
-        // skipped.
-        const __fastGenSessionStartedAt = Date.now();
+        // Session baseline: entries older than this (minus small skew) are not notified.
+        // 90s skew covers clock drift + first Firebase snapshot latency so genuine
+        // new events during the first seconds of opening admin still alert.
+        const __fastGenSessionStartedAt = Date.now() - 90000;
+        function __flashFastGenInApp(title, body) {
+            try {
+                var t = document.getElementById('fastGenLiveToast');
+                if (!t) {
+                    t = document.createElement('div');
+                    t.id = 'fastGenLiveToast';
+                    t.style.cssText = 'position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:2147483646;max-width:92vw;padding:14px 18px;border-radius:14px;background:rgba(180,20,30,.94);color:#fff;font:800 13px/1.4 system-ui,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.45);pointer-events:none;opacity:0;transition:opacity .25s;';
+                    document.body.appendChild(t);
+                }
+                t.innerHTML = '<div style="font-size:14px;margin-bottom:4px;">' + String(title || '') + '</div><div style="font-weight:600;opacity:.92;">' + String(body || '') + '</div>';
+                t.style.opacity = '1';
+                clearTimeout(t.__h);
+                t.__h = setTimeout(function(){ t.style.opacity = '0'; }, 6000);
+            } catch (e) {}
+            try {
+                if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+            } catch (e) {}
+        }
+        function __pushFastGenNotification(log) {
+            const nid = (log.generatorId || log.key || '') + '_' + (log.timestamp || Date.now());
+            if (__seenFastGenIds.has(nid)) return;
+            const title = 'DGXEN — Fast key generation';
+            const body = (log.generatorName || 'A user') + ' generated a key within 1 minute of registering.';
+            var shown = false;
+            try {
+                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                    const n = new Notification(title, {
+                        body: body,
+                        tag: nid,
+                        requireInteraction: true
+                    });
+                    shown = true;
+                    try { n.onclick = function(){ try{ window.focus(); }catch(e){} try{ n.close(); }catch(e){} }; } catch (e) {}
+                }
+            } catch (e) {}
+            // Always show in-app toast so admin never misses it even without OS permission
+            __flashFastGenInApp(title, body);
+            __seenFastGenIds.add(nid);
+            return shown;
+        }
         function updateFastGenAlert(fastGenLogs) {
             const banner = document.getElementById('fastGenBanner');
             const detail = document.getElementById('fastGenBannerDetail');
@@ -10014,23 +10090,22 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 }
             }
             try {
-                if (Notification && Notification.permission === 'granted') {
-                    fastGenLogs.forEach(log => {
-                        const nid = (log.generatorId || '') + '_' + (log.timestamp || '');
-                        if (__seenFastGenIds.has(nid)) return;
-                        __seenFastGenIds.add(nid);
-                        if (!log.timestamp || Number(log.timestamp) <= __fastGenSessionStartedAt) return;
-                        new Notification('DGXEN — Fast key generation', {
-                            body: (log.generatorName || 'A user') + ' generated a key within 1 minute of registering.',
-                            tag: nid
-                        });
-                    });
-                }
+                (fastGenLogs || []).forEach(function(log) {
+                    if (!log) return;
+                    const ts = Number(log.timestamp) || 0;
+                    // Notify for anything newer than session baseline (with skew)
+                    if (ts && ts <= __fastGenSessionStartedAt) return;
+                    // Also accept entries with no timestamp if never seen (rare)
+                    __pushFastGenNotification(log);
+                });
             } catch (e) {}
         }
         window.requestFastGenNotifPermission = function() {
             try {
-                Notification.requestPermission().then(refreshNotifPermButton);
+                if (!('Notification' in window)) return;
+                Notification.requestPermission().then(function(p) {
+                    refreshNotifPermButton();
+                });
             } catch (e) {}
         };
         function refreshNotifPermButton() {
@@ -10042,6 +10117,13 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             } catch (e) { btn.style.display = 'none'; }
         }
         refreshNotifPermButton();
+        // Auto-request once per session when still default (user gesture not always available;
+        // still try — browsers that block silently leave in-app toast working).
+        try {
+            if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+                setTimeout(function(){ try { window.requestFastGenNotifPermission(); } catch (e) {} }, 1200);
+            }
+        } catch (e) {}
 
         onValue(ref(db, 'settings/shareLogs'), (snap) => {
             window.__lastShareLogsSnap = snap;
@@ -14771,7 +14853,6 @@ async function listInfiniFiles() {
     // Support paths inside folders — pass AbortSignal so close stops net usage
     const raw = String(fileName || '').replace(/^\/+/, '');
     const candidates = [];
-    // Prefer explicit relative path; also try cwd-join and basename
     if (raw.indexOf('/') >= 0) {
       candidates.push(raw);
       candidates.push(cloudJoinPath(cloudCwd(), raw.split('/').pop()));
@@ -14779,43 +14860,98 @@ async function listInfiniFiles() {
       candidates.push(cloudJoinPath(cloudCwd(), raw));
       candidates.push(raw);
     }
+    const nameGuess = (raw.split('/').pop() || raw).toLowerCase();
+    const isMedia = /\.(mp4|webm|mov|mkv|m4v|mp3|wav|ogg|m4a|aac)$/i.test(nameGuess);
+    const FIRST_CHUNK = 3 * 1024 * 1024; // 3MB — enough for header + early play
+
     let res = null, rel = candidates[0], lastStatus = 0;
     for (let ci = 0; ci < candidates.length; ci++) {
       rel = candidates[ci];
-      res = await infiniFetch(cloudPathUrl(rel), { method: 'GET', signal: signal });
+      // Prefer Range for media so playback can start before full download
+      const headers = isMedia ? { Range: 'bytes=0-' + (FIRST_CHUNK - 1) } : {};
+      try {
+        res = await infiniFetch(cloudPathUrl(rel), { method: 'GET', signal: signal, headers: headers });
+      } catch (eR) { res = null; }
       if (signal && signal.aborted) throw new Error('cancelled');
-      if (res.ok) break;
-      lastStatus = res.status;
+      if (res && (res.ok || res.status === 206)) break;
+      lastStatus = res ? res.status : 0;
+      // If server rejected Range, fall back to full GET
+      if (isMedia && res && res.status === 416) {
+        res = await infiniFetch(cloudPathUrl(rel), { method: 'GET', signal: signal });
+        if (res && res.ok) break;
+      }
       res = null;
     }
-    if (!res || !res.ok) {
+    if (!res || !(res.ok || res.status === 206)) {
       throw new Error((lastStatus === 401 || lastStatus === 403) ? ('Auth failed (401) — check Infini Connection ID + Apps Password + Infini Proxy URL. path=' + rel) : ('Preview fetch failed (' + (lastStatus || 404) + ') path=' + rel));
     }
     const hdrCt = (res.headers.get('content-type') || '').split(';')[0].trim();
-    const declaredLen = Number(res.headers.get('content-length'));
-    const buf = await res.arrayBuffer();
-    if (signal && signal.aborted) throw new Error('cancelled');
-    // A response can report ok:true and a plausible Content-Length yet still hand back
-    // a truncated/empty body — a Worker hitting its own memory/CPU limit on a large file
-    // does exactly this. That used to silently become a 0-byte (or partial) blob that
-    // the <img>/<video>/<audio> element would then fail to decode, always surfacing the
-    // same generic "Preview unavailable" no matter what the real cause was. Catching it
-    // here gives a specific, fixable reason instead.
-    if (buf.byteLength === 0) {
-      throw new Error('Preview failed: server returned an empty file (0 bytes). This usually means the upload proxy/Worker could not deliver this file — try Download instead.');
-    }
-    if (declaredLen > 0 && buf.byteLength !== declaredLen) {
-      throw new Error('Preview failed: got ' + buf.byteLength + ' of ' + declaredLen + ' expected bytes (connection cut short, likely by the proxy). Try Download instead.');
-    }
+    const declaredLen = Number(res.headers.get('content-length')) || 0;
+    const contentRange = res.headers.get('content-range') || '';
+    let totalSize = declaredLen;
+    const crm = /\/(\d+)\s*$/.exec(contentRange);
+    if (crm) totalSize = Number(crm[1]) || totalSize;
+
     const type = (hdrCt && hdrCt !== 'application/octet-stream' && hdrCt !== 'text/plain')
       ? hdrCt
       : guessMimeFromName(fileName);
-    // Blob URL stays in this tab — "open in new tab" cannot use auth/blob safely
-    const blob = new Blob([buf], { type: type });
-    const url = URL.createObjectURL(blob);
-    // Keep a short-lived map so fallback can re-download instead of broken tab
+
+    // Small files or non-media: full body as before
+    if (!isMedia || totalSize <= FIRST_CHUNK || res.status === 200) {
+      const buf = await res.arrayBuffer();
+      if (signal && signal.aborted) throw new Error('cancelled');
+      if (buf.byteLength === 0) {
+        throw new Error('Preview failed: server returned an empty file (0 bytes). Try Download instead.');
+      }
+      const blob = new Blob([buf], { type: type });
+      const url = URL.createObjectURL(blob);
+      window.__cloudBlobUrls = window.__cloudBlobUrls || {};
+      window.__cloudBlobUrls[url] = { name: fileName, type: type };
+      return url;
+    }
+
+    // Progressive: first chunk now, rest in background; caller gets playable URL ASAP
+    const firstBuf = await res.arrayBuffer();
+    if (signal && signal.aborted) throw new Error('cancelled');
+    if (!firstBuf.byteLength) throw new Error('Preview failed: empty first chunk');
+    let parts = [firstBuf];
+    let loaded = firstBuf.byteLength;
+    let blob = new Blob(parts, { type: type });
+    let url = URL.createObjectURL(blob);
     window.__cloudBlobUrls = window.__cloudBlobUrls || {};
-    window.__cloudBlobUrls[url] = { name: fileName, type: type };
+    window.__cloudBlobUrls[url] = { name: fileName, type: type, progressive: true, rel: rel };
+
+    // Background continue — updates map; video can be re-pointed by openPreview if needed
+    (async function continueLoad() {
+      try {
+        while (loaded < totalSize) {
+          if (signal && signal.aborted) return;
+          const start = loaded;
+          const end = Math.min(totalSize - 1, loaded + FIRST_CHUNK - 1);
+          const r2 = await infiniFetch(cloudPathUrl(rel), {
+            method: 'GET', signal: signal,
+            headers: { Range: 'bytes=' + start + '-' + end }
+          });
+          if (!r2 || !(r2.ok || r2.status === 206)) break;
+          const chunk = await r2.arrayBuffer();
+          if (!chunk.byteLength) break;
+          parts.push(chunk);
+          loaded += chunk.byteLength;
+          const nextBlob = new Blob(parts, { type: type });
+          const nextUrl = URL.createObjectURL(nextBlob);
+          try { URL.revokeObjectURL(url); } catch (e) {}
+          url = nextUrl;
+          window.__cloudBlobUrls[url] = { name: fileName, type: type, progressive: true, rel: rel, loaded: loaded, total: totalSize };
+          // Notify any waiting player
+          try {
+            window.dispatchEvent(new CustomEvent('dgxen-preview-progress', {
+              detail: { rel: rel, url: url, loaded: loaded, total: totalSize }
+            }));
+          } catch (e) {}
+        }
+      } catch (eBg) { console.warn('[preview progressive]', eBg); }
+    })();
+
     return url;
   }
 
@@ -15729,15 +15865,33 @@ function explainFetchError(e) {
   window.__cloudComputeTotalUsed = async function() {
     try {
       if (getActiveCloudProvider() === 'infini') {
-        const prev = window.__cloudCwd;
-        window.__cloudCwd = '';
-        let files = [];
-        try { files = await listInfiniFiles(); } catch (e1) { files = []; }
-        window.__cloudCwd = prev;
-        return (files || []).reduce(function(s, f) {
-          if (f && f._isFolder) return s;
-          return s + (Number(f.contentLength || f.size) || 0);
-        }, 0);
+        /* Recursive: Depth-1 PROPFIND at root only counted top-level files and
+           ignored folder contents (e.g. Test/ 4.48GB) — bar showed ~144MB.
+           Walk every folder and sum real file sizes. */
+        async function walkInfini(prefix, depth) {
+          depth = depth || 0;
+          if (depth > 24) return 0;
+          const prev = window.__cloudCwd;
+          window.__cloudCwd = String(prefix || '').replace(/^\/+|\/+$/g, '');
+          let files = [];
+          try { files = await listInfiniFiles(); } catch (e1) { files = []; }
+          window.__cloudCwd = prev;
+          let sum = 0;
+          for (var i = 0; i < (files || []).length; i++) {
+            var f = files[i];
+            if (!f) continue;
+            var rel = String(f._relPath || f.fileName || '').replace(/^\/+/, '');
+            // Skip trash from "used" if trash is tracked separately (still count if not)
+            if (rel === '.trash' || rel.indexOf('.trash/') === 0) continue;
+            if (f._isFolder) {
+              sum += await walkInfini(rel, depth + 1);
+            } else {
+              sum += Number(f.contentLength || f.size) || 0;
+            }
+          }
+          return sum;
+        }
+        return await walkInfini('', 0);
       }
       await authorizeB2();
       let start = null, total = 0;
@@ -15754,6 +15908,7 @@ function explainFetchError(e) {
         (data.files || []).forEach(function(f) {
           const n = String(f.fileName || '');
           if (/\/\.keep$/i.test(n) || /\/\.bzEmpty$/i.test(n) || /\/$/.test(n)) return;
+          if (n === '.trash' || n.indexOf('.trash/') === 0) return;
           total += Number(f.contentLength) || 0;
         });
         start = data.nextFileName || null;
