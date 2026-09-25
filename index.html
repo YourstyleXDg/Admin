@@ -6962,11 +6962,26 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     if (openPreviews[key] && !opts.forceFs) { closePreview(key); row.querySelector('.name') && row.querySelector('.name').setAttribute('aria-expanded', 'false'); return; }
     if (openPreviews[key]) closePreview(key);
     var drawer = doc.createElement('div'); drawer.className = 'cloud-preview-drawer cp-drawer'; drawer.setAttribute('data-preview-for', key);
-    drawer.innerHTML = '<div class="cp-load">Loading preview…</div>'; row.after(drawer);
+    drawer.innerHTML = '<div class="cp-load" id="cpLoadMsg">Loading preview…</div>'; row.after(drawer);
     var ac = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     openPreviews[key] = { drawer: drawer, urls: [], abort: ac }; row.querySelector('.name') && row.querySelector('.name').setAttribute('aria-expanded', 'true');
+    // Live download progress (Infini stream) so large media doesn't look stuck
+    var onDlProg = function(ev) {
+      try {
+        if (!ev.detail || ev.detail.phase !== 'download') return;
+        var msg = drawer.querySelector('#cpLoadMsg, .cp-load');
+        if (!msg || !openPreviews[key]) return;
+        var tot = Number(ev.detail.total) || 0, ld = Number(ev.detail.loaded) || 0;
+        if (tot > 0) {
+          var pct = Math.min(99, Math.floor((ld / tot) * 100));
+          msg.textContent = 'Loading preview… ' + pct + '%';
+        }
+      } catch (e) {}
+    };
+    try { window.addEventListener('dgxen-preview-progress', onDlProg); } catch (e) {}
     try {
       var ext = extOf(info.name), u = await urlFor(info, ac && ac.signal);
+      try { window.removeEventListener('dgxen-preview-progress', onDlProg); } catch (e) {}
       if (!openPreviews[key]) { if (u.blob) URL.revokeObjectURL(u.url); return; }
       if (u.blob) openPreviews[key].urls.push(u.url);
       var closeBtn = '<button type="button" class="cp-x" aria-label="Close preview">✕</button>', pid = 'cpP_' + Date.now() + '_' + Math.floor(Math.random() * 1e5);
@@ -7116,45 +7131,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         if (opts.forceFs) setTimeout(enterImgFs, 30);
       } else if (AUDIO_EXT.indexOf(ext) >= 0) {
         drawer.innerHTML = closeBtn + playerHtml('audio', pid, u.url);
-        (function(relKey, mediaId){
-          function onProg(ev){
-            try {
-              if (!ev.detail || ev.detail.rel !== relKey || !ev.detail.url) return;
-              var m = doc.getElementById(mediaId);
-              if (!m) return;
-              var t = m.currentTime || 0, wasPlaying = !m.paused;
-              m.src = ev.detail.url;
-              m.addEventListener('loadedmetadata', function once(){
-                m.removeEventListener('loadedmetadata', once);
-                try { m.currentTime = t; } catch (e) {}
-                if (wasPlaying) m.play().catch(function(){});
-              });
-            } catch (e) {}
-          }
-          window.addEventListener('dgxen-preview-progress', onProg);
-          if (openPreviews[relKey]) openPreviews[relKey]._progHandler = onProg;
-        })(key, pid);
       } else if (VIDEO_EXT.indexOf(ext) >= 0) {
         drawer.innerHTML = closeBtn + playerHtml('video', pid, u.url);
-        // Progressive: when more bytes arrive, swap src and keep currentTime
-        (function(relKey, mediaId){
-          function onProg(ev){
-            try {
-              if (!ev.detail || ev.detail.rel !== relKey || !ev.detail.url) return;
-              var m = doc.getElementById(mediaId);
-              if (!m) return;
-              var t = m.currentTime || 0, wasPlaying = !m.paused;
-              m.src = ev.detail.url;
-              m.addEventListener('loadedmetadata', function once(){
-                m.removeEventListener('loadedmetadata', once);
-                try { m.currentTime = t; } catch (e) {}
-                if (wasPlaying) m.play().catch(function(){});
-              });
-            } catch (e) {}
-          }
-          window.addEventListener('dgxen-preview-progress', onProg);
-          if (openPreviews[relKey]) openPreviews[relKey]._progHandler = onProg;
-        })(key, pid);
       } else if (ext === 'pdf') {
         drawer.innerHTML = closeBtn + '<iframe src="' + u.url + '#toolbar=1&navpanes=0" title="PDF"></iframe>';
       } else if (TXT_EXT.indexOf(ext) >= 0) {
@@ -14853,6 +14831,7 @@ async function listInfiniFiles() {
     // Support paths inside folders — pass AbortSignal so close stops net usage
     const raw = String(fileName || '').replace(/^\/+/, '');
     const candidates = [];
+    // Prefer explicit relative path; also try cwd-join and basename
     if (raw.indexOf('/') >= 0) {
       candidates.push(raw);
       candidates.push(cloudJoinPath(cloudCwd(), raw.split('/').pop()));
@@ -14860,98 +14839,72 @@ async function listInfiniFiles() {
       candidates.push(cloudJoinPath(cloudCwd(), raw));
       candidates.push(raw);
     }
-    const nameGuess = (raw.split('/').pop() || raw).toLowerCase();
-    const isMedia = /\.(mp4|webm|mov|mkv|m4v|mp3|wav|ogg|m4a|aac)$/i.test(nameGuess);
-    const FIRST_CHUNK = 3 * 1024 * 1024; // 3MB — enough for header + early play
-
     let res = null, rel = candidates[0], lastStatus = 0;
     for (let ci = 0; ci < candidates.length; ci++) {
       rel = candidates[ci];
-      // Prefer Range for media so playback can start before full download
-      const headers = isMedia ? { Range: 'bytes=0-' + (FIRST_CHUNK - 1) } : {};
-      try {
-        res = await infiniFetch(cloudPathUrl(rel), { method: 'GET', signal: signal, headers: headers });
-      } catch (eR) { res = null; }
+      res = await infiniFetch(cloudPathUrl(rel), { method: 'GET', signal: signal });
       if (signal && signal.aborted) throw new Error('cancelled');
-      if (res && (res.ok || res.status === 206)) break;
-      lastStatus = res ? res.status : 0;
-      // If server rejected Range, fall back to full GET
-      if (isMedia && res && res.status === 416) {
-        res = await infiniFetch(cloudPathUrl(rel), { method: 'GET', signal: signal });
-        if (res && res.ok) break;
-      }
+      if (res.ok) break;
+      lastStatus = res.status;
       res = null;
     }
-    if (!res || !(res.ok || res.status === 206)) {
+    if (!res || !res.ok) {
       throw new Error((lastStatus === 401 || lastStatus === 403) ? ('Auth failed (401) — check Infini Connection ID + Apps Password + Infini Proxy URL. path=' + rel) : ('Preview fetch failed (' + (lastStatus || 404) + ') path=' + rel));
     }
     const hdrCt = (res.headers.get('content-type') || '').split(';')[0].trim();
-    const declaredLen = Number(res.headers.get('content-length')) || 0;
-    const contentRange = res.headers.get('content-range') || '';
-    let totalSize = declaredLen;
-    const crm = /\/(\d+)\s*$/.exec(contentRange);
-    if (crm) totalSize = Number(crm[1]) || totalSize;
-
+    const declaredLen = Number(res.headers.get('content-length'));
+    // Stream body with progress when possible so large videos don't feel frozen,
+    // but still assemble a COMPLETE blob before playback (partial MP4 = Preview unavailable).
+    let buf;
+    if (res.body && typeof res.body.getReader === 'function' && declaredLen > 0) {
+      const reader = res.body.getReader();
+      const chunks = [];
+      let received = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (signal && signal.aborted) throw new Error('cancelled');
+        chunks.push(value);
+        received += value.byteLength || value.length || 0;
+        try {
+          window.dispatchEvent(new CustomEvent('dgxen-preview-progress', {
+            detail: { rel: rel, loaded: received, total: declaredLen, phase: 'download' }
+          }));
+        } catch (e) {}
+      }
+      const out = new Uint8Array(received);
+      let off = 0;
+      for (var i = 0; i < chunks.length; i++) {
+        const c = chunks[i];
+        out.set(c, off);
+        off += c.byteLength || c.length || 0;
+      }
+      buf = out.buffer;
+    } else {
+      buf = await res.arrayBuffer();
+    }
+    if (signal && signal.aborted) throw new Error('cancelled');
+    // A response can report ok:true and a plausible Content-Length yet still hand back
+    // a truncated/empty body — a Worker hitting its own memory/CPU limit on a large file
+    // does exactly this. That used to silently become a 0-byte (or partial) blob that
+    // the <img>/<video>/<audio> element would then fail to decode, always surfacing the
+    // same generic "Preview unavailable" no matter what the real cause was. Catching it
+    // here gives a specific, fixable reason instead.
+    if (buf.byteLength === 0) {
+      throw new Error('Preview failed: server returned an empty file (0 bytes). This usually means the upload proxy/Worker could not deliver this file — try Download instead.');
+    }
+    if (declaredLen > 0 && buf.byteLength !== declaredLen) {
+      throw new Error('Preview failed: got ' + buf.byteLength + ' of ' + declaredLen + ' expected bytes (connection cut short, likely by the proxy). Try Download instead.');
+    }
     const type = (hdrCt && hdrCt !== 'application/octet-stream' && hdrCt !== 'text/plain')
       ? hdrCt
       : guessMimeFromName(fileName);
-
-    // Small files or non-media: full body as before
-    if (!isMedia || totalSize <= FIRST_CHUNK || res.status === 200) {
-      const buf = await res.arrayBuffer();
-      if (signal && signal.aborted) throw new Error('cancelled');
-      if (buf.byteLength === 0) {
-        throw new Error('Preview failed: server returned an empty file (0 bytes). Try Download instead.');
-      }
-      const blob = new Blob([buf], { type: type });
-      const url = URL.createObjectURL(blob);
-      window.__cloudBlobUrls = window.__cloudBlobUrls || {};
-      window.__cloudBlobUrls[url] = { name: fileName, type: type };
-      return url;
-    }
-
-    // Progressive: first chunk now, rest in background; caller gets playable URL ASAP
-    const firstBuf = await res.arrayBuffer();
-    if (signal && signal.aborted) throw new Error('cancelled');
-    if (!firstBuf.byteLength) throw new Error('Preview failed: empty first chunk');
-    let parts = [firstBuf];
-    let loaded = firstBuf.byteLength;
-    let blob = new Blob(parts, { type: type });
-    let url = URL.createObjectURL(blob);
+    // Blob URL stays in this tab — "open in new tab" cannot use auth/blob safely
+    const blob = new Blob([buf], { type: type });
+    const url = URL.createObjectURL(blob);
+    // Keep a short-lived map so fallback can re-download instead of broken tab
     window.__cloudBlobUrls = window.__cloudBlobUrls || {};
-    window.__cloudBlobUrls[url] = { name: fileName, type: type, progressive: true, rel: rel };
-
-    // Background continue — updates map; video can be re-pointed by openPreview if needed
-    (async function continueLoad() {
-      try {
-        while (loaded < totalSize) {
-          if (signal && signal.aborted) return;
-          const start = loaded;
-          const end = Math.min(totalSize - 1, loaded + FIRST_CHUNK - 1);
-          const r2 = await infiniFetch(cloudPathUrl(rel), {
-            method: 'GET', signal: signal,
-            headers: { Range: 'bytes=' + start + '-' + end }
-          });
-          if (!r2 || !(r2.ok || r2.status === 206)) break;
-          const chunk = await r2.arrayBuffer();
-          if (!chunk.byteLength) break;
-          parts.push(chunk);
-          loaded += chunk.byteLength;
-          const nextBlob = new Blob(parts, { type: type });
-          const nextUrl = URL.createObjectURL(nextBlob);
-          try { URL.revokeObjectURL(url); } catch (e) {}
-          url = nextUrl;
-          window.__cloudBlobUrls[url] = { name: fileName, type: type, progressive: true, rel: rel, loaded: loaded, total: totalSize };
-          // Notify any waiting player
-          try {
-            window.dispatchEvent(new CustomEvent('dgxen-preview-progress', {
-              detail: { rel: rel, url: url, loaded: loaded, total: totalSize }
-            }));
-          } catch (e) {}
-        }
-      } catch (eBg) { console.warn('[preview progressive]', eBg); }
-    })();
-
+    window.__cloudBlobUrls[url] = { name: fileName, type: type };
     return url;
   }
 
