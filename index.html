@@ -1833,7 +1833,8 @@
             z-index: 121;
             width: min(52vw, 720px);
             max-width: 100%;
-            overflow: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
             display: none !important;
             visibility: hidden;
             pointer-events: none;
@@ -1846,6 +1847,19 @@
             backdrop-filter: blur(40px) saturate(180%);
             -webkit-backdrop-filter: blur(40px) saturate(180%);
             transform: translateX(100%);
+        }
+        /* The file list flexes to fill whatever space is left after the
+           header/settings/upload content above it — WITHOUT forcing any
+           minimum height on itself (that forced minimum, 42vh via an inline
+           style plus a matching CSS rule, is what used to push the list's
+           top edge below the panel's visible area whenever the content above
+           it was already tall enough — e.g. a narrow/short window or an
+           awkward desktop zoom ratio, exactly the "cropped on desktop" bug).
+           If there truly isn't room for everything, the PANEL scrolls as a
+           whole instead (overflow-y:auto above) so nothing becomes
+           permanently unreachable — every row stays scrollable into view. */
+        #cloudPanel.open, #cloudPanel.closing {
+            display: flex !important;
         }
         #cloudPanel.open {
             display: flex !important;
@@ -2773,7 +2787,7 @@ div.cp-img-fs img {
         }
         #cloudFileList {
             max-height: none !important;
-            min-height: 45vh;
+            min-height: 0;
             flex: 1 1 auto;
             overflow: auto;
             padding-bottom: 28px;
@@ -5176,7 +5190,7 @@ body.cloud-op-busy #cloudPanel .cloud-file-row {
             <button type="button" id="cloudSearchClearBtn" onclick="document.getElementById('cloudSearchInput').value='';filterCloudFiles('');" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer;padding:4px 6px;">✕</button>
         </div>
         <div id="cloudPathBar" aria-label="Current folder"></div>
-        <div id="cloudFileList" class="mk-list" style="overflow:auto;min-height:42vh;flex:1;"></div>
+        <div id="cloudFileList" class="mk-list"></div>
     </div>
 
         <div id="cloudBgUpload" aria-live="polite">
@@ -12841,7 +12855,12 @@ window.__dgxenInitVideoControls = function(vId) {
   window.__cloudStarredSet = new Set();
   window.__cloudStarredPaths = {}; // key -> real relative path (nested files show in star view)
   function cloudStarKey(relPath) {
-    return String(relPath || '').replace(/[.#$\[\]]/g, '_');
+    // Firebase Realtime Database keys cannot contain '.', '#', '$', '[', ']', or '/'
+    // ('/' is a path separator, not a literal character) — leaving '/' unescaped
+    // silently nested each star under its parent folder's key instead of storing
+    // a flat entry, which is why starring a file inside a folder could end up
+    // recorded as if the FOLDER itself were starred.
+    return String(relPath || '').replace(/[.#$\[\]\/]/g, '_');
   }
   async function loadCloudStarred() {
     try {
@@ -12850,12 +12869,49 @@ window.__dgxenInitVideoControls = function(vId) {
       window.__cloudStarredPaths = {};
       if (snap.exists()) {
         const val = snap.val() || {};
+        const migrations = [];
         Object.keys(val).forEach(function(k) {
-          window.__cloudStarredSet.add(k);
           const v = val[k];
+          // Pre-fix data: a nested file's star got written as a nested Firebase
+          // node (settings/cloudStarred/<folder>/<escaped-child> : {path,at})
+          // instead of a flat key, because cloudStarKey didn't escape '/'. Such
+          // an entry shows up here as an object whose values are THEMSELVES
+          // {path,at}-shaped objects, rather than a single {path,at} leaf.
+          if (v && typeof v === 'object' && !v.path) {
+            Object.keys(v).forEach(function(ck) {
+              const cv = v[ck];
+              if (cv && typeof cv === 'object' && cv.path) {
+                const flatKey = cloudStarKey(String(cv.path));
+                window.__cloudStarredSet.add(flatKey);
+                window.__cloudStarredPaths[flatKey] = String(cv.path);
+                migrations.push(flatKey, cv.path, cv.at);
+              }
+            });
+            migrations.push('__delete_old__', k);
+            return;
+          }
+          window.__cloudStarredSet.add(k);
           if (v && typeof v === 'object' && v.path) window.__cloudStarredPaths[k] = String(v.path);
           else window.__cloudStarredPaths[k] = String(k);
         });
+        // Fire-and-forget: rewrite corrupted entries to their flat form and
+        // remove the old nested node, so this self-heals instead of the same
+        // bad shape being read (and re-migrated) forever.
+        if (migrations.length) {
+          (async function() {
+            try {
+              for (let i = 0; i < migrations.length;) {
+                if (migrations[i] === '__delete_old__') {
+                  await set(ref(db, 'settings/cloudStarred/' + migrations[i + 1]), null);
+                  i += 2;
+                } else {
+                  await set(ref(db, 'settings/cloudStarred/' + migrations[i]), { path: migrations[i + 1], at: migrations[i + 2] || Date.now() });
+                  i += 3;
+                }
+              }
+            } catch (eMig) { console.warn('[star migration]', eMig); }
+          })();
+        }
       }
     } catch (e) {
       window.__cloudStarredSet = new Set();
@@ -15973,11 +16029,21 @@ async function listAllFiles(forcedProvider) {
         if (window.__cloudStarredFilterOn) {
           const starred = window.__cloudStarredSet || new Set();
           const pathMap = window.__cloudStarredPaths || {};
-          // Folder appears in star view ONLY if the folder itself was starred (not just a child file)
+          // A folder appears in the star view either because it was explicitly
+          // starred itself, OR because a file somewhere inside it is starred —
+          // that's how a starred nested file (which never appears directly at
+          // root level — see the ghost-removal note below) is actually reached
+          // from the star view: through its containing folder.
           function isFolderExplicitlyStarred(folderRel) {
             const base = String(folderRel || '').replace(/^\/+|\/+$/g, '');
             if (!base) return false;
-            return starred.has(cloudStarKey(base));
+            if (starred.has(cloudStarKey(base))) return true;
+            const prefix = base + '/';
+            for (const k in pathMap) {
+              const p = String(pathMap[k] || '');
+              if (p.indexOf(prefix) === 0) return true;
+            }
+            return false;
           }
           function isRelStarred(rel) {
             const r = String(rel || '').replace(/^\/+/, '');
@@ -16019,18 +16085,12 @@ async function listAllFiles(forcedProvider) {
                   try { if (window.__cpForceUnstar) window.__cpForceUnstar(p); } catch (eZ) {}
                   return;
                 }
-                // Already represented as real file in kept
-                if (keptRels.has(p)) return;
-                const base = p.split('/').pop() || p;
-                kept.push({
-                  fileName: base,
-                  _relPath: p,
-                  _isFolder: false,
-                  contentLength: 0,
-                  fileId: 'star:' + k,
-                  uploadTimestamp: Date.now(),
-                  _starGhost: true
-                });
+                // A starred file that lives inside a folder never appears in a
+                // root-level (Depth:1) listing — only its top folder does. There
+                // is nothing real to show for the file itself at root, so it is
+                // skipped here rather than fabricated as a fake 0-byte "ghost"
+                // row; the file still shows correctly (with its real size and
+                // star badge) the moment its containing folder is opened.
                 keptRels.add(p);
               });
             }
@@ -16271,9 +16331,20 @@ async function listAllFiles(forcedProvider) {
         // per row now, replacing the old inline DEL button.)
 
         // ===== "⋮" OVERFLOW MENU (Rename / Star / Move / Delete or Restore) =====
+        // innerHTML replaces every row on each render, but this forEach used to run
+        // unconditionally and could attach duplicate listeners to buttons that
+        // survive a render pass (multiple menus stacking, stale rel/name being
+        // acted on) — track wired buttons so each one only ever gets ONE listener.
+        window.__cpWiredMoreBtns = window.__cpWiredMoreBtns || new WeakSet();
         box.querySelectorAll('[data-more-name]').forEach(function(btn) {
+          if (window.__cpWiredMoreBtns.has(btn)) return;
+          window.__cpWiredMoreBtns.add(btn);
           btn.addEventListener('click', function(e) {
             e.stopPropagation();
+            // Always re-read attributes fresh off the actual clicked button —
+            // never trust a value captured at bind-time — so a fresh render's
+            // rel/name/folder flags are what the menu acts on, even if this
+            // exact node object happened to be reused by the renderer.
             openCloudMoreMenu(btn);
           });
         });
