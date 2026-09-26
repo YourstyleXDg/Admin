@@ -670,14 +670,6 @@
         .tab-section.active {
             display: block;
         }
-        @keyframes tabShiftInRight {
-            from { opacity: 0; transform: translateX(32px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes tabShiftInLeft {
-            from { opacity: 0; transform: translateX(-32px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
         @keyframes slideUpFade {
             to {
                 opacity: 1;
@@ -3894,8 +3886,14 @@ body.cat-world-active .cat-mode-bar{display:block}
        (which is handled entirely in JS via preventDefault and never needed the CSS lock). --- */
 .cloud-file-row .name { touch-action: pan-y pinch-zoom !important; }
 #cloudFileList { touch-action: pan-x pan-y pinch-zoom; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-#cloudPanel { touch-action: manipulation; }
-#cloudPanel.open { touch-action: pan-x pan-y pinch-zoom; }
+#cloudPanel { touch-action: pan-y; }
+#cloudPanel.open { touch-action: pan-y pinch-zoom; }
+/* Everything ABOVE the file list — header, provider hint, storage bar,
+   settings <details>, upload drop-zone, upload progress — explicitly gets
+   1-finger vertical scroll + pinch-zoom, same as the rest of the panel,
+   spelled out per-element rather than only relying on inheritance so there
+   is no ambiguity on any device/browser about this specific "yellow area". */
+#cloudPanel > *:not(#cloudFileList) { touch-action: pan-y pinch-zoom; }
 
 .cloud-file-row { transition: transform .12s ease, background .15s ease; }
 .cloud-file-row.cp-swiping { background: rgba(92,200,255,.10); }
@@ -4847,12 +4845,12 @@ body.cloud-op-busy #cloudPanel .cloud-file-row {
                 <h2 style="color: var(--accent); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
                     <span>Share/User Logs</span>
                     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                        <button id="notifPermBtn" class="btn" style="background:rgba(255,60,60,.18);color:#ff8080;padding:10px 16px;font-size:12px;" onclick="window.DgxenPush && window.DgxenPush.register()">ENABLE PHONE PUSH</button>
+                        <button id="notifPermBtn" class="btn" style="background:rgba(255,60,60,.18);color:#ff8080;padding:10px 16px;font-size:12px;display:none;" onclick="requestFastGenNotifPermission()">ENABLE PHONE NOTIFICATIONS</button>
                         <button class="btn" style="background:var(--accent);color:#000;padding:10px 18px;font-size:13px;" onclick="toggleUserSearchBox()">SEARCH USER</button>
                         <button class="btn" style="background:var(--error);color:white;padding:10px 20px;font-size:13px;" onclick="clearAllShareLogs()">CLEAR ALL LOGS</button>
                     </div>
                 </h2>
-                <p>Two things: key share/re-use attempts (a bound key tried on a second device), and fast-generation flags (user generated a key within 1 minute of registering / setting name). Fast-gen is detected from user records and share logs — admin shows a red badge and pushes an instant notification.</p>
+                <p>Two things only: key share/re-use attempts (a bound key tried on a second device), and fast-generation flags (name set and key generated under 1 minute apart).</p>
                 <div id="fastGenBanner" style="display:none;margin:0 0 16px;padding:14px 18px;border-radius:14px;background:rgba(255,40,40,.14);border:1.5px solid rgba(255,60,60,.55);animation:fastGenPulse 1.6s ease-in-out infinite;">
                     <div style="display:flex;align-items:center;gap:10px;font-weight:900;color:#ff5a5a;font-size:13px;letter-spacing:.03em;">
                         ⚠️ CRITICAL — FAST KEY GENERATION DETECTED
@@ -4867,32 +4865,6 @@ body.cloud-op-busy #cloudPanel .cloud-file-row {
                         <button class="btn" style="padding:14px 22px;font-size:13px;" onclick="searchUserByDeviceId()">FIND</button>
                     </div>
                     <div id="userSearchResult" style="font-size:14px;font-weight:700;min-height:22px;color:var(--text-main);"></div>
-                </div>
-                <div id="dgxenPushPanel" class="glass-panel" style="margin:0 0 18px;padding:16px 18px;border-radius:16px;">
-                    <div style="font-weight:800;font-size:14px;margin-bottom:10px;color:var(--text-main);">📱 Phone Push Notifications (Web Push)</div>
-                    <p style="font-size:12px;color:var(--text-dim);margin:0 0 12px;line-height:1.45;">Works when admin.html is closed. Uses Service Worker + Cloudflare Worker. Register this phone once, then fast-gen and manual sends arrive in the Android notification bar.</p>
-                    <div style="display:grid;gap:10px;grid-template-columns:1fr;">
-                        <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Cloudflare Worker URL
-                            <input id="pushWorkerUrl" type="url" placeholder="https://dgxen-push.YOUR.workers.dev" style="width:100%;margin-top:4px;padding:10px 12px;border-radius:10px;border:1px solid var(--glass-border);background:var(--input-bg);color:var(--text-main);" />
-                        </label>
-                        <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Admin Push Secret (never commit; stored only on this browser)
-                            <input id="pushAdminSecret" type="password" placeholder="ADMIN_PUSH_SECRET" autocomplete="off" style="width:100%;margin-top:4px;padding:10px 12px;border-radius:10px;border:1px solid var(--glass-border);background:var(--input-bg);color:var(--text-main);" />
-                        </label>
-                        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                            <button type="button" class="btn" style="padding:10px 14px;font-size:12px;" onclick="window.DgxenPush && window.DgxenPush.saveConfig()">Save config</button>
-                            <button type="button" class="btn" style="padding:10px 14px;font-size:12px;background:rgba(0,255,136,.15);color:var(--accent);" onclick="window.DgxenPush && window.DgxenPush.register()">Register this device</button>
-                            <button type="button" class="btn" style="padding:10px 14px;font-size:12px;" onclick="window.DgxenPush && window.DgxenPush.unregister()">Unregister</button>
-                        </div>
-                        <div style="height:1px;background:var(--glass-border);margin:4px 0;"></div>
-                        <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Manual title
-                            <input id="pushManualTitle" type="text" value="DGXEN Alert" style="width:100%;margin-top:4px;padding:10px 12px;border-radius:10px;border:1px solid var(--glass-border);background:var(--input-bg);color:var(--text-main);" />
-                        </label>
-                        <label style="font-size:11px;font-weight:700;color:var(--text-dim);">Manual message
-                            <input id="pushManualBody" type="text" placeholder="Message to all registered phones…" style="width:100%;margin-top:4px;padding:10px 12px;border-radius:10px;border:1px solid var(--glass-border);background:var(--input-bg);color:var(--text-main);" />
-                        </label>
-                        <button type="button" class="btn" style="padding:12px 16px;font-size:13px;font-weight:800;background:var(--accent);color:#04140c;" onclick="window.DgxenPush && window.DgxenPush.sendManual()">Send to phones</button>
-                        <div id="pushStatus" style="font-size:12px;color:var(--text-dim);min-height:18px;"></div>
-                    </div>
                 </div>
                 <div class="mk-list" id="shareLogsList"></div>
             </div>
@@ -5626,7 +5598,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                             <button class="btn dl-btn-small" onclick="downloadSpecificFile('auth_offline', this)">DL</button>
                         </div>
                         <div class="dl-file-row">
-                            <span class="dl-file-name">hook.txt (Integration Guide)</span>
+                            <span class="dl-file-name">Hook.smali (Invoke Trigger)</span>
                             <button class="btn dl-btn-small" onclick="downloadSpecificFile('hook_smali', this)">DL</button>
                         </div>
                     </div>
@@ -6638,7 +6610,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
   function closePreview(key, opts) {
     opts = opts || {};
     var p = openPreviews[key]; if (!p) return;
-    try { if (p._progHandler) window.removeEventListener('dgxen-preview-progress', p._progHandler); } catch (ePh) {}
     try { if (p.abort) p.abort.abort(); } catch (e0) {}
     try { if (p.xhr) p.xhr.abort(); } catch (e1) {}
 
@@ -6791,14 +6762,11 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       throw lastErr || new Error('Infini preview failed for ' + rel);
     }
 
-    // ---- B2: media uses authorized direct URL (browser Range / progressive);
-    // images & others still blob for reliability ----
+    // ---- B2: same auth URL as downloadCloudFile, then blob for <video>/<img> reliability ----
     if (!B.authorizeB2 || !B.b2Fetch || !B.b2) throw new Error('B2 not ready');
     await B.authorizeB2(false);
     var b2c = B.b2();
     if (!b2c || !b2c.downloadUrl || !b2c.bucketName) throw new Error('B2 not configured');
-    var mediaExt = (nameOnly || '').split('.').pop().toLowerCase();
-    var isB2Media = ['mp4','webm','mov','mkv','m4v','mp3','wav','ogg','m4a','aac'].indexOf(mediaExt) >= 0;
 
     async function b2BlobFromUrl(directUrl) {
       var res = await fetch(directUrl, { method: 'GET', signal: signal, mode: 'cors', credentials: 'omit' });
@@ -6819,8 +6787,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       try {
         var byId = b2c.downloadUrl.replace(/\/$/, '') + '/b2api/v2/b2_download_file_by_id?fileId=' +
           encodeURIComponent(fid) + '&Authorization=' + encodeURIComponent(b2c.authToken);
-        // Video/audio: stream via authorized URL (browser handles Range) — no full download wait
-        if (isB2Media) return { url: byId, blob: false };
         return await b2BlobFromUrl(byId);
       } catch (eId) {
         // fall through to by-name
@@ -6843,7 +6809,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     var direct = b2c.downloadUrl.replace(/\/$/, '') + '/file/' + encodeURIComponent(b2c.bucketName) + '/' + pathEnc +
       '?Authorization=' + encodeURIComponent(authData.authorizationToken);
     try {
-      if (isB2Media) return { url: direct, blob: false };
       return await b2BlobFromUrl(direct);
     } catch (eName) {
       // 3) last resort: nameOnly under same auth if rel had folders wrong
@@ -6851,7 +6816,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         var path2 = encodeURIComponent(nameOnly);
         var direct2 = b2c.downloadUrl.replace(/\/$/, '') + '/file/' + encodeURIComponent(b2c.bucketName) + '/' + path2 +
           '?Authorization=' + encodeURIComponent(authData.authorizationToken);
-        if (isB2Media) return { url: direct2, blob: false };
         return await b2BlobFromUrl(direct2);
       }
       throw new Error((eName && eName.message) || ('Preview failed for ' + rel));
@@ -6989,44 +6953,11 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     if (openPreviews[key] && !opts.forceFs) { closePreview(key); row.querySelector('.name') && row.querySelector('.name').setAttribute('aria-expanded', 'false'); return; }
     if (openPreviews[key]) closePreview(key);
     var drawer = doc.createElement('div'); drawer.className = 'cloud-preview-drawer cp-drawer'; drawer.setAttribute('data-preview-for', key);
-    var loadId = 'cpLoad_' + String(key).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 48) + '_' + Date.now();
-    drawer.innerHTML = '<div class="cp-load" data-cp-load="' + loadId + '">Loading preview…</div>'; row.after(drawer);
+    drawer.innerHTML = '<div class="cp-load">Loading preview…</div>'; row.after(drawer);
     var ac = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     openPreviews[key] = { drawer: drawer, urls: [], abort: ac }; row.querySelector('.name') && row.querySelector('.name').setAttribute('aria-expanded', 'true');
-    // Per-file progress only — never let another download move this drawer %s
-    var lastPct = -1;
-    function samePreviewRel(a, b) {
-      a = String(a || '').replace(/^\/+|\/+$/g, '').toLowerCase();
-      b = String(b || '').replace(/^\/+|\/+$/g, '').toLowerCase();
-      if (!a || !b) return false;
-      if (a === b) return true;
-      if (a.length > b.length ? a.slice(-b.length - 1) === '/' + b : b.slice(-a.length - 1) === '/' + a) return true;
-      var ba = a.split('/').pop(), bb = b.split('/').pop();
-      return !!(ba && bb && ba === bb);
-    }
-    var onDlProg = function(ev) {
-      try {
-        if (!ev.detail || ev.detail.phase !== 'download') return;
-        if (!openPreviews[key]) return;
-        // Match this drawer only
-        if (!samePreviewRel(ev.detail.rel, key) && !samePreviewRel(ev.detail.fileName, key) && !samePreviewRel(ev.detail.fileName, info.name)) return;
-        var msg = drawer.querySelector('[data-cp-load="' + loadId + '"]') || drawer.querySelector('.cp-load');
-        if (!msg) return;
-        var tot = Number(ev.detail.total) || 0, ld = Number(ev.detail.loaded) || 0;
-        if (tot > 0) {
-          var pct = Math.min(99, Math.floor((ld / tot) * 100));
-          if (pct === lastPct) return; // throttle rapid dual-fire
-          lastPct = pct;
-          msg.textContent = 'Loading preview… ' + pct + '%';
-        }
-      } catch (e) {}
-    };
-    try { window.addEventListener('dgxen-preview-progress', onDlProg); } catch (e) {}
-    if (openPreviews[key]) openPreviews[key]._progHandler = onDlProg;
     try {
       var ext = extOf(info.name), u = await urlFor(info, ac && ac.signal);
-      try { window.removeEventListener('dgxen-preview-progress', onDlProg); } catch (e) {}
-      if (openPreviews[key]) openPreviews[key]._progHandler = null;
       if (!openPreviews[key]) { if (u.blob) URL.revokeObjectURL(u.url); return; }
       if (u.blob) openPreviews[key].urls.push(u.url);
       var closeBtn = '<button type="button" class="cp-x" aria-label="Close preview">✕</button>', pid = 'cpP_' + Date.now() + '_' + Math.floor(Math.random() * 1e5);
@@ -7291,8 +7222,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       }
       var x = drawer.querySelector('.cp-x'); if (x) x.onclick = function (e) { e.stopPropagation(); closePreview(key); var nm = row.querySelector('.name'); if (nm) nm.setAttribute('aria-expanded', 'false'); };
     } catch (e) {
-      try { window.removeEventListener('dgxen-preview-progress', onDlProg); } catch (eR) {}
-      if (openPreviews[key]) openPreviews[key]._progHandler = null;
       if (e && (e.name === 'AbortError' || String(e.message||'') === 'cancelled')) {
         closePreview(key); return;
       }
@@ -9075,8 +9004,66 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     }
                     content = smali;
                 } else if (fileId === 'hook_smali') {
-                    content = "================================================================================\n           DGXEN UNIVERSAL AUTH & ACTION-LOCK INTEGRATION GUIDE\n================================================================================\n\n[ ARCHITECTURE OVERVIEW ]\nYeh guide kisi bhi general Android app mein DGXEN Login system integrate karne \nke liye hai:\n1. Dialog Trigger: Main activity start hote hi background me check & dialog open.\n2. Action Lock: App ka main primary feature (Start Button, Apply Button, Switch,\n   ya Service Start) tab tak trigger nahi hoga jab tak Auth verify na ho.\n3. False-Positive Free: onCreate par execution block nahi hoti, isliye genuine\n   users ko key verify karne ka pura time milta hai bina black screen glitch ke.\n\n--------------------------------------------------------------------------------\nSTEP 1: FILES COPY & MANIFEST SETUP\n--------------------------------------------------------------------------------\n1. Apne smali packages target APK ke dex me paste karein:\n   - `com/dgxen/Auth.smali`\n   - `dg/auth/dgauthupdate.smali`\n2. `AndroidManifest.xml` check karein, agar missing ho toh yeh permission add karein:\n   <uses-permission android:name=\"android.permission.INTERNET\" />\n\n--------------------------------------------------------------------------------\nSTEP 2: LAUNCHER ACTIVITY ENTRY HOOK (onCreate)\n--------------------------------------------------------------------------------\nTarget app ki main/launcher activity ka `onCreate` method open karein.\n`invoke-super {p0, ...}, ...->onCreate(...)` ke theek baad yeh trigger add karein:\n\n    # --- DGXEN DIALOG & UPDATE TRIGGER ---\n    invoke-static {p0}, Ldg/auth/dgauthupdate;->start(Landroid/content/Context;)V\n\n    invoke-static {p0}, Lcom/dgxen/Auth;->show(Landroid/app/Activity;)V\n\n*Note: onCreate me koi 'unlocked' check ya return-void mat lagana.*\n\n--------------------------------------------------------------------------------\nSTEP 3: CORE FEATURE IDENTIFY KARNA (Action Method)\n--------------------------------------------------------------------------------\nHar app ka ek \"Core Action Method\" hota hai jahan se main kam start hota hai.\nPehchano app kis category ki hai:\n\n- VPN App           -> checkVpn(), startVpn(), ya startEngine()\n- Injector / Tool   -> applyChanges(), injectFeature(), ya onStartClick()\n- Mod Menu / Float  -> startFloatingService(), showOverlay()\n- Media / Downloader-> startDownload(), playMedia(), processLink()\n- Generic Buttons   -> onClick(Landroid/view/View;)V (Start/Execute ID wala button)\n\n--------------------------------------------------------------------------------\nSTEP 4: UNIVERSAL ACTION LOCK INJECTION\n--------------------------------------------------------------------------------\nUpar chune gaye action method ke bilkul shuru me (first line par):\n1. Method header me `.registers 6` set karein.\n2. Niche diya gaya Universal Lock paste karein:\n\n    # --- DGXEN ACTION LOCK (UNIVERSAL) ---\n    sget-boolean v0, Lcom/dgxen/Auth;->unlocked:Z\n    if-nez v0, :cond_dgxen_action_allowed\n\n    # Untouchable Black Screen Overlay\n    new-instance v0, Landroid/widget/TextView;\n    invoke-direct {v0, p0}, Landroid/widget/TextView;-><init>(Landroid/content/Context;)V\n\n    const-string v1, \"Security Lock Active\\n\\nSession Invalid or Bypassed.\\nPlease CLEAR APP DATA and Restart the App.\"\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V\n\n    const-string v1, \"#000000\"\n    invoke-static {v1}, Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I\n    move-result v1\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setBackgroundColor(I)V\n\n    const-string v1, \"#CF6679\"\n    invoke-static {v1}, Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I\n    move-result v1\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setTextColor(I)V\n\n    const/16 v1, 0x11\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setGravity(I)V\n\n    const/high16 v1, 0x41800000    # 16.0f\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setTextSize(F)V\n\n    const/4 v1, 0x1\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setClickable(Z)V\n\n    const/high16 v1, 0x42c80000    # 100.0f\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setElevation(F)V\n\n    new-instance v1, Landroid/view/ViewGroup$LayoutParams;\n    const/4 v2, -0x1\n    invoke-direct {v1, v2, v2}, Landroid/view/ViewGroup$LayoutParams;-><init>(II)V\n\n    const v2, 0x1020002\n    invoke-virtual {p0, v2}, Landroid/app/Activity;->findViewById(I)Landroid/view/View;\n    move-result-object v2\n    check-cast v2, Landroid/view/ViewGroup;\n    invoke-virtual {v2, v0, v1}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V\n\n    # Operation cancel/kill\n    return-void\n\n    :cond_dgxen_action_allowed\n    # --- APP KA ORIGINAL ACTION CODE YAHAN SE RUN HOGA ---\n\n--------------------------------------------------------------------------------\nSECURITY SUMMARY:\n- Normal User Flow: App khulti hai -> Dialog me key verify hoti hai -> \n  unlocked variable true hota hai -> Button dabane par main feature smoothly chalta hai.\n- Bypasser / Crash Glitch Flow: Direct entry mil bhi gayi toh unlocked variable false \n  milega -> Jaise hi user kisi button/feature ko start karega, app black untouchable \n  parde ke sath lock ho jayegi.\n================================================================================\n";
-                    finalName = 'hook.txt';
+                    content =
+                        '# ============================================================\n' +
+                        '# DGXEN UNIVERSAL HOOK + ACTION-LOCK\n' +
+                        '# ============================================================\n' +
+                        '# STEP A — onCreate (launcher Activity), RIGHT AFTER invoke-super:\n' +
+                        '#\n' +
+                        '    invoke-static {p0}, Ldg/auth/dgauthupdate;->start(Landroid/content/Context;)V\n' +
+                        '\n' +
+                        '    invoke-static {p0}, Lcom/dgxen/Auth;->show(Landroid/app/Activity;)V\n' +
+                        '#\n' +
+                        '# STEP B — CORE ACTION method (startVpn / onClick / apply…)\n' +
+                        '# Put this at the VERY TOP of that method. Set .registers high enough.\n' +
+                        '#\n' +
+                        '    # --- DGXEN ACTION LOCK (UNIVERSAL) ---\n' +
+                        '    sget-boolean v0, Lcom/dgxen/Auth;->unlocked:Z\n' +
+                        '    if-nez v0, :cond_dgxen_action_allowed\n' +
+                        '\n' +
+                        '    new-instance v0, Landroid/widget/TextView;\n' +
+                        '    invoke-direct {v0, p0}, Landroid/widget/TextView;-><init>(Landroid/content/Context;)V\n' +
+                        '\n' +
+                        '    const-string v1, "Security Lock Active\\n\\nSession Invalid or Bypassed.\\nPlease CLEAR APP DATA and Restart the App."\n' +
+                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V\n' +
+                        '\n' +
+                        '    const-string v1, "#000000"\n' +
+                        '    invoke-static {v1}, Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I\n' +
+                        '    move-result v1\n' +
+                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setBackgroundColor(I)V\n' +
+                        '\n' +
+                        '    const-string v1, "#CF6679"\n' +
+                        '    invoke-static {v1}, Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I\n' +
+                        '    move-result v1\n' +
+                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setTextColor(I)V\n' +
+                        '\n' +
+                        '    const/16 v1, 0x11\n' +
+                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setGravity(I)V\n' +
+                        '\n' +
+                        '    const/high16 v1, 0x41800000    # 16.0f\n' +
+                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setTextSize(F)V\n' +
+                        '\n' +
+                        '    const/4 v1, 0x1\n' +
+                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setClickable(Z)V\n' +
+                        '\n' +
+                        '    const/high16 v1, 0x42c80000    # 100.0f\n' +
+                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setElevation(F)V\n' +
+                        '\n' +
+                        '    new-instance v1, Landroid/view/ViewGroup$LayoutParams;\n' +
+                        '    const/4 v2, -0x1\n' +
+                        '    invoke-direct {v1, v2, v2}, Landroid/view/ViewGroup$LayoutParams;-><init>(II)V\n' +
+                        '\n' +
+                        '    const v2, 0x1020002\n' +
+                        '    invoke-virtual {p0, v2}, Landroid/app/Activity;->findViewById(I)Landroid/view/View;\n' +
+                        '    move-result-object v2\n' +
+                        '    check-cast v2, Landroid/view/ViewGroup;\n' +
+                        '    invoke-virtual {v2, v0, v1}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V\n' +
+                        '\n' +
+                        '    return-void\n' +
+                        '\n' +
+                        '    :cond_dgxen_action_allowed\n' +
+                        '    # --- original method code continues below ---\n';
+                    finalName = 'Hook.smali';
                 } else if (fileId === 'gen_index') {
                     const urls = [
                         'https://yourstylexdg.github.io/DGXEN-KEY/index.html',
@@ -9146,12 +9133,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 }
 
                 if (content) {
-                    const lower = (finalName || '').toLowerCase();
-                    let mime = 'text/plain;charset=utf-8';
-                    if (lower.endsWith('.html') || lower.endsWith('.htm')) mime = 'text/html;charset=utf-8';
-                    else if (lower.endsWith('.json')) mime = 'application/json;charset=utf-8';
-                    else if (lower.endsWith('.smali') || lower.endsWith('.txt')) mime = 'text/plain;charset=utf-8';
-                    const blob = new Blob([content], { type: mime });
+                    const blob = new Blob([content], { type: finalName.endsWith('.smali') ? 'text/plain;charset=utf-8' :
+                            'text/html;charset=utf-8' });
                     triggerDownload(blob, finalName, btnElement, originalText);
                 }
 
@@ -9997,10 +9980,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             const logs = Object.entries(snap.val()).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
             const fastGenLogs = [];
             logs.forEach(([id, log]) => {
-                if (log.fastGeneration || log.type === 'fastgen') {
-                    log.fastGeneration = true;
-                    fastGenLogs.push(log);
-                }
+                if (log.fastGeneration) fastGenLogs.push(log);
                 const time = log.timestamp ? new Date(log.timestamp).toLocaleString() : '';
                 const keyStr = log.key || '';
                 const isKeyBanned = !!globalBannedKeysForLogs[keyStr];
@@ -10059,153 +10039,18 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         // re-rendering the same data (e.g. after an unrelated log delete)
         // never re-fires a notification for something already seen.
         const __seenFastGenIds = new Set();
-        // Session baseline: entries older than this (minus small skew) are not notified.
-        // 90s skew covers clock drift + first Firebase snapshot latency so genuine
-        // new events during the first seconds of opening admin still alert.
-        const __fastGenSessionStartedAt = Date.now() - 90000;
-        // Track last known key per user so a NEW key gen while admin is open always alerts.
-        const __prevUserLastKey = Object.create(null);
-        const __prevUserBootstrapped = { done: false };
-
-        /** Fast-gen = key generated within 60s of name/registration timestamp. */
-        function isUserFastGen(user) {
-            if (!user) return false;
-            // Trial keys are always created in one step — not a real fast-gen signal
-            if (user.trial === true) return false;
-            if (user.fastGeneration === true || user.fastGen === true) return true;
-            const keyT = Number(user.keyGeneratedAt) || 0;
-            const nameT = Number(user.nameSetAt) || 0;
-            if (keyT && nameT && keyT >= nameT && (keyT - nameT) < 60000) return true;
-            // Fallbacks when dedicated stamps are missing (older clients)
-            let regT = 0;
-            if (user.joined) {
-                const j = Date.parse(user.joined);
-                if (!isNaN(j)) regT = j;
-            }
-            if (!regT && user.createdAt) regT = Number(user.createdAt) || 0;
-            if (!regT && user.registeredAt) regT = Number(user.registeredAt) || 0;
-            if (keyT && regT && keyT >= regT && (keyT - regT) < 60000) return true;
-            return false;
-        }
-
-        function userFastGenLogShape(user) {
-            const keyT = Number(user.keyGeneratedAt) || Date.now();
-            return {
-                generatorName: user.name || 'Unknown',
-                generatorId: user.id || '',
-                key: user.lastGeneratedKey || '',
-                timestamp: keyT,
-                type: 'fastgen',
-                fastGeneration: true,
-                source: 'user-record'
-            };
-        }
-
-        /**
-         * Scan users for fast-gen. On first snapshot only seed the seen set
-         * (no spam). After that, any NEW lastGeneratedKey that qualifies
-         * fires toast + OS notification and can persist a shareLogs row.
-         */
-        async function scanUsersForFastGen(users) {
-            if (!Array.isArray(users)) return;
-            const fastFromUsers = [];
-            const newlyFlagged = [];
-            for (var i = 0; i < users.length; i++) {
-                var u = users[i];
-                if (!u || !u.id) continue;
-                var curKey = String(u.lastGeneratedKey || '').trim();
-                var prevKey = __prevUserLastKey[u.id];
-                var keyChanged = __prevUserBootstrapped.done && curKey && curKey !== prevKey;
-                var isFast = isUserFastGen(u);
-                // If stamps missing but key just appeared and joined < 1m ago → treat as fast
-                if (!isFast && keyChanged && curKey) {
-                    var regT = 0;
-                    if (u.joined) { var jj = Date.parse(u.joined); if (!isNaN(jj)) regT = jj; }
-                    if (!regT && u.createdAt) regT = Number(u.createdAt) || 0;
-                    if (!regT && u.nameSetAt) regT = Number(u.nameSetAt) || 0;
-                    if (regT && (Date.now() - regT) < 60000) isFast = true;
-                }
-                if (isFast && curKey) {
-                    var log = userFastGenLogShape(u);
-                    fastFromUsers.push(log);
-                    if (keyChanged || (!__prevUserBootstrapped.done && (Number(log.timestamp) || 0) > __fastGenSessionStartedAt)) {
-                        newlyFlagged.push(log);
-                    }
-                }
-                __prevUserLastKey[u.id] = curKey;
-            }
-            if (!__prevUserBootstrapped.done) {
-                __prevUserBootstrapped.done = true;
-                // Seed seen set so historical rows don't all toast at once
-                newlyFlagged.forEach(function(log) {
-                    var nid = (log.generatorId || log.key || '') + '_' + (log.timestamp || 0);
-                    __seenFastGenIds.add(nid);
-                });
-            } else {
-                newlyFlagged.forEach(function(log) {
-                    __pushFastGenNotification(log);
-                    // Persist into shareLogs so Share/User Logs section also shows the flag
-                    try {
-                        var safeKey = String(log.key || 'nokey').replace(/[.#$\[\]\/]/g, '_').slice(0, 48);
-                        var lid = 'fastgen_' + String(log.generatorId || 'u').replace(/[.#$\[\]\/]/g, '_').slice(0, 40) + '_' + safeKey;
-                        set(ref(db, 'settings/shareLogs/' + lid), {
-                            generatorName: log.generatorName,
-                            generatorId: log.generatorId,
-                            key: log.key,
-                            receiverName: '—',
-                            receiverDevice: '—',
-                            timestamp: log.timestamp || Date.now(),
-                            type: 'fastgen',
-                            fastGeneration: true
-                        }).catch(function(){});
-                    } catch (eW) {}
-                });
-            }
-            // Banner is driven by shareLogs onValue → _renderShareLogs → updateFastGenAlert.
-            // Writing shareLogs rows above re-triggers that path; do not overwrite banner here
-            // with a users-only list (would hide share-attempt flags).
-        }
-
-        function __flashFastGenInApp(title, body) {
-            try {
-                var t = document.getElementById('fastGenLiveToast');
-                if (!t) {
-                    t = document.createElement('div');
-                    t.id = 'fastGenLiveToast';
-                    t.style.cssText = 'position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:2147483646;max-width:92vw;padding:14px 18px;border-radius:14px;background:rgba(180,20,30,.94);color:#fff;font:800 13px/1.4 system-ui,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.45);pointer-events:none;opacity:0;transition:opacity .25s;';
-                    document.body.appendChild(t);
-                }
-                t.innerHTML = '<div style="font-size:14px;margin-bottom:4px;">' + String(title || '') + '</div><div style="font-weight:600;opacity:.92;">' + String(body || '') + '</div>';
-                t.style.opacity = '1';
-                clearTimeout(t.__h);
-                t.__h = setTimeout(function(){ t.style.opacity = '0'; }, 6000);
-            } catch (e) {}
-            try {
-                if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
-            } catch (e) {}
-        }
-        function __pushFastGenNotification(log) {
-            const nid = (log.generatorId || log.key || '') + '_' + (log.timestamp || Date.now());
-            if (__seenFastGenIds.has(nid)) return;
-            const title = 'DGXEN — Fast key generation';
-            const body = (log.generatorName || 'A user') + ' generated a key within 1 minute of registering.';
-            __seenFastGenIds.add(nid);
-            // In-app toast when admin tab is open
-            try { __flashFastGenInApp(title, body); } catch (e) {}
-            // Real phone notification via Cloudflare Worker + Web Push (works when admin is closed)
-            try {
-                if (window.DgxenPush && typeof window.DgxenPush.send === 'function') {
-                    window.DgxenPush.send({
-                        title: title,
-                        body: body,
-                        tag: 'fastgen-' + nid,
-                        url: './admin.html#share-logs',
-                        requireInteraction: true
-                    }).catch(function(){});
-                }
-            } catch (e) {}
-            return true;
-        }
+        // Records the moment THIS admin session started watching — any
+        // flagged entry timestamped after this moment is "new" and worth
+        // a notification; anything at or before it was already sitting in
+        // the database before this session opened and shouldn't re-alert
+        // every time the panel is simply reopened. This replaces an
+        // earlier "have we rendered at least once yet" flag, which had a
+        // real gap: if a fast-gen entry landed in Firebase in the instant
+        // between the panel opening and its very first render, that
+        // render would be treated as the "baseline" one and the
+        // notification for a genuinely brand-new entry would be silently
+        // skipped.
+        const __fastGenSessionStartedAt = Date.now();
         function updateFastGenAlert(fastGenLogs) {
             const banner = document.getElementById('fastGenBanner');
             const detail = document.getElementById('fastGenBannerDetail');
@@ -10221,33 +10066,34 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 }
             }
             try {
-                (fastGenLogs || []).forEach(function(log) {
-                    if (!log) return;
-                    const ts = Number(log.timestamp) || 0;
-                    // Notify for anything newer than session baseline (with skew)
-                    if (ts && ts <= __fastGenSessionStartedAt) return;
-                    // Also accept entries with no timestamp if never seen (rare)
-                    __pushFastGenNotification(log);
-                });
+                if (Notification && Notification.permission === 'granted') {
+                    fastGenLogs.forEach(log => {
+                        const nid = (log.generatorId || '') + '_' + (log.timestamp || '');
+                        if (__seenFastGenIds.has(nid)) return;
+                        __seenFastGenIds.add(nid);
+                        if (!log.timestamp || Number(log.timestamp) <= __fastGenSessionStartedAt) return;
+                        new Notification('DGXEN — Fast key generation', {
+                            body: (log.generatorName || 'A user') + ' generated a key within 1 minute of registering.',
+                            tag: nid
+                        });
+                    });
+                }
             } catch (e) {}
         }
-        // Legacy name kept for any leftover onclick — routes to Web Push register
         window.requestFastGenNotifPermission = function() {
-            try { if (window.DgxenPush) window.DgxenPush.register(); } catch (e) {}
+            try {
+                Notification.requestPermission().then(refreshNotifPermButton);
+            } catch (e) {}
         };
         function refreshNotifPermButton() {
             const btn = document.getElementById('notifPermBtn');
             if (!btn) return;
-            btn.style.display = 'inline-flex';
             try {
-                if (window.DgxenPush && window.DgxenPush.isRegistered && window.DgxenPush.isRegistered()) {
-                    btn.textContent = 'PUSH REGISTERED';
-                } else {
-                    btn.textContent = 'ENABLE PHONE PUSH';
-                }
-            } catch (e) {}
+                if (!('Notification' in window)) { btn.style.display = 'none'; return; }
+                btn.style.display = (Notification.permission === 'default') ? 'inline-flex' : 'none';
+            } catch (e) { btn.style.display = 'none'; }
         }
-        try { setTimeout(refreshNotifPermButton, 800); } catch (e) {}
+        refreshNotifPermButton();
 
         onValue(ref(db, 'settings/shareLogs'), (snap) => {
             window.__lastShareLogsSnap = snap;
@@ -10704,43 +10550,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             }
         }
 
-        /* Robust "how many times user generated a key" — covers every field
-           shape used across login / get-key / trial / legacy records. */
-        function resolveKeyGenCount(user) {
-            if (!user || typeof user !== 'object') return 0;
-            const nums = [];
-            const pushN = function(v) {
-                const n = Number(v);
-                if (Number.isFinite(n) && n >= 0) nums.push(Math.floor(n));
-            };
-            pushN(user.keyGenCount);
-            pushN(user.keysGenerated);
-            pushN(user.keyGenerateCount);
-            pushN(user.generateCount);
-            pushN(user.totalKeysGenerated);
-            pushN(user.key_count);
-            pushN(user.keys_count);
-            if (Array.isArray(user.keyHistory)) nums.push(user.keyHistory.length);
-            if (Array.isArray(user.generatedKeys)) nums.push(user.generatedKeys.length);
-            if (Array.isArray(user.keys)) nums.push(user.keys.length);
-            if (user.keyHistory && typeof user.keyHistory === 'object' && !Array.isArray(user.keyHistory)) {
-                nums.push(Object.keys(user.keyHistory).length);
-            }
-            if (user.generatedKeys && typeof user.generatedKeys === 'object' && !Array.isArray(user.generatedKeys)) {
-                nums.push(Object.keys(user.generatedKeys).length);
-            }
-            if (user.keys && typeof user.keys === 'object' && !Array.isArray(user.keys)) {
-                nums.push(Object.keys(user.keys).length);
-            }
-            if (user.keyGenLog && typeof user.keyGenLog === 'object') {
-                nums.push(Object.keys(user.keyGenLog).length);
-            }
-            let n = nums.length ? Math.max.apply(null, nums) : 0;
-            if (user.lastGeneratedKey && String(user.lastGeneratedKey).trim()) n = Math.max(n, 1);
-            if (user.trial && user.lastGeneratedKey) n = Math.max(n, 1);
-            return n;
-        }
-
         function renderUsersUI(snapshot) {
             const activeListDiv = document.getElementById('activeUserList');
             const bannedListDiv = document.getElementById('bannedUserList');
@@ -10808,19 +10617,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 });
                 const merged = Object.assign({}, ...sorted.slice().reverse());
                 merged.id = sorted[0].id;
-                /* key-gen count across duplicate records: max of each, or sum
-                   when distinct lastGeneratedKey values exist (true multi-gen). */
-                try {
-                    const counts = sorted.map(resolveKeyGenCount);
-                    let total = Math.max.apply(null, counts.concat([0]));
-                    const distinctKeys = new Set(
-                        sorted.map(u => String(u.lastGeneratedKey || '').trim()).filter(Boolean)
-                    );
-                    if (distinctKeys.size > 1) {
-                        total = Math.max(total, counts.reduce(function(s, c){ return s + c; }, 0));
-                    }
-                    merged.keyGenCount = total;
-                } catch (e) {}
                 return merged;
             });
             // Fire-and-forget: actually collapse any real duplicate groups
@@ -10871,12 +10667,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 } else {
                     registeredCount++;
                     if (activeListDiv) activeListDiv.innerHTML += `
-                    <div class="user-card glass-panel float-anim${user.pinned ? ' user-pinned' : ''}" data-user-id="${user.id}" style="${isUserFastGen(user) ? 'border:1.5px solid rgba(255,60,60,.55);background:rgba(255,40,40,.06);' : ''}">
+                    <div class="user-card glass-panel float-anim${user.pinned ? ' user-pinned' : ''}" data-user-id="${user.id}">
                         ${user.pinned ? `<div class="pin-badge" title="Pinned">📌</div>` : ''}
                         <div class="pin-action-btn" data-user-id="${user.id}" data-pinned="${user.pinned ? '1' : '0'}" style="display:none;">${user.pinned ? 'UNPIN' : 'PIN TO TOP'}</div>
                         <div class="user-date">${dateStr}</div>
-                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                            <div class="user-name copyable" style="cursor:pointer;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}${user.trial ? '<span class="trial-badge">TRIAL</span>' : ''}${isUserFastGen(user) ? '<span style="margin-left:6px;font-size:10px;font-weight:900;letter-spacing:.03em;color:#fff;background:rgba(220,40,40,.92);padding:2px 7px;border-radius:6px;vertical-align:middle;">⚠ FAST GEN &lt;1m</span>' : ''}</div>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <div class="user-name copyable" style="cursor:pointer;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}${user.trial ? '<span class="trial-badge">TRIAL</span>' : ''}</div>
                             ${(user.deviceOs || user.deviceModel) ? `<svg class="device-info-arrow" data-user-id="${user.id}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;cursor:pointer;color:var(--text-dim);transition:transform .25s ease;"><polyline points="6 9 12 15 18 9"/></svg>` : ''}
                         </div>
                         <div class="device-info-row" data-user-id="${user.id}" style="display:none;font-size:11px;color:var(--text-dim);background:rgba(255,255,255,.04);border-radius:8px;padding:8px 10px;margin:2px 0 8px;line-height:1.5;">
@@ -10886,7 +10682,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                         <div class="user-id copyable" style="cursor:pointer;" title="Click to copy ID" data-copy="${user.id}">ID: ${user.id}</div>
                         ${nativeId ? `<div class="copyable" style="font-size:10px;color:var(--text-dim);margin:0 0 8px;font-family:monospace;cursor:pointer;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Click to copy native id" data-copy="${String(nativeId).replace(/"/g,'&quot;')}">Dev: ${nativeId}</div>` : ''}
                         <div class="copyable" style="font-size:11px;font-weight:800;color:var(--accent);margin:0 0 6px;padding:6px 10px;border-radius:8px;background:rgba(0,255,136,0.1);cursor:pointer;" title="${vCode != null ? 'Click to copy version code' : 'This device has not reported a version code yet'}" data-copy="${vCode != null ? vCode : ''}">${vCode != null ? ('code ' + vCode) : 'no version code'}</div>
-                        <div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:0 0 12px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.04);">Key generated: <span style="color:var(--text-main);font-weight:800;">${resolveKeyGenCount(user)}</span> time(s)</div>
+                        <div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:0 0 12px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.04);">Key generated: <span style="color:var(--text-main);font-weight:800;">${(user.keyGenCount != null ? user.keyGenCount : (user.keysGenerated != null ? user.keysGenerated : (user.lastGeneratedKey ? 1 : 0)))}</span> time(s)</div>
                         <button type="button" class="btn-full bg-warn" data-action="ban-device" data-user-id="${user.id}" onclick="openBanModal('${user.id}')">BAN DEVICE</button>
                     </div>`;
                 }
@@ -10926,7 +10722,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         try { bindBanButtons(document); } catch (e) {}
         try { setupPinHoldToReveal(document.getElementById('activeUserList')); } catch (e) {}
         try { setupDeviceInfoToggle(document.getElementById('activeUserList')); } catch (e) {}
-        try { scanUsersForFastGen(users); } catch (eFg) {}
         }
 
         window.togglePinUser = async function(userId, currentlyPinned) {
@@ -15000,36 +14795,7 @@ async function listInfiniFiles() {
     }
     const hdrCt = (res.headers.get('content-type') || '').split(';')[0].trim();
     const declaredLen = Number(res.headers.get('content-length'));
-    // Stream body with progress when possible so large videos don't feel frozen,
-    // but still assemble a COMPLETE blob before playback (partial MP4 = Preview unavailable).
-    let buf;
-    if (res.body && typeof res.body.getReader === 'function' && declaredLen > 0) {
-      const reader = res.body.getReader();
-      const chunks = [];
-      let received = 0;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (signal && signal.aborted) throw new Error('cancelled');
-        chunks.push(value);
-        received += value.byteLength || value.length || 0;
-        try {
-          window.dispatchEvent(new CustomEvent('dgxen-preview-progress', {
-            detail: { rel: rel, fileName: raw, loaded: received, total: declaredLen, phase: 'download' }
-          }));
-        } catch (e) {}
-      }
-      const out = new Uint8Array(received);
-      let off = 0;
-      for (var i = 0; i < chunks.length; i++) {
-        const c = chunks[i];
-        out.set(c, off);
-        off += c.byteLength || c.length || 0;
-      }
-      buf = out.buffer;
-    } else {
-      buf = await res.arrayBuffer();
-    }
+    const buf = await res.arrayBuffer();
     if (signal && signal.aborted) throw new Error('cancelled');
     // A response can report ok:true and a plausible Content-Length yet still hand back
     // a truncated/empty body — a Worker hitting its own memory/CPU limit on a large file
@@ -15965,33 +15731,15 @@ function explainFetchError(e) {
   window.__cloudComputeTotalUsed = async function() {
     try {
       if (getActiveCloudProvider() === 'infini') {
-        /* Recursive: Depth-1 PROPFIND at root only counted top-level files and
-           ignored folder contents (e.g. Test/ 4.48GB) — bar showed ~144MB.
-           Walk every folder and sum real file sizes. */
-        async function walkInfini(prefix, depth) {
-          depth = depth || 0;
-          if (depth > 24) return 0;
-          const prev = window.__cloudCwd;
-          window.__cloudCwd = String(prefix || '').replace(/^\/+|\/+$/g, '');
-          let files = [];
-          try { files = await listInfiniFiles(); } catch (e1) { files = []; }
-          window.__cloudCwd = prev;
-          let sum = 0;
-          for (var i = 0; i < (files || []).length; i++) {
-            var f = files[i];
-            if (!f) continue;
-            var rel = String(f._relPath || f.fileName || '').replace(/^\/+/, '');
-            // Skip trash from "used" if trash is tracked separately (still count if not)
-            if (rel === '.trash' || rel.indexOf('.trash/') === 0) continue;
-            if (f._isFolder) {
-              sum += await walkInfini(rel, depth + 1);
-            } else {
-              sum += Number(f.contentLength || f.size) || 0;
-            }
-          }
-          return sum;
-        }
-        return await walkInfini('', 0);
+        const prev = window.__cloudCwd;
+        window.__cloudCwd = '';
+        let files = [];
+        try { files = await listInfiniFiles(); } catch (e1) { files = []; }
+        window.__cloudCwd = prev;
+        return (files || []).reduce(function(s, f) {
+          if (f && f._isFolder) return s;
+          return s + (Number(f.contentLength || f.size) || 0);
+        }, 0);
       }
       await authorizeB2();
       let start = null, total = 0;
@@ -16008,7 +15756,6 @@ function explainFetchError(e) {
         (data.files || []).forEach(function(f) {
           const n = String(f.fileName || '');
           if (/\/\.keep$/i.test(n) || /\/\.bzEmpty$/i.test(n) || /\/$/.test(n)) return;
-          if (n === '.trash' || n.indexOf('.trash/') === 0) return;
           total += Number(f.contentLength) || 0;
         });
         start = data.nextFileName || null;
@@ -16930,197 +16677,7 @@ async function listAllFiles(forcedProvider) {
       'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#8ab4f8;text-decoration:none;font-weight:600}' +
       '.f span{color:#9aa0a6;font-weight:500;font-size:12px}.f:hover{background:rgba(255,255,255,.1)}' +
       '</style></head><body><h1>' + title + '</h1><p>' + (rows||[]).length + ' file(s) · tap to open / download</p>' +
-      (items || '<p>No files in this folder.</p>') + '
-<script>
-/* ========== DGXEN Web Push client (modular) ========== */
-(function(){
-  const LS_URL = 'dgxen_push_worker_url';
-  const LS_SECRET = 'dgxen_push_admin_secret';
-  const LS_REG = 'dgxen_push_registered';
-
-  function status(msg, ok) {
-    var el = document.getElementById('pushStatus');
-    if (!el) return;
-    el.textContent = msg || '';
-    el.style.color = ok === false ? 'var(--error)' : (ok ? 'var(--accent)' : 'var(--text-dim)');
-  }
-
-  function loadConfig() {
-    try {
-      var u = document.getElementById('pushWorkerUrl');
-      var s = document.getElementById('pushAdminSecret');
-      if (u) u.value = localStorage.getItem(LS_URL) || '';
-      if (s) s.value = localStorage.getItem(LS_SECRET) || '';
-    } catch (e) {}
-  }
-
-  function saveConfig() {
-    try {
-      var u = document.getElementById('pushWorkerUrl');
-      var s = document.getElementById('pushAdminSecret');
-      if (u) localStorage.setItem(LS_URL, (u.value || '').trim().replace(/\/+$/, ''));
-      if (s) localStorage.setItem(LS_SECRET, (s.value || '').trim());
-      status('Config saved on this browser only.', true);
-    } catch (e) { status(String(e.message || e), false); }
-  }
-
-  function workerBase() {
-    try { return (localStorage.getItem(LS_URL) || '').replace(/\/+$/, ''); } catch (e) { return ''; }
-  }
-  function adminSecret() {
-    try { return localStorage.getItem(LS_SECRET) || ''; } catch (e) { return ''; }
-  }
-
-  function urlBase64ToUint8Array(base64String) {
-    var padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-    var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    var raw = atob(base64);
-    var out = new Uint8Array(raw.length);
-    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
-    return out;
-  }
-
-  async function ensureServiceWorker() {
-    if (!('serviceWorker' in navigator)) throw new Error('Service Worker not supported');
-    // Prefer /sw.js at site root; fall back to ./sw.js next to admin.html
-    var reg;
-    try {
-      reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-    } catch (e1) {
-      reg = await navigator.serviceWorker.register('./sw.js');
-    }
-    await navigator.serviceWorker.ready;
-    return reg;
-  }
-
-  async function fetchPublicKey(base) {
-    var r = await fetch(base + '/vapidPublicKey', { method: 'GET' });
-    var j = await r.json();
-    if (!j || !j.publicKey) throw new Error('Worker did not return VAPID public key');
-    return j.publicKey;
-  }
-
-  async function register() {
-    try {
-      loadConfig();
-      var base = workerBase();
-      if (!base) { status('Set Cloudflare Worker URL first.', false); return; }
-      if (!('Notification' in window) || !('PushManager' in window)) {
-        status('This browser does not support Web Push.', false);
-        return;
-      }
-      status('Requesting permission…');
-      var perm = await Notification.requestPermission();
-      if (perm !== 'granted') { status('Permission denied — enable notifications for this site in Chrome.', false); return; }
-
-      status('Registering service worker…');
-      var reg = await ensureServiceWorker();
-      var pub = await fetchPublicKey(base);
-      status('Creating push subscription…');
-      var sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(pub)
-      });
-      var res = await fetch(base + '/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subscription: sub.toJSON(),
-          deviceLabel: (navigator.userAgent || '').slice(0, 80)
-        })
-      });
-      var data = await res.json().catch(function(){ return {}; });
-      if (!res.ok || !data.ok) throw new Error((data && data.error) || ('subscribe failed ' + res.status));
-      try { localStorage.setItem(LS_REG, '1'); } catch (e) {}
-      status('Device registered for push. You can close this tab.', true);
-      try { refreshNotifPermButton(); } catch (e) {}
-    } catch (e) {
-      status(String(e.message || e), false);
-    }
-  }
-
-  async function unregister() {
-    try {
-      var base = workerBase();
-      var reg = await navigator.serviceWorker.getRegistration();
-      if (reg) {
-        var sub = await reg.pushManager.getSubscription();
-        if (sub) {
-          if (base) {
-            try {
-              await fetch(base + '/unsubscribe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ endpoint: sub.endpoint })
-              });
-            } catch (e) {}
-          }
-          await sub.unsubscribe();
-        }
-      }
-      try { localStorage.removeItem(LS_REG); } catch (e) {}
-      status('Unregistered this device.', true);
-      try { refreshNotifPermButton(); } catch (e) {}
-    } catch (e) {
-      status(String(e.message || e), false);
-    }
-  }
-
-  async function send(payload) {
-    var base = workerBase();
-    var secret = adminSecret();
-    if (!base) throw new Error('Push Worker URL not set');
-    if (!secret) throw new Error('Admin Push Secret not set');
-    var res = await fetch(base + '/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + secret
-      },
-      body: JSON.stringify(payload || {})
-    });
-    var data = await res.json().catch(function(){ return {}; });
-    if (!res.ok || data.ok === false) throw new Error((data && data.error) || ('send failed ' + res.status));
-    return data;
-  }
-
-  async function sendManual() {
-    try {
-      saveConfig();
-      var title = (document.getElementById('pushManualTitle') || {}).value || 'DGXEN Alert';
-      var body = (document.getElementById('pushManualBody') || {}).value || '';
-      if (!body.trim()) { status('Enter a message.', false); return; }
-      status('Sending…');
-      var result = await send({ title: title, body: body, url: './admin.html', tag: 'manual-' + Date.now() });
-      status('Sent to ' + (result.sent || 0) + ' device(s)' + (result.failed ? (', ' + result.failed + ' failed') : '') + '.', true);
-    } catch (e) {
-      status(String(e.message || e), false);
-    }
-  }
-
-  function isRegistered() {
-    try { return localStorage.getItem(LS_REG) === '1'; } catch (e) { return false; }
-  }
-
-  window.DgxenPush = {
-    saveConfig: saveConfig,
-    register: register,
-    unregister: unregister,
-    send: send,
-    sendManual: sendManual,
-    isRegistered: isRegistered,
-    loadConfig: loadConfig
-  };
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadConfig);
-  } else {
-    loadConfig();
-  }
-})();
-</script>
-
-</body></html>';
+      (items || '<p>No files in this folder.</p>') + '</body></html>';
   }
 
 
@@ -20347,18 +19904,29 @@ async function listAllFiles(forcedProvider) {
 })();
 
 (function cloudTwoFingerPan(){
-  var lastY = null, lastX = null;
+  var lastY = null, lastX = null, activeTarget = null;
+  function pickTarget(e) {
+    // Resolve the actual scroll target from where the gesture is physically
+    // happening — not always the file list — so a 2-finger gesture over the
+    // header/settings/upload area (outside the file list) scrolls THAT area,
+    // and one over the files scrolls the file list. Previously this always
+    // resolved to the file list regardless of where the fingers were.
+    var t = e.target;
+    var box = document.getElementById('cloudFileList');
+    var panel = document.getElementById('cloudPanel');
+    if (t && box && (t === box || box.contains(t))) return box;
+    return panel;
+  }
   function onTouchStart(e) {
     if (e.touches && e.touches.length >= 2) {
       lastY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
       lastX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-    } else { lastY = lastX = null; }
+      activeTarget = pickTarget(e);
+    } else { lastY = lastX = null; activeTarget = null; }
   }
   function onTouchMove(e) {
-    if (!e.touches || e.touches.length < 2) { lastY = lastX = null; return; }
-    var box = document.getElementById('cloudFileList');
-    var panel = document.getElementById('cloudPanel');
-    var target = box || panel;
+    if (!e.touches || e.touches.length < 2) { lastY = lastX = null; activeTarget = null; return; }
+    var target = activeTarget || pickTarget(e);
     if (!target) return;
     var y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
     var x = (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -20370,7 +19938,7 @@ async function listAllFiles(forcedProvider) {
     }
     lastY = y; lastX = x;
   }
-  function onTouchEnd() { lastY = lastX = null; }
+  function onTouchEnd() { lastY = lastX = null; activeTarget = null; }
   function bind() {
     var panel = document.getElementById('cloudPanel');
     var box = document.getElementById('cloudFileList');
