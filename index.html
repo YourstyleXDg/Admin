@@ -670,6 +670,14 @@
         .tab-section.active {
             display: block;
         }
+        @keyframes tabShiftInRight {
+            from { opacity: 0; transform: translateX(32px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes tabShiftInLeft {
+            from { opacity: 0; transform: translateX(-32px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
         @keyframes slideUpFade {
             to {
                 opacity: 1;
@@ -3886,14 +3894,8 @@ body.cat-world-active .cat-mode-bar{display:block}
        (which is handled entirely in JS via preventDefault and never needed the CSS lock). --- */
 .cloud-file-row .name { touch-action: pan-y pinch-zoom !important; }
 #cloudFileList { touch-action: pan-x pan-y pinch-zoom; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-#cloudPanel { touch-action: pan-y; }
-#cloudPanel.open { touch-action: pan-y pinch-zoom; }
-/* Everything ABOVE the file list — header, provider hint, storage bar,
-   settings <details>, upload drop-zone, upload progress — explicitly gets
-   1-finger vertical scroll + pinch-zoom, same as the rest of the panel,
-   spelled out per-element rather than only relying on inheritance so there
-   is no ambiguity on any device/browser about this specific "yellow area". */
-#cloudPanel > *:not(#cloudFileList) { touch-action: pan-y pinch-zoom; }
+#cloudPanel { touch-action: manipulation; }
+#cloudPanel.open { touch-action: pan-x pan-y pinch-zoom; }
 
 .cloud-file-row { transition: transform .12s ease, background .15s ease; }
 .cloud-file-row.cp-swiping { background: rgba(92,200,255,.10); }
@@ -5598,7 +5600,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                             <button class="btn dl-btn-small" onclick="downloadSpecificFile('auth_offline', this)">DL</button>
                         </div>
                         <div class="dl-file-row">
-                            <span class="dl-file-name">Hook.smali (Invoke Trigger)</span>
+                            <span class="dl-file-name">hook.txt (Integration Guide)</span>
                             <button class="btn dl-btn-small" onclick="downloadSpecificFile('hook_smali', this)">DL</button>
                         </div>
                     </div>
@@ -6610,6 +6612,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
   function closePreview(key, opts) {
     opts = opts || {};
     var p = openPreviews[key]; if (!p) return;
+    try { if (p._progHandler) window.removeEventListener('dgxen-preview-progress', p._progHandler); } catch (ePh) {}
     try { if (p.abort) p.abort.abort(); } catch (e0) {}
     try { if (p.xhr) p.xhr.abort(); } catch (e1) {}
 
@@ -6762,11 +6765,14 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       throw lastErr || new Error('Infini preview failed for ' + rel);
     }
 
-    // ---- B2: same auth URL as downloadCloudFile, then blob for <video>/<img> reliability ----
+    // ---- B2: media uses authorized direct URL (browser Range / progressive);
+    // images & others still blob for reliability ----
     if (!B.authorizeB2 || !B.b2Fetch || !B.b2) throw new Error('B2 not ready');
     await B.authorizeB2(false);
     var b2c = B.b2();
     if (!b2c || !b2c.downloadUrl || !b2c.bucketName) throw new Error('B2 not configured');
+    var mediaExt = (nameOnly || '').split('.').pop().toLowerCase();
+    var isB2Media = ['mp4','webm','mov','mkv','m4v','mp3','wav','ogg','m4a','aac'].indexOf(mediaExt) >= 0;
 
     async function b2BlobFromUrl(directUrl) {
       var res = await fetch(directUrl, { method: 'GET', signal: signal, mode: 'cors', credentials: 'omit' });
@@ -6787,6 +6793,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       try {
         var byId = b2c.downloadUrl.replace(/\/$/, '') + '/b2api/v2/b2_download_file_by_id?fileId=' +
           encodeURIComponent(fid) + '&Authorization=' + encodeURIComponent(b2c.authToken);
+        // Video/audio: stream via authorized URL (browser handles Range) — no full download wait
+        if (isB2Media) return { url: byId, blob: false };
         return await b2BlobFromUrl(byId);
       } catch (eId) {
         // fall through to by-name
@@ -6809,6 +6817,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     var direct = b2c.downloadUrl.replace(/\/$/, '') + '/file/' + encodeURIComponent(b2c.bucketName) + '/' + pathEnc +
       '?Authorization=' + encodeURIComponent(authData.authorizationToken);
     try {
+      if (isB2Media) return { url: direct, blob: false };
       return await b2BlobFromUrl(direct);
     } catch (eName) {
       // 3) last resort: nameOnly under same auth if rel had folders wrong
@@ -6816,6 +6825,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         var path2 = encodeURIComponent(nameOnly);
         var direct2 = b2c.downloadUrl.replace(/\/$/, '') + '/file/' + encodeURIComponent(b2c.bucketName) + '/' + path2 +
           '?Authorization=' + encodeURIComponent(authData.authorizationToken);
+        if (isB2Media) return { url: direct2, blob: false };
         return await b2BlobFromUrl(direct2);
       }
       throw new Error((eName && eName.message) || ('Preview failed for ' + rel));
@@ -6953,11 +6963,44 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     if (openPreviews[key] && !opts.forceFs) { closePreview(key); row.querySelector('.name') && row.querySelector('.name').setAttribute('aria-expanded', 'false'); return; }
     if (openPreviews[key]) closePreview(key);
     var drawer = doc.createElement('div'); drawer.className = 'cloud-preview-drawer cp-drawer'; drawer.setAttribute('data-preview-for', key);
-    drawer.innerHTML = '<div class="cp-load">Loading preview…</div>'; row.after(drawer);
+    var loadId = 'cpLoad_' + String(key).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 48) + '_' + Date.now();
+    drawer.innerHTML = '<div class="cp-load" data-cp-load="' + loadId + '">Loading preview…</div>'; row.after(drawer);
     var ac = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     openPreviews[key] = { drawer: drawer, urls: [], abort: ac }; row.querySelector('.name') && row.querySelector('.name').setAttribute('aria-expanded', 'true');
+    // Per-file progress only — never let another download move this drawer %s
+    var lastPct = -1;
+    function samePreviewRel(a, b) {
+      a = String(a || '').replace(/^\/+|\/+$/g, '').toLowerCase();
+      b = String(b || '').replace(/^\/+|\/+$/g, '').toLowerCase();
+      if (!a || !b) return false;
+      if (a === b) return true;
+      if (a.length > b.length ? a.slice(-b.length - 1) === '/' + b : b.slice(-a.length - 1) === '/' + a) return true;
+      var ba = a.split('/').pop(), bb = b.split('/').pop();
+      return !!(ba && bb && ba === bb);
+    }
+    var onDlProg = function(ev) {
+      try {
+        if (!ev.detail || ev.detail.phase !== 'download') return;
+        if (!openPreviews[key]) return;
+        // Match this drawer only
+        if (!samePreviewRel(ev.detail.rel, key) && !samePreviewRel(ev.detail.fileName, key) && !samePreviewRel(ev.detail.fileName, info.name)) return;
+        var msg = drawer.querySelector('[data-cp-load="' + loadId + '"]') || drawer.querySelector('.cp-load');
+        if (!msg) return;
+        var tot = Number(ev.detail.total) || 0, ld = Number(ev.detail.loaded) || 0;
+        if (tot > 0) {
+          var pct = Math.min(99, Math.floor((ld / tot) * 100));
+          if (pct === lastPct) return; // throttle rapid dual-fire
+          lastPct = pct;
+          msg.textContent = 'Loading preview… ' + pct + '%';
+        }
+      } catch (e) {}
+    };
+    try { window.addEventListener('dgxen-preview-progress', onDlProg); } catch (e) {}
+    if (openPreviews[key]) openPreviews[key]._progHandler = onDlProg;
     try {
       var ext = extOf(info.name), u = await urlFor(info, ac && ac.signal);
+      try { window.removeEventListener('dgxen-preview-progress', onDlProg); } catch (e) {}
+      if (openPreviews[key]) openPreviews[key]._progHandler = null;
       if (!openPreviews[key]) { if (u.blob) URL.revokeObjectURL(u.url); return; }
       if (u.blob) openPreviews[key].urls.push(u.url);
       var closeBtn = '<button type="button" class="cp-x" aria-label="Close preview">✕</button>', pid = 'cpP_' + Date.now() + '_' + Math.floor(Math.random() * 1e5);
@@ -7222,6 +7265,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       }
       var x = drawer.querySelector('.cp-x'); if (x) x.onclick = function (e) { e.stopPropagation(); closePreview(key); var nm = row.querySelector('.name'); if (nm) nm.setAttribute('aria-expanded', 'false'); };
     } catch (e) {
+      try { window.removeEventListener('dgxen-preview-progress', onDlProg); } catch (eR) {}
+      if (openPreviews[key]) openPreviews[key]._progHandler = null;
       if (e && (e.name === 'AbortError' || String(e.message||'') === 'cancelled')) {
         closePreview(key); return;
       }
@@ -9004,66 +9049,8 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                     }
                     content = smali;
                 } else if (fileId === 'hook_smali') {
-                    content =
-                        '# ============================================================\n' +
-                        '# DGXEN UNIVERSAL HOOK + ACTION-LOCK\n' +
-                        '# ============================================================\n' +
-                        '# STEP A — onCreate (launcher Activity), RIGHT AFTER invoke-super:\n' +
-                        '#\n' +
-                        '    invoke-static {p0}, Ldg/auth/dgauthupdate;->start(Landroid/content/Context;)V\n' +
-                        '\n' +
-                        '    invoke-static {p0}, Lcom/dgxen/Auth;->show(Landroid/app/Activity;)V\n' +
-                        '#\n' +
-                        '# STEP B — CORE ACTION method (startVpn / onClick / apply…)\n' +
-                        '# Put this at the VERY TOP of that method. Set .registers high enough.\n' +
-                        '#\n' +
-                        '    # --- DGXEN ACTION LOCK (UNIVERSAL) ---\n' +
-                        '    sget-boolean v0, Lcom/dgxen/Auth;->unlocked:Z\n' +
-                        '    if-nez v0, :cond_dgxen_action_allowed\n' +
-                        '\n' +
-                        '    new-instance v0, Landroid/widget/TextView;\n' +
-                        '    invoke-direct {v0, p0}, Landroid/widget/TextView;-><init>(Landroid/content/Context;)V\n' +
-                        '\n' +
-                        '    const-string v1, "Security Lock Active\\n\\nSession Invalid or Bypassed.\\nPlease CLEAR APP DATA and Restart the App."\n' +
-                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V\n' +
-                        '\n' +
-                        '    const-string v1, "#000000"\n' +
-                        '    invoke-static {v1}, Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I\n' +
-                        '    move-result v1\n' +
-                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setBackgroundColor(I)V\n' +
-                        '\n' +
-                        '    const-string v1, "#CF6679"\n' +
-                        '    invoke-static {v1}, Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I\n' +
-                        '    move-result v1\n' +
-                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setTextColor(I)V\n' +
-                        '\n' +
-                        '    const/16 v1, 0x11\n' +
-                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setGravity(I)V\n' +
-                        '\n' +
-                        '    const/high16 v1, 0x41800000    # 16.0f\n' +
-                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setTextSize(F)V\n' +
-                        '\n' +
-                        '    const/4 v1, 0x1\n' +
-                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setClickable(Z)V\n' +
-                        '\n' +
-                        '    const/high16 v1, 0x42c80000    # 100.0f\n' +
-                        '    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setElevation(F)V\n' +
-                        '\n' +
-                        '    new-instance v1, Landroid/view/ViewGroup$LayoutParams;\n' +
-                        '    const/4 v2, -0x1\n' +
-                        '    invoke-direct {v1, v2, v2}, Landroid/view/ViewGroup$LayoutParams;-><init>(II)V\n' +
-                        '\n' +
-                        '    const v2, 0x1020002\n' +
-                        '    invoke-virtual {p0, v2}, Landroid/app/Activity;->findViewById(I)Landroid/view/View;\n' +
-                        '    move-result-object v2\n' +
-                        '    check-cast v2, Landroid/view/ViewGroup;\n' +
-                        '    invoke-virtual {v2, v0, v1}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V\n' +
-                        '\n' +
-                        '    return-void\n' +
-                        '\n' +
-                        '    :cond_dgxen_action_allowed\n' +
-                        '    # --- original method code continues below ---\n';
-                    finalName = 'Hook.smali';
+                    content = "================================================================================\n           DGXEN UNIVERSAL AUTH & ACTION-LOCK INTEGRATION GUIDE\n================================================================================\n\n[ ARCHITECTURE OVERVIEW ]\nYeh guide kisi bhi general Android app mein DGXEN Login system integrate karne \nke liye hai:\n1. Dialog Trigger: Main activity start hote hi background me check & dialog open.\n2. Action Lock: App ka main primary feature (Start Button, Apply Button, Switch,\n   ya Service Start) tab tak trigger nahi hoga jab tak Auth verify na ho.\n3. False-Positive Free: onCreate par execution block nahi hoti, isliye genuine\n   users ko key verify karne ka pura time milta hai bina black screen glitch ke.\n\n--------------------------------------------------------------------------------\nSTEP 1: FILES COPY & MANIFEST SETUP\n--------------------------------------------------------------------------------\n1. Apne smali packages target APK ke dex me paste karein:\n   - `com/dgxen/Auth.smali`\n   - `dg/auth/dgauthupdate.smali`\n2. `AndroidManifest.xml` check karein, agar missing ho toh yeh permission add karein:\n   <uses-permission android:name=\"android.permission.INTERNET\" />\n\n--------------------------------------------------------------------------------\nSTEP 2: LAUNCHER ACTIVITY ENTRY HOOK (onCreate)\n--------------------------------------------------------------------------------\nTarget app ki main/launcher activity ka `onCreate` method open karein.\n`invoke-super {p0, ...}, ...->onCreate(...)` ke theek baad yeh trigger add karein:\n\n    # --- DGXEN DIALOG & UPDATE TRIGGER ---\n    invoke-static {p0}, Ldg/auth/dgauthupdate;->start(Landroid/content/Context;)V\n\n    invoke-static {p0}, Lcom/dgxen/Auth;->show(Landroid/app/Activity;)V\n\n*Note: onCreate me koi 'unlocked' check ya return-void mat lagana.*\n\n--------------------------------------------------------------------------------\nSTEP 3: CORE FEATURE IDENTIFY KARNA (Action Method)\n--------------------------------------------------------------------------------\nHar app ka ek \"Core Action Method\" hota hai jahan se main kam start hota hai.\nPehchano app kis category ki hai:\n\n- VPN App           -> checkVpn(), startVpn(), ya startEngine()\n- Injector / Tool   -> applyChanges(), injectFeature(), ya onStartClick()\n- Mod Menu / Float  -> startFloatingService(), showOverlay()\n- Media / Downloader-> startDownload(), playMedia(), processLink()\n- Generic Buttons   -> onClick(Landroid/view/View;)V (Start/Execute ID wala button)\n\n--------------------------------------------------------------------------------\nSTEP 4: UNIVERSAL ACTION LOCK INJECTION\n--------------------------------------------------------------------------------\nUpar chune gaye action method ke bilkul shuru me (first line par):\n1. Method header me `.registers 6` set karein.\n2. Niche diya gaya Universal Lock paste karein:\n\n    # --- DGXEN ACTION LOCK (UNIVERSAL) ---\n    sget-boolean v0, Lcom/dgxen/Auth;->unlocked:Z\n    if-nez v0, :cond_dgxen_action_allowed\n\n    # Untouchable Black Screen Overlay\n    new-instance v0, Landroid/widget/TextView;\n    invoke-direct {v0, p0}, Landroid/widget/TextView;-><init>(Landroid/content/Context;)V\n\n    const-string v1, \"Security Lock Active\\n\\nSession Invalid or Bypassed.\\nPlease CLEAR APP DATA and Restart the App.\"\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V\n\n    const-string v1, \"#000000\"\n    invoke-static {v1}, Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I\n    move-result v1\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setBackgroundColor(I)V\n\n    const-string v1, \"#CF6679\"\n    invoke-static {v1}, Landroid/graphics/Color;->parseColor(Ljava/lang/String;)I\n    move-result v1\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setTextColor(I)V\n\n    const/16 v1, 0x11\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setGravity(I)V\n\n    const/high16 v1, 0x41800000    # 16.0f\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setTextSize(F)V\n\n    const/4 v1, 0x1\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setClickable(Z)V\n\n    const/high16 v1, 0x42c80000    # 100.0f\n    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setElevation(F)V\n\n    new-instance v1, Landroid/view/ViewGroup$LayoutParams;\n    const/4 v2, -0x1\n    invoke-direct {v1, v2, v2}, Landroid/view/ViewGroup$LayoutParams;-><init>(II)V\n\n    const v2, 0x1020002\n    invoke-virtual {p0, v2}, Landroid/app/Activity;->findViewById(I)Landroid/view/View;\n    move-result-object v2\n    check-cast v2, Landroid/view/ViewGroup;\n    invoke-virtual {v2, v0, v1}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V\n\n    # Operation cancel/kill\n    return-void\n\n    :cond_dgxen_action_allowed\n    # --- APP KA ORIGINAL ACTION CODE YAHAN SE RUN HOGA ---\n\n--------------------------------------------------------------------------------\nSECURITY SUMMARY:\n- Normal User Flow: App khulti hai -> Dialog me key verify hoti hai -> \n  unlocked variable true hota hai -> Button dabane par main feature smoothly chalta hai.\n- Bypasser / Crash Glitch Flow: Direct entry mil bhi gayi toh unlocked variable false \n  milega -> Jaise hi user kisi button/feature ko start karega, app black untouchable \n  parde ke sath lock ho jayegi.\n================================================================================\n";
+                    finalName = 'hook.txt';
                 } else if (fileId === 'gen_index') {
                     const urls = [
                         'https://yourstylexdg.github.io/DGXEN-KEY/index.html',
@@ -9133,8 +9120,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 }
 
                 if (content) {
-                    const blob = new Blob([content], { type: finalName.endsWith('.smali') ? 'text/plain;charset=utf-8' :
-                            'text/html;charset=utf-8' });
+                    const lower = (finalName || '').toLowerCase();
+                    let mime = 'text/plain;charset=utf-8';
+                    if (lower.endsWith('.html') || lower.endsWith('.htm')) mime = 'text/html;charset=utf-8';
+                    else if (lower.endsWith('.json')) mime = 'application/json;charset=utf-8';
+                    else if (lower.endsWith('.smali') || lower.endsWith('.txt')) mime = 'text/plain;charset=utf-8';
+                    const blob = new Blob([content], { type: mime });
                     triggerDownload(blob, finalName, btnElement, originalText);
                 }
 
@@ -10039,18 +10030,50 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         // re-rendering the same data (e.g. after an unrelated log delete)
         // never re-fires a notification for something already seen.
         const __seenFastGenIds = new Set();
-        // Records the moment THIS admin session started watching — any
-        // flagged entry timestamped after this moment is "new" and worth
-        // a notification; anything at or before it was already sitting in
-        // the database before this session opened and shouldn't re-alert
-        // every time the panel is simply reopened. This replaces an
-        // earlier "have we rendered at least once yet" flag, which had a
-        // real gap: if a fast-gen entry landed in Firebase in the instant
-        // between the panel opening and its very first render, that
-        // render would be treated as the "baseline" one and the
-        // notification for a genuinely brand-new entry would be silently
-        // skipped.
-        const __fastGenSessionStartedAt = Date.now();
+        // Session baseline: entries older than this (minus small skew) are not notified.
+        // 90s skew covers clock drift + first Firebase snapshot latency so genuine
+        // new events during the first seconds of opening admin still alert.
+        const __fastGenSessionStartedAt = Date.now() - 90000;
+        function __flashFastGenInApp(title, body) {
+            try {
+                var t = document.getElementById('fastGenLiveToast');
+                if (!t) {
+                    t = document.createElement('div');
+                    t.id = 'fastGenLiveToast';
+                    t.style.cssText = 'position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:2147483646;max-width:92vw;padding:14px 18px;border-radius:14px;background:rgba(180,20,30,.94);color:#fff;font:800 13px/1.4 system-ui,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.45);pointer-events:none;opacity:0;transition:opacity .25s;';
+                    document.body.appendChild(t);
+                }
+                t.innerHTML = '<div style="font-size:14px;margin-bottom:4px;">' + String(title || '') + '</div><div style="font-weight:600;opacity:.92;">' + String(body || '') + '</div>';
+                t.style.opacity = '1';
+                clearTimeout(t.__h);
+                t.__h = setTimeout(function(){ t.style.opacity = '0'; }, 6000);
+            } catch (e) {}
+            try {
+                if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+            } catch (e) {}
+        }
+        function __pushFastGenNotification(log) {
+            const nid = (log.generatorId || log.key || '') + '_' + (log.timestamp || Date.now());
+            if (__seenFastGenIds.has(nid)) return;
+            const title = 'DGXEN — Fast key generation';
+            const body = (log.generatorName || 'A user') + ' generated a key within 1 minute of registering.';
+            var shown = false;
+            try {
+                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                    const n = new Notification(title, {
+                        body: body,
+                        tag: nid,
+                        requireInteraction: true
+                    });
+                    shown = true;
+                    try { n.onclick = function(){ try{ window.focus(); }catch(e){} try{ n.close(); }catch(e){} }; } catch (e) {}
+                }
+            } catch (e) {}
+            // Always show in-app toast so admin never misses it even without OS permission
+            __flashFastGenInApp(title, body);
+            __seenFastGenIds.add(nid);
+            return shown;
+        }
         function updateFastGenAlert(fastGenLogs) {
             const banner = document.getElementById('fastGenBanner');
             const detail = document.getElementById('fastGenBannerDetail');
@@ -10066,23 +10089,22 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 }
             }
             try {
-                if (Notification && Notification.permission === 'granted') {
-                    fastGenLogs.forEach(log => {
-                        const nid = (log.generatorId || '') + '_' + (log.timestamp || '');
-                        if (__seenFastGenIds.has(nid)) return;
-                        __seenFastGenIds.add(nid);
-                        if (!log.timestamp || Number(log.timestamp) <= __fastGenSessionStartedAt) return;
-                        new Notification('DGXEN — Fast key generation', {
-                            body: (log.generatorName || 'A user') + ' generated a key within 1 minute of registering.',
-                            tag: nid
-                        });
-                    });
-                }
+                (fastGenLogs || []).forEach(function(log) {
+                    if (!log) return;
+                    const ts = Number(log.timestamp) || 0;
+                    // Notify for anything newer than session baseline (with skew)
+                    if (ts && ts <= __fastGenSessionStartedAt) return;
+                    // Also accept entries with no timestamp if never seen (rare)
+                    __pushFastGenNotification(log);
+                });
             } catch (e) {}
         }
         window.requestFastGenNotifPermission = function() {
             try {
-                Notification.requestPermission().then(refreshNotifPermButton);
+                if (!('Notification' in window)) return;
+                Notification.requestPermission().then(function(p) {
+                    refreshNotifPermButton();
+                });
             } catch (e) {}
         };
         function refreshNotifPermButton() {
@@ -10094,6 +10116,13 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             } catch (e) { btn.style.display = 'none'; }
         }
         refreshNotifPermButton();
+        // Auto-request once per session when still default (user gesture not always available;
+        // still try — browsers that block silently leave in-app toast working).
+        try {
+            if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+                setTimeout(function(){ try { window.requestFastGenNotifPermission(); } catch (e) {} }, 1200);
+            }
+        } catch (e) {}
 
         onValue(ref(db, 'settings/shareLogs'), (snap) => {
             window.__lastShareLogsSnap = snap;
@@ -10550,6 +10579,43 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             }
         }
 
+        /* Robust "how many times user generated a key" — covers every field
+           shape used across login / get-key / trial / legacy records. */
+        function resolveKeyGenCount(user) {
+            if (!user || typeof user !== 'object') return 0;
+            const nums = [];
+            const pushN = function(v) {
+                const n = Number(v);
+                if (Number.isFinite(n) && n >= 0) nums.push(Math.floor(n));
+            };
+            pushN(user.keyGenCount);
+            pushN(user.keysGenerated);
+            pushN(user.keyGenerateCount);
+            pushN(user.generateCount);
+            pushN(user.totalKeysGenerated);
+            pushN(user.key_count);
+            pushN(user.keys_count);
+            if (Array.isArray(user.keyHistory)) nums.push(user.keyHistory.length);
+            if (Array.isArray(user.generatedKeys)) nums.push(user.generatedKeys.length);
+            if (Array.isArray(user.keys)) nums.push(user.keys.length);
+            if (user.keyHistory && typeof user.keyHistory === 'object' && !Array.isArray(user.keyHistory)) {
+                nums.push(Object.keys(user.keyHistory).length);
+            }
+            if (user.generatedKeys && typeof user.generatedKeys === 'object' && !Array.isArray(user.generatedKeys)) {
+                nums.push(Object.keys(user.generatedKeys).length);
+            }
+            if (user.keys && typeof user.keys === 'object' && !Array.isArray(user.keys)) {
+                nums.push(Object.keys(user.keys).length);
+            }
+            if (user.keyGenLog && typeof user.keyGenLog === 'object') {
+                nums.push(Object.keys(user.keyGenLog).length);
+            }
+            let n = nums.length ? Math.max.apply(null, nums) : 0;
+            if (user.lastGeneratedKey && String(user.lastGeneratedKey).trim()) n = Math.max(n, 1);
+            if (user.trial && user.lastGeneratedKey) n = Math.max(n, 1);
+            return n;
+        }
+
         function renderUsersUI(snapshot) {
             const activeListDiv = document.getElementById('activeUserList');
             const bannedListDiv = document.getElementById('bannedUserList');
@@ -10617,6 +10683,19 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 });
                 const merged = Object.assign({}, ...sorted.slice().reverse());
                 merged.id = sorted[0].id;
+                /* key-gen count across duplicate records: max of each, or sum
+                   when distinct lastGeneratedKey values exist (true multi-gen). */
+                try {
+                    const counts = sorted.map(resolveKeyGenCount);
+                    let total = Math.max.apply(null, counts.concat([0]));
+                    const distinctKeys = new Set(
+                        sorted.map(u => String(u.lastGeneratedKey || '').trim()).filter(Boolean)
+                    );
+                    if (distinctKeys.size > 1) {
+                        total = Math.max(total, counts.reduce(function(s, c){ return s + c; }, 0));
+                    }
+                    merged.keyGenCount = total;
+                } catch (e) {}
                 return merged;
             });
             // Fire-and-forget: actually collapse any real duplicate groups
@@ -10682,7 +10761,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                         <div class="user-id copyable" style="cursor:pointer;" title="Click to copy ID" data-copy="${user.id}">ID: ${user.id}</div>
                         ${nativeId ? `<div class="copyable" style="font-size:10px;color:var(--text-dim);margin:0 0 8px;font-family:monospace;cursor:pointer;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="Click to copy native id" data-copy="${String(nativeId).replace(/"/g,'&quot;')}">Dev: ${nativeId}</div>` : ''}
                         <div class="copyable" style="font-size:11px;font-weight:800;color:var(--accent);margin:0 0 6px;padding:6px 10px;border-radius:8px;background:rgba(0,255,136,0.1);cursor:pointer;" title="${vCode != null ? 'Click to copy version code' : 'This device has not reported a version code yet'}" data-copy="${vCode != null ? vCode : ''}">${vCode != null ? ('code ' + vCode) : 'no version code'}</div>
-                        <div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:0 0 12px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.04);">Key generated: <span style="color:var(--text-main);font-weight:800;">${(user.keyGenCount != null ? user.keyGenCount : (user.keysGenerated != null ? user.keysGenerated : (user.lastGeneratedKey ? 1 : 0)))}</span> time(s)</div>
+                        <div style="font-size:11px;font-weight:700;color:var(--text-dim);margin:0 0 12px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.04);">Key generated: <span style="color:var(--text-main);font-weight:800;">${resolveKeyGenCount(user)}</span> time(s)</div>
                         <button type="button" class="btn-full bg-warn" data-action="ban-device" data-user-id="${user.id}" onclick="openBanModal('${user.id}')">BAN DEVICE</button>
                     </div>`;
                 }
@@ -14795,7 +14874,36 @@ async function listInfiniFiles() {
     }
     const hdrCt = (res.headers.get('content-type') || '').split(';')[0].trim();
     const declaredLen = Number(res.headers.get('content-length'));
-    const buf = await res.arrayBuffer();
+    // Stream body with progress when possible so large videos don't feel frozen,
+    // but still assemble a COMPLETE blob before playback (partial MP4 = Preview unavailable).
+    let buf;
+    if (res.body && typeof res.body.getReader === 'function' && declaredLen > 0) {
+      const reader = res.body.getReader();
+      const chunks = [];
+      let received = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (signal && signal.aborted) throw new Error('cancelled');
+        chunks.push(value);
+        received += value.byteLength || value.length || 0;
+        try {
+          window.dispatchEvent(new CustomEvent('dgxen-preview-progress', {
+            detail: { rel: rel, fileName: raw, loaded: received, total: declaredLen, phase: 'download' }
+          }));
+        } catch (e) {}
+      }
+      const out = new Uint8Array(received);
+      let off = 0;
+      for (var i = 0; i < chunks.length; i++) {
+        const c = chunks[i];
+        out.set(c, off);
+        off += c.byteLength || c.length || 0;
+      }
+      buf = out.buffer;
+    } else {
+      buf = await res.arrayBuffer();
+    }
     if (signal && signal.aborted) throw new Error('cancelled');
     // A response can report ok:true and a plausible Content-Length yet still hand back
     // a truncated/empty body — a Worker hitting its own memory/CPU limit on a large file
@@ -15731,15 +15839,33 @@ function explainFetchError(e) {
   window.__cloudComputeTotalUsed = async function() {
     try {
       if (getActiveCloudProvider() === 'infini') {
-        const prev = window.__cloudCwd;
-        window.__cloudCwd = '';
-        let files = [];
-        try { files = await listInfiniFiles(); } catch (e1) { files = []; }
-        window.__cloudCwd = prev;
-        return (files || []).reduce(function(s, f) {
-          if (f && f._isFolder) return s;
-          return s + (Number(f.contentLength || f.size) || 0);
-        }, 0);
+        /* Recursive: Depth-1 PROPFIND at root only counted top-level files and
+           ignored folder contents (e.g. Test/ 4.48GB) — bar showed ~144MB.
+           Walk every folder and sum real file sizes. */
+        async function walkInfini(prefix, depth) {
+          depth = depth || 0;
+          if (depth > 24) return 0;
+          const prev = window.__cloudCwd;
+          window.__cloudCwd = String(prefix || '').replace(/^\/+|\/+$/g, '');
+          let files = [];
+          try { files = await listInfiniFiles(); } catch (e1) { files = []; }
+          window.__cloudCwd = prev;
+          let sum = 0;
+          for (var i = 0; i < (files || []).length; i++) {
+            var f = files[i];
+            if (!f) continue;
+            var rel = String(f._relPath || f.fileName || '').replace(/^\/+/, '');
+            // Skip trash from "used" if trash is tracked separately (still count if not)
+            if (rel === '.trash' || rel.indexOf('.trash/') === 0) continue;
+            if (f._isFolder) {
+              sum += await walkInfini(rel, depth + 1);
+            } else {
+              sum += Number(f.contentLength || f.size) || 0;
+            }
+          }
+          return sum;
+        }
+        return await walkInfini('', 0);
       }
       await authorizeB2();
       let start = null, total = 0;
@@ -15756,6 +15882,7 @@ function explainFetchError(e) {
         (data.files || []).forEach(function(f) {
           const n = String(f.fileName || '');
           if (/\/\.keep$/i.test(n) || /\/\.bzEmpty$/i.test(n) || /\/$/.test(n)) return;
+          if (n === '.trash' || n.indexOf('.trash/') === 0) return;
           total += Number(f.contentLength) || 0;
         });
         start = data.nextFileName || null;
@@ -19904,29 +20031,18 @@ async function listAllFiles(forcedProvider) {
 })();
 
 (function cloudTwoFingerPan(){
-  var lastY = null, lastX = null, activeTarget = null;
-  function pickTarget(e) {
-    // Resolve the actual scroll target from where the gesture is physically
-    // happening — not always the file list — so a 2-finger gesture over the
-    // header/settings/upload area (outside the file list) scrolls THAT area,
-    // and one over the files scrolls the file list. Previously this always
-    // resolved to the file list regardless of where the fingers were.
-    var t = e.target;
-    var box = document.getElementById('cloudFileList');
-    var panel = document.getElementById('cloudPanel');
-    if (t && box && (t === box || box.contains(t))) return box;
-    return panel;
-  }
+  var lastY = null, lastX = null;
   function onTouchStart(e) {
     if (e.touches && e.touches.length >= 2) {
       lastY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
       lastX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-      activeTarget = pickTarget(e);
-    } else { lastY = lastX = null; activeTarget = null; }
+    } else { lastY = lastX = null; }
   }
   function onTouchMove(e) {
-    if (!e.touches || e.touches.length < 2) { lastY = lastX = null; activeTarget = null; return; }
-    var target = activeTarget || pickTarget(e);
+    if (!e.touches || e.touches.length < 2) { lastY = lastX = null; return; }
+    var box = document.getElementById('cloudFileList');
+    var panel = document.getElementById('cloudPanel');
+    var target = box || panel;
     if (!target) return;
     var y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
     var x = (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -19938,7 +20054,7 @@ async function listAllFiles(forcedProvider) {
     }
     lastY = y; lastX = x;
   }
-  function onTouchEnd() { lastY = lastX = null; activeTarget = null; }
+  function onTouchEnd() { lastY = lastX = null; }
   function bind() {
     var panel = document.getElementById('cloudPanel');
     var box = document.getElementById('cloudFileList');
