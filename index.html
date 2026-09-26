@@ -4847,12 +4847,12 @@ body.cloud-op-busy #cloudPanel .cloud-file-row {
                 <h2 style="color: var(--accent); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
                     <span>Share/User Logs</span>
                     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                        <button id="notifPermBtn" class="btn" style="background:rgba(255,60,60,.18);color:#ff8080;padding:10px 16px;font-size:12px;display:none;" onclick="requestFastGenNotifPermission()">ENABLE PHONE NOTIFICATIONS</button>
+
                         <button class="btn" style="background:var(--accent);color:#000;padding:10px 18px;font-size:13px;" onclick="toggleUserSearchBox()">SEARCH USER</button>
                         <button class="btn" style="background:var(--error);color:white;padding:10px 20px;font-size:13px;" onclick="clearAllShareLogs()">CLEAR ALL LOGS</button>
                     </div>
                 </h2>
-                <p>Two things only: key share/re-use attempts (a bound key tried on a second device), and fast-generation flags (name set and key generated under 1 minute apart).</p>
+                <p>Two things: key share/re-use attempts (a bound key tried on a second device), and fast-generation flags (user generated a key within 1 minute of registering / setting name). Fast-gen is detected from user records and share logs — admin shows a red badge and pushes an instant notification.</p>
                 <div id="fastGenBanner" style="display:none;margin:0 0 16px;padding:14px 18px;border-radius:14px;background:rgba(255,40,40,.14);border:1.5px solid rgba(255,60,60,.55);animation:fastGenPulse 1.6s ease-in-out infinite;">
                     <div style="display:flex;align-items:center;gap:10px;font-weight:900;color:#ff5a5a;font-size:13px;letter-spacing:.03em;">
                         ⚠️ CRITICAL — FAST KEY GENERATION DETECTED
@@ -6765,21 +6765,45 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       throw lastErr || new Error('Infini preview failed for ' + rel);
     }
 
-    // ---- B2: media uses authorized direct URL (browser Range / progressive);
-    // images & others still blob for reliability ----
+    // ---- B2: always full complete blob (no progressive / partial stream) ----
     if (!B.authorizeB2 || !B.b2Fetch || !B.b2) throw new Error('B2 not ready');
     await B.authorizeB2(false);
     var b2c = B.b2();
     if (!b2c || !b2c.downloadUrl || !b2c.bucketName) throw new Error('B2 not configured');
-    var mediaExt = (nameOnly || '').split('.').pop().toLowerCase();
-    var isB2Media = ['mp4','webm','mov','mkv','m4v','mp3','wav','ogg','m4a','aac'].indexOf(mediaExt) >= 0;
 
     async function b2BlobFromUrl(directUrl) {
       var res = await fetch(directUrl, { method: 'GET', signal: signal, mode: 'cors', credentials: 'omit' });
-      if (!res.ok) throw new Error((res.status === 401 || res.status === 403) ? ('Auth failed (' + res.status + ') — check Infini credentials + Proxy URL') : ('Preview fetch failed (' + res.status + ')'));
-      var buf = await res.arrayBuffer();
+      if (!res.ok) throw new Error((res.status === 401 || res.status === 403) ? ('Auth failed (' + res.status + ') — check B2 credentials / auth token') : ('Preview fetch failed (' + res.status + ')'));
+      var declaredLen = Number(res.headers.get('content-length')) || 0;
+      var buf;
+      if (res.body && typeof res.body.getReader === 'function') {
+        var reader = res.body.getReader();
+        var chunks = [];
+        var received = 0;
+        while (true) {
+          var step = await reader.read();
+          if (step.done) break;
+          if (signal && signal.aborted) throw new Error('cancelled');
+          chunks.push(step.value);
+          received += step.value.byteLength || step.value.length || 0;
+          try {
+            window.dispatchEvent(new CustomEvent('dgxen-preview-progress', {
+              detail: { rel: rel, fileName: nameOnly, loaded: received, total: declaredLen || received, phase: 'download' }
+            }));
+          } catch (eP) {}
+        }
+        var out = new Uint8Array(received);
+        var off = 0;
+        for (var i = 0; i < chunks.length; i++) {
+          out.set(chunks[i], off);
+          off += chunks[i].byteLength || chunks[i].length || 0;
+        }
+        buf = out.buffer;
+      } else {
+        buf = await res.arrayBuffer();
+      }
       if (signal && signal.aborted) throw new Error('cancelled');
-      if (!buf || !buf.byteLength) throw new Error('Empty file');
+      if (!buf || !buf.byteLength) throw new Error('Empty file (0 bytes) — try Download instead');
       var ct = (res.headers.get('content-type') || '').split(';')[0].trim();
       if (!ct || ct === 'application/octet-stream') {
         ct = (B.guessMime && B.guessMime(rel)) || 'application/octet-stream';
@@ -6793,8 +6817,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
       try {
         var byId = b2c.downloadUrl.replace(/\/$/, '') + '/b2api/v2/b2_download_file_by_id?fileId=' +
           encodeURIComponent(fid) + '&Authorization=' + encodeURIComponent(b2c.authToken);
-        // Video/audio: stream via authorized URL (browser handles Range) — no full download wait
-        if (isB2Media) return { url: byId, blob: false };
         return await b2BlobFromUrl(byId);
       } catch (eId) {
         // fall through to by-name
@@ -6817,7 +6839,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
     var direct = b2c.downloadUrl.replace(/\/$/, '') + '/file/' + encodeURIComponent(b2c.bucketName) + '/' + pathEnc +
       '?Authorization=' + encodeURIComponent(authData.authorizationToken);
     try {
-      if (isB2Media) return { url: direct, blob: false };
       return await b2BlobFromUrl(direct);
     } catch (eName) {
       // 3) last resort: nameOnly under same auth if rel had folders wrong
@@ -6825,7 +6846,6 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         var path2 = encodeURIComponent(nameOnly);
         var direct2 = b2c.downloadUrl.replace(/\/$/, '') + '/file/' + encodeURIComponent(b2c.bucketName) + '/' + path2 +
           '?Authorization=' + encodeURIComponent(authData.authorizationToken);
-        if (isB2Media) return { url: direct2, blob: false };
         return await b2BlobFromUrl(direct2);
       }
       throw new Error((eName && eName.message) || ('Preview failed for ' + rel));
@@ -9971,7 +9991,10 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             const logs = Object.entries(snap.val()).sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
             const fastGenLogs = [];
             logs.forEach(([id, log]) => {
-                if (log.fastGeneration) fastGenLogs.push(log);
+                if (log.fastGeneration || log.type === 'fastgen') {
+                    log.fastGeneration = true;
+                    fastGenLogs.push(log);
+                }
                 const time = log.timestamp ? new Date(log.timestamp).toLocaleString() : '';
                 const keyStr = log.key || '';
                 const isKeyBanned = !!globalBannedKeysForLogs[keyStr];
@@ -10034,6 +10057,123 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         // 90s skew covers clock drift + first Firebase snapshot latency so genuine
         // new events during the first seconds of opening admin still alert.
         const __fastGenSessionStartedAt = Date.now() - 90000;
+        // Track last known key per user so a NEW key gen while admin is open always alerts.
+        const __prevUserLastKey = Object.create(null);
+        const __prevUserBootstrapped = { done: false };
+
+        /** Fast-gen = key generated within 60s of name/registration timestamp. */
+        function isUserFastGen(user) {
+            if (!user) return false;
+            // Trial keys are always created in one step — not a real fast-gen signal
+            if (user.trial === true) return false;
+            if (user.fastGeneration === true || user.fastGen === true) return true;
+            const hasKey = !!(user.lastGeneratedKey && String(user.lastGeneratedKey).trim());
+            if (!hasKey) return false;
+            const keyT = Number(user.keyGeneratedAt) || 0;
+            const nameT = Number(user.nameSetAt) || 0;
+            if (keyT && nameT && keyT >= nameT && (keyT - nameT) < 60000) return true;
+            // Fallbacks when dedicated stamps are missing (older clients)
+            let regT = 0;
+            if (user.joined) {
+                const j = Date.parse(user.joined);
+                if (!isNaN(j)) regT = j;
+            }
+            if (!regT && user.createdAt) regT = Number(user.createdAt) || 0;
+            if (!regT && user.registeredAt) regT = Number(user.registeredAt) || 0;
+            // keyGeneratedAt vs registration
+            if (keyT && regT && keyT >= regT && (keyT - regT) < 60000) return true;
+            // No keyGeneratedAt: if they have a key and registered under 1 minute ago → fast gen
+            if (!keyT && regT && (Date.now() - regT) < 60000) return true;
+            // keyExpiresAt - typical duration hours → approximate generatedAt
+            if (!keyT && user.keyExpiresAt && regT) {
+                // if expiry is within ~48h of reg, key was likely set near reg
+                var exp = Number(user.keyExpiresAt) || 0;
+                if (exp > regT && (exp - regT) < 48 * 3600 * 1000 && (Math.min(exp, Date.now()) - regT) < 60000 + 3600 * 1000) {
+                    // only flag if reg itself is recent enough relative to "now - a bit"
+                    if ((Date.now() - regT) < 24 * 3600 * 1000 && (Date.now() - regT) < 60000) return true;
+                }
+            }
+            return false;
+        }
+
+        function userFastGenLogShape(user) {
+            const keyT = Number(user.keyGeneratedAt) || Date.now();
+            return {
+                generatorName: user.name || 'Unknown',
+                generatorId: user.id || '',
+                key: user.lastGeneratedKey || '',
+                timestamp: keyT,
+                type: 'fastgen',
+                fastGeneration: true,
+                source: 'user-record'
+            };
+        }
+
+        /**
+         * Scan users for fast-gen. On first snapshot only seed the seen set
+         * (no spam). After that, any NEW lastGeneratedKey that qualifies
+         * fires toast + OS notification and can persist a shareLogs row.
+         */
+        async function scanUsersForFastGen(users) {
+            if (!Array.isArray(users)) return;
+            const fastFromUsers = [];
+            const newlyFlagged = [];
+            for (var i = 0; i < users.length; i++) {
+                var u = users[i];
+                if (!u || !u.id) continue;
+                var curKey = String(u.lastGeneratedKey || '').trim();
+                var prevKey = __prevUserLastKey[u.id];
+                var keyChanged = __prevUserBootstrapped.done && curKey && curKey !== prevKey;
+                var isFast = isUserFastGen(u);
+                // If stamps missing but key just appeared and joined < 1m ago → treat as fast
+                if (!isFast && keyChanged && curKey) {
+                    var regT = 0;
+                    if (u.joined) { var jj = Date.parse(u.joined); if (!isNaN(jj)) regT = jj; }
+                    if (!regT && u.createdAt) regT = Number(u.createdAt) || 0;
+                    if (!regT && u.nameSetAt) regT = Number(u.nameSetAt) || 0;
+                    if (regT && (Date.now() - regT) < 60000) isFast = true;
+                }
+                if (isFast && curKey) {
+                    var log = userFastGenLogShape(u);
+                    fastFromUsers.push(log);
+                    if (keyChanged || (!__prevUserBootstrapped.done && (Number(log.timestamp) || 0) > __fastGenSessionStartedAt)) {
+                        newlyFlagged.push(log);
+                    }
+                }
+                __prevUserLastKey[u.id] = curKey;
+            }
+            if (!__prevUserBootstrapped.done) {
+                __prevUserBootstrapped.done = true;
+                // Seed seen set so historical rows don't all toast at once
+                newlyFlagged.forEach(function(log) {
+                    var nid = (log.generatorId || log.key || '') + '_' + (log.timestamp || 0);
+                    __seenFastGenIds.add(nid);
+                });
+            } else {
+                newlyFlagged.forEach(function(log) {
+                    __pushFastGenNotification(log);
+                    // Persist into shareLogs so Share/User Logs section also shows the flag
+                    try {
+                        var safeKey = String(log.key || 'nokey').replace(/[.#$\[\]\/]/g, '_').slice(0, 48);
+                        var lid = 'fastgen_' + String(log.generatorId || 'u').replace(/[.#$\[\]\/]/g, '_').slice(0, 40) + '_' + safeKey;
+                        set(ref(db, 'settings/shareLogs/' + lid), {
+                            generatorName: log.generatorName,
+                            generatorId: log.generatorId,
+                            key: log.key,
+                            receiverName: '—',
+                            receiverDevice: '—',
+                            timestamp: log.timestamp || Date.now(),
+                            type: 'fastgen',
+                            fastGeneration: true
+                        }).catch(function(){});
+                    } catch (eW) {}
+                });
+            }
+            // Banner is driven by shareLogs onValue → _renderShareLogs → updateFastGenAlert.
+            // Writing shareLogs rows above re-triggers that path; do not overwrite banner here
+            // with a users-only list (would hide share-attempt flags).
+        }
+
         function __flashFastGenInApp(title, body) {
             try {
                 var t = document.getElementById('fastGenLiveToast');
@@ -10053,26 +10193,11 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
             } catch (e) {}
         }
         function __pushFastGenNotification(log) {
+            // Notification system removed — fast-gen is UI flag only (red badge on user card + share logs).
             const nid = (log.generatorId || log.key || '') + '_' + (log.timestamp || Date.now());
             if (__seenFastGenIds.has(nid)) return;
-            const title = 'DGXEN — Fast key generation';
-            const body = (log.generatorName || 'A user') + ' generated a key within 1 minute of registering.';
-            var shown = false;
-            try {
-                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                    const n = new Notification(title, {
-                        body: body,
-                        tag: nid,
-                        requireInteraction: true
-                    });
-                    shown = true;
-                    try { n.onclick = function(){ try{ window.focus(); }catch(e){} try{ n.close(); }catch(e){} }; } catch (e) {}
-                }
-            } catch (e) {}
-            // Always show in-app toast so admin never misses it even without OS permission
-            __flashFastGenInApp(title, body);
             __seenFastGenIds.add(nid);
-            return shown;
+            return true;
         }
         function updateFastGenAlert(fastGenLogs) {
             const banner = document.getElementById('fastGenBanner');
@@ -10099,30 +10224,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 });
             } catch (e) {}
         }
-        window.requestFastGenNotifPermission = function() {
-            try {
-                if (!('Notification' in window)) return;
-                Notification.requestPermission().then(function(p) {
-                    refreshNotifPermButton();
-                });
-            } catch (e) {}
-        };
-        function refreshNotifPermButton() {
-            const btn = document.getElementById('notifPermBtn');
-            if (!btn) return;
-            try {
-                if (!('Notification' in window)) { btn.style.display = 'none'; return; }
-                btn.style.display = (Notification.permission === 'default') ? 'inline-flex' : 'none';
-            } catch (e) { btn.style.display = 'none'; }
-        }
-        refreshNotifPermButton();
-        // Auto-request once per session when still default (user gesture not always available;
-        // still try — browsers that block silently leave in-app toast working).
-        try {
-            if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-                setTimeout(function(){ try { window.requestFastGenNotifPermission(); } catch (e) {} }, 1200);
-            }
-        } catch (e) {}
+
 
         onValue(ref(db, 'settings/shareLogs'), (snap) => {
             window.__lastShareLogsSnap = snap;
@@ -10746,12 +10848,12 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
                 } else {
                     registeredCount++;
                     if (activeListDiv) activeListDiv.innerHTML += `
-                    <div class="user-card glass-panel float-anim${user.pinned ? ' user-pinned' : ''}" data-user-id="${user.id}">
+                    <div class="user-card glass-panel float-anim${user.pinned ? ' user-pinned' : ''}" data-user-id="${user.id}" style="${isUserFastGen(user) ? 'border:1.5px solid rgba(255,60,60,.55);background:rgba(255,40,40,.06);' : ''}">
                         ${user.pinned ? `<div class="pin-badge" title="Pinned">📌</div>` : ''}
                         <div class="pin-action-btn" data-user-id="${user.id}" data-pinned="${user.pinned ? '1' : '0'}" style="display:none;">${user.pinned ? 'UNPIN' : 'PIN TO TOP'}</div>
                         <div class="user-date">${dateStr}</div>
-                        <div style="display:flex;align-items:center;gap:6px;">
-                            <div class="user-name copyable" style="cursor:pointer;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}${user.trial ? '<span class="trial-badge">TRIAL</span>' : ''}</div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <div class="user-name copyable" style="cursor:pointer;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}${user.trial ? '<span class="trial-badge">TRIAL</span>' : ''}${isUserFastGen(user) ? '<span style="margin-left:6px;font-size:10px;font-weight:900;letter-spacing:.03em;color:#fff;background:rgba(220,40,40,.92);padding:2px 7px;border-radius:6px;vertical-align:middle;">⚠ FAST GEN &lt;1m</span>' : ''}</div>
                             ${(user.deviceOs || user.deviceModel) ? `<svg class="device-info-arrow" data-user-id="${user.id}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;cursor:pointer;color:var(--text-dim);transition:transform .25s ease;"><polyline points="6 9 12 15 18 9"/></svg>` : ''}
                         </div>
                         <div class="device-info-row" data-user-id="${user.id}" style="display:none;font-size:11px;color:var(--text-dim);background:rgba(255,255,255,.04);border-radius:8px;padding:8px 10px;margin:2px 0 8px;line-height:1.5;">
@@ -10801,6 +10903,7 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         try { bindBanButtons(document); } catch (e) {}
         try { setupPinHoldToReveal(document.getElementById('activeUserList')); } catch (e) {}
         try { setupDeviceInfoToggle(document.getElementById('activeUserList')); } catch (e) {}
+        try { scanUsersForFastGen(users); } catch (eFg) {}
         }
 
         window.togglePinUser = async function(userId, currentlyPinned) {
@@ -16804,7 +16907,8 @@ async function listAllFiles(forcedProvider) {
       'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#8ab4f8;text-decoration:none;font-weight:600}' +
       '.f span{color:#9aa0a6;font-weight:500;font-size:12px}.f:hover{background:rgba(255,255,255,.1)}' +
       '</style></head><body><h1>' + title + '</h1><p>' + (rows||[]).length + ' file(s) · tap to open / download</p>' +
-      (items || '<p>No files in this folder.</p>') + '</body></html>';
+      (items || '<p>No files in this folder.</p>') +
+      '</body></html>';
   }
 
 
