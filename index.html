@@ -10469,7 +10469,6 @@ return;
             }
         }
 
-        async 
         /* Robust key-gen count: max across every field shape used across
            login / get-key / trial / legacy records. */
         function resolveKeyGenCount(user) {
@@ -10507,7 +10506,7 @@ return;
             return n;
         }
 
-function mergeDuplicateUserGroups(groups) {
+        async function mergeDuplicateUserGroups(groups) {
             for (const g of groups) {
                 if (g.users.length < 2) continue;
                 const ids = g.users.map(u => u.id).sort();
