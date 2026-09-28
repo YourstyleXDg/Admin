@@ -10731,6 +10731,12 @@ return;
 
         function isDeviceGenerating(user) {
             try {
+                /* If user already holds a live key, never treat as generating */
+                try {
+                    const key = String((user && (user.key || user.accessKey)) || '').trim();
+                    const exp = Number((user && (user.keyExpiresAt || user.expiresAt)) || 0);
+                    if (key && (!exp || exp > Date.now())) return false;
+                } catch (eLive) {}
                 const reqs = window.__pendingDeviceReqs || {};
                 const ids = [user && user.id, user && user.deviceId, user && user.fingerprint, user && user.lastDeviceId, user && user.androidId]
                     .map(function(x){ return String(x || '').trim().toLowerCase(); })
@@ -10748,6 +10754,29 @@ return;
                     if (ids.some(function(id){
                         return id === rid || id.replace(/[.#$\[\]\/]/g,'_') === kNorm;
                     })) return true;
+                }
+            } catch (e) {}
+            return false;
+        }
+
+        function userHasLiveKey(normIds) {
+            /* True when this device/user already has a non-expired key —
+               generating illusion must not show alongside live Active card. */
+            try {
+                const snap = window.globalUsersSnap;
+                const usersMap = (snap && snap.exists && snap.exists()) ? (snap.val() || {}) : {};
+                const now = Date.now();
+                const set = normIds instanceof Set ? normIds : new Set(normIds || []);
+                for (const uid in usersMap) {
+                    const u = usersMap[uid] || {};
+                    const ids = [uid, u.deviceId, u.fingerprint, u.lastDeviceId, u.androidId, u.lastLoginDevice]
+                        .map(function(x){ return normId(x); })
+                        .filter(Boolean);
+                    if (!ids.some(function(id){ return set.has(id); })) continue;
+                    const key = String(u.key || u.accessKey || '').trim();
+                    const exp = Number(u.keyExpiresAt || u.expiresAt || 0);
+                    if (key && exp && exp > now) return true;
+                    if (key && !exp) return true; /* master-style / no expiry field */
                 }
             } catch (e) {}
             return false;
@@ -10789,6 +10818,8 @@ return;
                 const tm = Number(r.time || 0);
                 if (exp && now > exp) return;
                 if (!exp && tm && (now - tm) > 12 * 60 * 1000) return;
+                // Key already live → drop generating illusion (fixes AADIL-style double card)
+                if (userHasLiveKey(new Set([n, normId(r.deviceId), normId(k)]))) return;
                 const name = nameByNorm[n] || 'User';
                 items.push({ id: id, name: name, time: tm });
             });
