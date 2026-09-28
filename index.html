@@ -3270,6 +3270,47 @@ div.cp-img-fs img {
             margin: 0 0 12px;
             opacity: .8
         }
+        .user-search-wrap { position: relative; max-width: 420px; }
+        .user-search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 16px 12px 40px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,.12);
+            background: rgba(255,255,255,.05) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2399a' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E") 14px center no-repeat;
+            color: var(--text-main, #fff);
+            font-size: 13.5px;
+            font-weight: 600;
+            outline: none;
+            transition: border-color .2s, background .2s;
+        }
+        .user-search-input::placeholder { color: var(--text-dim); font-weight: 500; }
+        .user-search-input:focus { border-color: rgba(0,255,136,.35); background-color: rgba(255,255,255,.07); }
+        .user-card[data-hidden="1"] { display: none !important; }
+        .gen-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0 0 10px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: .03em;
+            color: #0a0a14;
+            background: linear-gradient(135deg, #ffe566, #ffcd3c);
+            box-shadow: 0 0 18px rgba(255,205,60,.25);
+        }
+        .gen-badge::before {
+            content: "";
+            width: 7px; height: 7px; border-radius: 50%;
+            background: #0a0a14;
+            animation: genPulse 1.1s ease-in-out infinite;
+        }
+        @keyframes genPulse {
+            0%, 100% { opacity: .35; transform: scale(.85); }
+            50% { opacity: 1; transform: scale(1); }
+        }
 
         /* --- Notice Panel --- */
         #noticeScheduleChip.visible {
@@ -4820,9 +4861,12 @@ body.cloud-op-busy #cloudPanel .cloud-file-row {
 
         <div id="active-users" class="tab-section">
             <div class="section-box" style="padding: 0; background: transparent; border: none; box-shadow: none;">
-                <h2 style="margin-bottom: 30px; font-size: 28px;">Registered Users</h2>
+                <h2 style="margin-bottom: 18px; font-size: 28px;">Registered Users</h2>
+                <div class="user-search-wrap" style="margin-bottom:18px;">
+                    <input type="search" id="userSearchInput" class="user-search-input" placeholder="Search name, device ID, browser ID…" autocomplete="off" spellcheck="false">
+                </div>
                 <div id="pendingComingWrap" style="display:none;margin-bottom:22px;">
-                    <div class="coming-section-title">Incoming · Get Key tapped</div>
+                    <div class="coming-section-title">Incoming · key flow</div>
                     <div class="user-grid" id="pendingComingList"></div>
                 </div>
                 <div class="user-grid" id="activeUserList"></div>
@@ -8976,6 +9020,9 @@ Isko seedha paste maaro aur compile karo. Ab macro wale kya, khud Android ka baa
         onValue(ref(db, 'deviceRequests'), (snap) => {
             window.__pendingDeviceReqs = snap.exists() ? (snap.val() || {}) : {};
             try { renderPendingComing(); } catch (e) {}
+            try {
+                if (window.globalUsersSnap) renderUsersUI(window.globalUsersSnap);
+            } catch (eRU) {}
             const box = document.getElementById('deviceRequestsBox');
             if (!box) return;
             box.innerHTML = '';
@@ -10454,6 +10501,7 @@ return;
 
         onValue(ref(db, 'users'), (snapshot) => {
             globalUsersSnap = snapshot;
+            try { window.globalUsersSnap = snapshot; } catch (e) {}
             renderUsersUI(snapshot);
         });
 
@@ -10627,6 +10675,30 @@ return;
             }
         }
 
+        function isDeviceGenerating(user) {
+            try {
+                const reqs = window.__pendingDeviceReqs || {};
+                const ids = [user && user.id, user && user.deviceId, user && user.fingerprint, user && user.lastDeviceId, user && user.androidId]
+                    .map(function(x){ return String(x || '').trim().toLowerCase(); })
+                    .filter(Boolean);
+                const now = Date.now();
+                for (const k of Object.keys(reqs)) {
+                    const r = reqs[k] || {};
+                    const exp = Number(r.expiresAt || 0);
+                    const tm = Number(r.time || 0);
+                    if (exp && now > exp) continue;
+                    if (!exp && tm && (now - tm) > 12 * 60 * 1000) continue;
+                    const rid = String(r.deviceId || k || '').trim().toLowerCase();
+                    if (!rid) continue;
+                    const kNorm = String(k).toLowerCase();
+                    if (ids.some(function(id){
+                        return id === rid || id.replace(/[.#$\[\]\/]/g,'_') === kNorm;
+                    })) return true;
+                }
+            } catch (e) {}
+            return false;
+        }
+
         function renderUsersUI(snapshot) {
             const activeListDiv = document.getElementById('activeUserList');
             const bannedListDiv = document.getElementById('bannedUserList');
@@ -10757,10 +10829,11 @@ return;
                 } else {
                     registeredCount++;
                     if (activeListDiv) activeListDiv.innerHTML += `
-                    <div class="user-card glass-panel float-anim${user.pinned ? ' user-pinned' : ''}" data-user-id="${user.id}">
+                    <div class="user-card glass-panel float-anim${user.pinned ? ' user-pinned' : ''}" data-user-id="${user.id}" data-search="${String(user.name||'').toLowerCase()} ${String(user.id||'').toLowerCase()} ${String(user.deviceId||'').toLowerCase()} ${String(user.fingerprint||'').toLowerCase()} ${String(user.androidId||'').toLowerCase()} ${String(user.lastDeviceId||'').toLowerCase()}">
                         ${user.pinned ? `<div class="pin-badge" title="Pinned">📌</div>` : ''}
                         <div class="pin-action-btn" data-user-id="${user.id}" data-pinned="${user.pinned ? '1' : '0'}" style="display:none;">${user.pinned ? 'UNPIN' : 'PIN TO TOP'}</div>
                         <div class="user-date">${dateStr}</div>
+                        ${isDeviceGenerating(user) ? '<div class="gen-badge">Generating key</div>' : ''}
                         <div style="display:flex;align-items:center;gap:6px;">
                             <div class="user-name copyable" style="cursor:pointer;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;" title="Click to copy" data-copy="${(user.name||'').replace(/"/g,'&quot;')}">${user.name}${user.trial ? '<span class="trial-badge">TRIAL</span>' : ''}</div>
                             ${(user.deviceOs || user.deviceModel) ? `<svg class="device-info-arrow" data-user-id="${user.id}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;cursor:pointer;color:var(--text-dim);transition:transform .25s ease;"><polyline points="6 9 12 15 18 9"/></svg>` : ''}
@@ -10812,6 +10885,8 @@ return;
         try { bindBanButtons(document); } catch (e) {}
         try { setupPinHoldToReveal(document.getElementById('activeUserList')); } catch (e) {}
         try { setupDeviceInfoToggle(document.getElementById('activeUserList')); } catch (e) {}
+        
+            try { applyUserSearchFilter(); } catch (eSf) {}
         }
 
         window.togglePinUser = async function(userId, currentlyPinned) {
@@ -10949,6 +11024,32 @@ return;
                     String(it.id).replace(/"/g, '&quot;') + '">' + it.id + '</div>' + extra + '</div>';
             }).join('');
         }
+
+        function applyUserSearchFilter() {
+            try {
+                const inp = document.getElementById('userSearchInput');
+                const q = (inp && inp.value || '').trim().toLowerCase();
+                const list = document.getElementById('activeUserList');
+                if (!list) return;
+                list.querySelectorAll('.user-card').forEach(function(card) {
+                    if (!q) { card.setAttribute('data-hidden', '0'); return; }
+                    const hay = (card.getAttribute('data-search') || card.textContent || '').toLowerCase();
+                    card.setAttribute('data-hidden', hay.indexOf(q) >= 0 ? '0' : '1');
+                });
+            } catch (e) {}
+        }
+        (function bindUserSearch() {
+            function bind() {
+                const inp = document.getElementById('userSearchInput');
+                if (!inp || inp.__bound) return;
+                inp.__bound = true;
+                inp.addEventListener('input', applyUserSearchFilter);
+                inp.addEventListener('search', applyUserSearchFilter);
+            }
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+            else bind();
+        })();
+
 
         // RELIABLE BAN CLICKS (capture) — Chrome-safe
         document.addEventListener('click', function(e) {
