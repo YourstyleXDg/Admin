@@ -13475,6 +13475,7 @@ window.__dgxenInitVideoControls = function(vId) {
   // ===== RENAME (Infini only — B2 has no native rename, see note below) =====
   window.promptRenameCloudItem = function(relPath, currentName, isFolder, fileId) {
     window.__renameFileId = fileId || null;
+    window.__renameOldName = String(currentName || '').trim();
 
     const modal = document.getElementById('newFolderModal');
     const input = document.getElementById('newFolderNameInput');
@@ -13497,6 +13498,16 @@ window.__dgxenInitVideoControls = function(vId) {
     const newName = input ? String(input.value || '').trim() : '';
     if (!newName) {
       if (hint) { hint.textContent = 'Enter a name.'; hint.style.color = 'var(--error)'; }
+      return;
+    }
+    const oldName = String(window.__renameOldName || '').trim();
+    if (oldName && newName === oldName) {
+      if (hint) {
+        hint.textContent = 'Name is unchanged — type a different name.';
+        hint.style.color = 'var(--error)';
+      }
+      try { if (typeof setStatus === 'function') setStatus('Change the name first', false); } catch (eS) {}
+      try { if (input) { input.focus(); input.select(); } } catch (eF) {}
       return;
     }
     const safeName = newName.replace(/[\\/]/g, '_');
