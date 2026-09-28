@@ -11101,6 +11101,13 @@ return;
             if (!wrap || !list) return;
             const reqs = window.__pendingDeviceReqs || {};
             const reg = window.__registeredIdSet || new Set();
+            // Live users map — belt-and-suspenders so a just-registered UUID
+            // never lingers as a fake "User is coming" card.
+            let usersMap = {};
+            try {
+                const snap = window.globalUsersSnap;
+                if (snap && snap.exists && snap.exists()) usersMap = snap.val() || {};
+            } catch (eU) {}
             const items = [];
             const seen = new Set();
             const now = Date.now();
@@ -11109,14 +11116,33 @@ return;
                 const id = String(r.deviceId || k || '').trim();
                 if (!id) return;
                 const n = normId(id);
-                if (seen.has(n)) return;
+                if (!n || seen.has(n)) return;
                 seen.add(n);
+                // Generating phase belongs in Active Users glass, not Incoming
+                const phase = String(r.phase || 'coming').toLowerCase();
+                if (phase === 'generating') return;
+                // Already registered → never show as "coming"
                 if (reg.has(n)) return;
+                if (usersMap[id] || usersMap[k]) return;
+                // Match against all identity fields on every user record
+                try {
+                    for (const uid in usersMap) {
+                        const u = usersMap[uid] || {};
+                        const ids = [uid, u.deviceId, u.fingerprint, u.lastDeviceId, u.androidId, u.lastLoginDevice]
+                            .map(normId).filter(Boolean);
+                        if (ids.indexOf(n) >= 0) return;
+                    }
+                } catch (eM) {}
                 const exp = Number(r.expiresAt || 0);
                 const t = Number(r.time) || 0;
                 if (exp && now > exp) return;
                 if (!exp && t && (now - t) > 12 * 60 * 1000) return;
-                items.push({ id: id, time: t, localId: r.localId || r.localStorageId || '' });
+                items.push({
+                    id: id,
+                    time: t,
+                    localId: r.localId || r.localStorageId || '',
+                    isPending: n.indexOf('pending_') === 0
+                });
             });
             items.sort(function(a, b) { return b.time - a.time; });
             if (!items.length) { wrap.style.display = 'none';
@@ -11124,13 +11150,18 @@ return;
             wrap.style.display = 'block';
             list.innerHTML = items.map(function(it, i) {
                 const delay = (i % 4) * 0.25;
-                const extra = (it.localId && normId(it.localId) !== normId(it.id)) ?
+                const label = it.isPending ? 'New visitor' : it.id;
+                const copyVal = it.isPending ? '' : it.id;
+                const extra = (!it.isPending && it.localId && normId(it.localId) !== normId(it.id)) ?
                     '<div class="coming-id copyable" style="margin-top:6px;opacity:.4;font-size:11px;" data-copy="' +
                     String(it.localId).replace(/"/g, '&quot;') + '">local: ' + it.localId + '</div>' :
                     '';
+                const idBlock = it.isPending
+                    ? '<div class="coming-id" style="opacity:.55;">Waiting for registration…</div>'
+                    : ('<div class="coming-id copyable" data-copy="' + String(copyVal).replace(/"/g, '&quot;') + '">' + label + '</div>');
                 return '<div class="coming-card" style="animation-delay:' + delay +
-                    's"><div class="coming-label">User is coming<span class="coming-dots"></span></div><div class="coming-id copyable" data-copy="' +
-                    String(it.id).replace(/"/g, '&quot;') + '">' + it.id + '</div>' + extra + '</div>';
+                    's"><div class="coming-label">User is coming<span class="coming-dots"></span></div>' +
+                    idBlock + extra + '</div>';
             }).join('');
         }
 
