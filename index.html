@@ -12838,7 +12838,6 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
 
   window.cancelCloudTransfer = function() {
     try{window.clearCloudUploadNotif&&window.clearCloudUploadNotif();}catch(e){}
-    try{window.clearCloudUploadNotification&&window.clearCloudUploadNotification();}catch(e){}
     try{document.body.classList.remove('uploading-cloud');}catch(e){}
 
     window.__cloudCancelFlag = true;
@@ -12860,56 +12859,15 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
       window.__cloudAborts = [];
       window.__cloudAbort = null;
     } catch (e) {}
-
-    /* Kill sticky job counters so next upload can start clean */
-    try { window.__cloudJobs = { b2: 0, infini: 0 }; } catch (eJ) {}
     window.__cloudUploading = false;
     window.__cloudDownloading = false;
-
-    /* Clear ALL progress traces (top bar + bottom + per-provider) */
-    try {
-      if (typeof window.setCloudProviderProgress === 'function') {
-        window.setCloudProviderProgress('b2', false);
-        window.setCloudProviderProgress('infini', false);
-      }
-    } catch (eP) {}
-    try {
-      if (typeof window.setCloudBgUpload === 'function') window.setCloudBgUpload(false);
-    } catch (eB) {}
-    try {
-      window.__cloudProg = {
-        b2: { active: false, text: '', pct: 0 },
-        infini: { active: false, text: '', pct: 0 }
-      };
-      if (typeof window.paintCloudTransferUI === 'function') window.paintCloudTransferUI();
-    } catch (ePaint) {}
-    try {
-      ['cloudBgUpload','cloudUploadInlineBar','cloudBgJobLines'].forEach(function(id){
-        var el = document.getElementById(id);
-        if (el) el.style.display = 'none';
-      });
-      var fill = document.getElementById('cloudUploadInlineBarFill');
-      if (fill) fill.style.width = '0%';
-      var bar = document.getElementById('cloudBgUploadBar');
-      if (bar) bar.style.width = '0%';
-      var tx = document.getElementById('cloudBgUploadText');
-      if (tx) tx.textContent = '';
-      var lines = document.getElementById('cloudBgJobLines');
-      if (lines) lines.innerHTML = '';
-    } catch (eUI) {}
+    if (typeof window.setCloudBgUpload === 'function') window.setCloudBgUpload(false);
     try {
       const el = document.getElementById('cloudConnStatus');
       if (el) { el.textContent = 'Transfer cancelled.'; el.style.color = 'var(--text-dim)'; }
       const prog = document.getElementById('cloudUploadProgress');
-      if (prog) { prog.textContent = ''; prog.style.color = 'var(--text-dim)'; }
+      if (prog) { prog.textContent = 'Cancelled.'; prog.style.color = 'var(--text-dim)'; }
     } catch (e) {}
-
-    /* Allow a fresh upload immediately after cancel (flag cleared next tick) */
-    try {
-      setTimeout(function(){
-        try { window.__cloudCancelFlag = false; } catch (e2) {}
-      }, 80);
-    } catch (e3) {}
   };
 
   // Per-provider live progress (top bar = active provider only; bottom = all)
@@ -13226,7 +13184,7 @@ window.__dgxenInitVideoControls = function(vId) {
 
   // 10 MiB per part.
   // Only one part is held in memory at a time for large files.
-  const B2_PART_SIZE = 10 * 1024 * 1024; // fewer round-trips = faster
+  const B2_PART_SIZE = 50 * 1024 * 1024; // fewer round-trips = faster
 
   // Files above 10 MiB use Large File API.
   const B2_LARGE_FILE_THRESHOLD = 50 * 1024 * 1024;
@@ -17451,9 +17409,7 @@ async function listAllFiles(forcedProvider) {
       formatBytes(file.size)
     );
 
-    if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
     await authorizeB2();
-    if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
 
     // -------------------------------------------------------
     // Get B2 upload URL.
@@ -17534,100 +17490,44 @@ async function listAllFiles(forcedProvider) {
     // Browser controls forbidden request headers.
     // -------------------------------------------------------
 
-    // Live progress via XHR. WebView-safe: send Blob (ArrayBuffer send often fails on Android).
+    // Live progress via XHR (fetch has no upload progress events)
     // Do NOT send X-Bz-Info-* — CORS preflight blocks unknown headers.
     if (typeof progressCallback === 'function') progressCallback(1);
-    const ct = (file.type && file.type.length) ? file.type : 'b2/x-auto';
-    const blobBody = (buf instanceof Blob) ? buf : new Blob([buf], { type: ct });
-
-    async function b2XhrUpload() {
-      return await new Promise(function(resolve, reject) {
-        const xhr = new XMLHttpRequest();
-        if (window.__cloudRegisterXhr) window.__cloudRegisterXhr(xhr);
-        xhr.open('POST', up.uploadUrl, true);
-        try {
-          xhr.setRequestHeader('Authorization', up.authorizationToken);
-          xhr.setRequestHeader('X-Bz-File-Name', encodeB2FileName(safeName));
-          xhr.setRequestHeader('Content-Type', ct);
-          xhr.setRequestHeader('X-Bz-Content-Sha1', sha1);
-        } catch (e) {}
-        xhr.upload.onprogress = function(ev) {
-          if (!ev.lengthComputable) return;
-          const pct = Math.min(99.5, (ev.loaded / ev.total) * 100);
-          if (typeof progressCallback === 'function') progressCallback(pct);
-        };
-        xhr.onload = function() {
-          if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try { resolve(JSON.parse(xhr.responseText || '{}')); }
-            catch (e) { resolve({}); }
-          } else {
-            reject(new Error('B2 upload failed: ' + xhr.status + ' ' + String(xhr.responseText || '').slice(0, 160)));
-          }
-        };
-        xhr.onerror = function() {
-          if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
-          reject(new Error('B2 network error during upload'));
-        };
-        xhr.onabort = function() {
-          if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
-          reject(new Error('cancelled'));
-        };
-        xhr.timeout = 0;
-        xhr.send(blobBody);
-      });
-    }
-
-    async function b2ProxyUpload() {
-      const proxy = String(b2.proxyUrl || '').replace(/\/$/, '');
-      if (!proxy) throw new Error('B2 network error during upload');
-      if (typeof progressCallback === 'function') progressCallback(30);
-      const u8 = buf instanceof ArrayBuffer ? new Uint8Array(buf) : new Uint8Array(await blobBody.arrayBuffer());
-      const chunkSize = 0x8000;
-      const chunks = [];
-      for (let i = 0; i < u8.length; i += chunkSize) {
-        chunks.push(String.fromCharCode.apply(null, u8.subarray(i, i + chunkSize)));
-      }
-      const bodyB64 = btoa(chunks.join(''));
-      if (typeof progressCallback === 'function') progressCallback(55);
-      const res = await fetch(proxy, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: up.uploadUrl,
-          method: 'POST',
-          headers: {
-            Authorization: up.authorizationToken,
-            'X-Bz-File-Name': encodeB2FileName(safeName),
-            'Content-Type': ct,
-            'X-Bz-Content-Sha1': sha1
-          },
-          bodyB64: bodyB64,
-          isBinaryResponse: false
-        })
-      });
-      const pack = await res.json().catch(function(){ return {}; });
-      if (!res.ok) throw new Error(pack.error || pack.message || ('Proxy HTTP ' + res.status));
-      const st = pack.status != null ? pack.status : res.status;
-      if (!(st >= 200 && st < 300)) {
-        throw new Error('B2 upload failed: ' + st + ' ' + String(pack.text || pack.message || '').slice(0, 160));
-      }
-      if (typeof progressCallback === 'function') progressCallback(95);
-      return pack.json || {};
-    }
-
-    let result;
-    try {
-      result = await b2XhrUpload();
-    } catch (directErr) {
-      if (directErr && String(directErr.message || '').toLowerCase().indexOf('cancel') >= 0) throw directErr;
-      if (b2.proxyUrl && String(b2.proxyUrl).trim()) {
-        console.warn('[B2] direct upload failed, trying proxy', directErr);
-        result = await b2ProxyUpload();
-      } else {
-        throw directErr;
-      }
-    }
+    const result = await new Promise(function(resolve, reject) {
+      const xhr = new XMLHttpRequest();
+      if (window.__cloudRegisterXhr) window.__cloudRegisterXhr(xhr);
+      xhr.open('POST', up.uploadUrl, true);
+      try {
+        xhr.setRequestHeader('Authorization', up.authorizationToken);
+        xhr.setRequestHeader('X-Bz-File-Name', encodeB2FileName(safeName));
+        xhr.setRequestHeader('Content-Type', (file.type && file.type.length) ? file.type : 'b2/x-auto');
+        xhr.setRequestHeader('X-Bz-Content-Sha1', sha1);
+      } catch (e) {}
+      xhr.upload.onprogress = function(ev) {
+        if (!ev.lengthComputable) return;
+        const pct = Math.min(99.5, (ev.loaded / ev.total) * 100);
+        if (typeof progressCallback === 'function') progressCallback(pct);
+      };
+      xhr.onload = function() {
+        if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try { resolve(JSON.parse(xhr.responseText || '{}')); }
+          catch (e) { resolve({}); }
+        } else {
+          reject(new Error('B2 upload failed: ' + xhr.status + ' ' + String(xhr.responseText || '').slice(0, 120)));
+        }
+      };
+      xhr.onerror = function() {
+        if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+        reject(new Error('B2 network error during upload'));
+      };
+      xhr.onabort = function() {
+        if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+        reject(new Error('cancelled'));
+      };
+      xhr.timeout = 0;
+      xhr.send(buf);
+    });
 
     try {
       await saveFileMeta(result.fileName || safeName, result.fileId, file);
@@ -17755,7 +17655,7 @@ async function listAllFiles(forcedProvider) {
       // PARALLEL PART UPLOAD (concurrency 3) + per-part retries
       // =====================================================
 
-      const B2_PART_CONCURRENCY = 2;
+      const B2_PART_CONCURRENCY = 3;
       const B2_PART_RETRIES = 4;
 
       // Pre-size sha array so part numbers map correctly under concurrency
@@ -17769,84 +17669,11 @@ async function listAllFiles(forcedProvider) {
         const chunkBuf = await chunk.arrayBuffer();
         const sha1 = await sha1Hex(chunkBuf);
         partSha1Array[partNumber - 1] = sha1;
-        const partSize = end - start;
-        const partBlob = new Blob([chunkBuf]);
-
-        async function xhrPart(urlData) {
-          return await new Promise(function(resolve, reject) {
-            const xhr = new XMLHttpRequest();
-            if (window.__cloudRegisterXhr) window.__cloudRegisterXhr(xhr);
-            xhr.open('POST', urlData.uploadUrl, true);
-            try {
-              xhr.setRequestHeader('Authorization', urlData.authorizationToken);
-              xhr.setRequestHeader('X-Bz-Part-Number', String(partNumber));
-              xhr.setRequestHeader('X-Bz-Content-Sha1', sha1);
-            } catch (eH) {}
-            xhr.upload.onprogress = function(ev) {
-              if (!ev.lengthComputable) return;
-              const done = uploadedBytes + ev.loaded;
-              if (typeof progressCallback === 'function') {
-                progressCallback(Math.min(99.5, (done / file.size) * 100));
-              }
-            };
-            xhr.onload = function() {
-              if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
-              if (xhr.status >= 200 && xhr.status < 300) resolve();
-              else reject(new Error('Part ' + partNumber + ' upload failed: ' + xhr.status + ' ' + String(xhr.responseText || '').slice(0, 120)));
-            };
-            xhr.onerror = function() {
-              if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
-              reject(new Error('Part ' + partNumber + ' network error'));
-            };
-            xhr.onabort = function() {
-              if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
-              reject(new Error('cancelled'));
-            };
-            xhr.timeout = 0;
-            xhr.send(partBlob);
-          });
-        }
-
-        async function proxyPart(urlData) {
-          const proxy = String(b2.proxyUrl || '').replace(/\/$/, '');
-          if (!proxy) throw new Error('Part ' + partNumber + ' network error');
-          const u8 = new Uint8Array(chunkBuf);
-          const chunkSize = 0x8000;
-          const chunks = [];
-          for (let i = 0; i < u8.length; i += chunkSize) {
-            chunks.push(String.fromCharCode.apply(null, u8.subarray(i, i + chunkSize)));
-          }
-          const bodyB64 = btoa(chunks.join(''));
-          const res = await fetch(proxy, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              url: urlData.uploadUrl,
-              method: 'POST',
-              headers: {
-                Authorization: urlData.authorizationToken,
-                'X-Bz-Part-Number': String(partNumber),
-                'X-Bz-Content-Sha1': sha1
-              },
-              bodyB64: bodyB64,
-              isBinaryResponse: false
-            })
-          });
-          const pack = await res.json().catch(function(){ return {}; });
-          if (!res.ok) throw new Error(pack.error || pack.message || ('Proxy HTTP ' + res.status));
-          const st = pack.status != null ? pack.status : res.status;
-          if (!(st >= 200 && st < 300)) {
-            throw new Error('Part ' + partNumber + ' upload failed: ' + st + ' ' + String(pack.text || '').slice(0, 120));
-          }
-        }
 
         let lastErr = null;
         for (let attempt = 1; attempt <= B2_PART_RETRIES; attempt++) {
           if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
           try {
-            if (attempt === 2) {
-              try { await authorizeB2(true); } catch (eAuth) {}
-            }
             const urlRes = await b2Fetch(
               b2.apiUrl + '/b2api/v2/b2_get_upload_part_url',
               {
@@ -17858,7 +17685,7 @@ async function listAllFiles(forcedProvider) {
                 body: JSON.stringify({ fileId: fileId })
               }
             );
-            const urlData = await urlRes.json().catch(function(){ return {}; });
+            const urlData = await urlRes.json().catch(() => ({}));
             if (!urlRes.ok) {
               throw new Error(urlData.message || ('Failed to get part URL ' + partNumber));
             }
@@ -17866,17 +17693,41 @@ async function listAllFiles(forcedProvider) {
               throw new Error('Invalid B2 part upload URL.');
             }
 
-            try {
-              await xhrPart(urlData);
-            } catch (directErr) {
-              if (directErr && String(directErr.message || '').toLowerCase().indexOf('cancel') >= 0) throw directErr;
-              if (b2.proxyUrl && String(b2.proxyUrl).trim()) {
-                console.warn('[B2] part ' + partNumber + ' direct failed, proxy fallback', directErr && directErr.message);
-                await proxyPart(urlData);
-              } else {
-                throw directErr;
-              }
-            }
+            // Direct to B2 with live XHR progress
+            const partSize = end - start;
+            const baseDone = uploadedBytes;
+            await new Promise(function(resolve, reject) {
+              const xhr = new XMLHttpRequest();
+              if (window.__cloudRegisterXhr) window.__cloudRegisterXhr(xhr);
+              xhr.open('POST', urlData.uploadUrl, true);
+              try {
+                xhr.setRequestHeader('Authorization', urlData.authorizationToken);
+                xhr.setRequestHeader('X-Bz-Part-Number', String(partNumber));
+                xhr.setRequestHeader('X-Bz-Content-Sha1', sha1);
+              } catch (e) {}
+              xhr.upload.onprogress = function(ev) {
+                if (!ev.lengthComputable) return;
+                const done = baseDone + ev.loaded;
+                if (typeof progressCallback === 'function') {
+                  progressCallback(Math.min(99.5, (done / file.size) * 100));
+                }
+              };
+              xhr.onload = function() {
+                if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+                if (xhr.status >= 200 && xhr.status < 300) resolve();
+                else reject(new Error('Part ' + partNumber + ' upload failed: ' + xhr.status + ' ' + String(xhr.responseText || '').slice(0, 120)));
+              };
+              xhr.onerror = function() {
+                if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+                reject(new Error('Part ' + partNumber + ' network error'));
+              };
+              xhr.onabort = function() {
+                if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+                reject(new Error('cancelled'));
+              };
+              xhr.timeout = 0;
+              xhr.send(chunkBuf);
+            });
 
             uploadedBytes += partSize;
             if (typeof progressCallback === 'function') {
@@ -17886,10 +17737,9 @@ async function listAllFiles(forcedProvider) {
             return;
           } catch (e) {
             lastErr = e;
-            if (e && String(e.message || '').toLowerCase().indexOf('cancel') >= 0) throw e;
             console.warn('[B2] Part ' + partNumber + ' attempt ' + attempt, e && e.message);
             await new Promise(function(r) {
-              setTimeout(r, Math.min(8000, 400 * Math.pow(2, attempt - 1)));
+              setTimeout(r, Math.min(6000, 300 * Math.pow(2, attempt - 1)));
             });
           }
         }
@@ -18095,9 +17945,7 @@ async function listAllFiles(forcedProvider) {
       return await uploadInfiniFile(file, safeName, progressCallback);
     }
 
-    if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
     await authorizeB2();
-    if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
 
     const rawSafeName =
       rawSafeName0;
@@ -18105,16 +17953,9 @@ async function listAllFiles(forcedProvider) {
     // Never silently overwrite an existing file with the same name — get
     // the next free "name(1).ext" style name instead, same convention as
     // OS/browser download managers.
-    let safeName;
-    try {
-      safeName = await uniqueCloudFileName(rawSafeName, 'b2');
-    } catch (eUniq) {
-      console.warn('[B2] unique name check failed, using raw name', eUniq);
-      safeName = rawSafeName;
-    }
+    let safeName = await uniqueCloudFileName(rawSafeName, 'b2');
     // Store under current folder prefix on B2
     if (cloudCwd()) safeName = cloudJoinPath(cloudCwd(), safeName);
-    if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
 
     // -------------------------------------------------------
     // <= 10 MiB:
@@ -18315,9 +18156,12 @@ async function listAllFiles(forcedProvider) {
 
       // Allow B2 + Infini jobs at the same time
       window.__cloudJobs = window.__cloudJobs || { b2: 0, infini: 0 };
-      // Always arm a fresh batch — never inherit a sticky cancel from last abort
-      window.__cloudCancelFlag = false;
       window.__cloudJobs[provider] = (window.__cloudJobs[provider] || 0) + 1;
+
+      // New batch clears cancel only if no other transfer is running
+      if ((window.__cloudJobs.b2 || 0) + (window.__cloudJobs.infini || 0) === 1) {
+        window.__cloudCancelFlag = false;
+      }
 
       const prog =
         document.getElementById(
@@ -18415,22 +18259,7 @@ async function listAllFiles(forcedProvider) {
       await Promise.all(workers);
       if (cancelledBatch) {
         setStatus('Upload cancelled.', null);
-        if (prog) { prog.style.color = 'var(--text-dim)'; prog.textContent = ''; }
-        try {
-          if (typeof setCloudProviderProgress === 'function') {
-            setCloudProviderProgress(provider, false);
-          }
-          if (typeof setCloudBgUpload === 'function') setCloudBgUpload(false);
-          window.__cloudProg = window.__cloudProg || {};
-          window.__cloudProg[provider === 'infini' ? 'infini' : 'b2'] = { active: false, text: '', pct: 0 };
-          if (typeof paintCloudTransferUI === 'function') paintCloudTransferUI();
-          var fill = document.getElementById('cloudUploadInlineBarFill');
-          if (fill) fill.style.width = '0%';
-          var ib = document.getElementById('cloudUploadInlineBar');
-          if (ib) ib.style.display = 'none';
-          var bg = document.getElementById('cloudBgUpload');
-          if (bg) bg.style.display = 'none';
-        } catch (eClr) {}
+        if (prog) { prog.style.color = 'var(--text-dim)'; prog.textContent = 'Cancelled.'; }
       }
 
       try {
