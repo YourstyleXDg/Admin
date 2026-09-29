@@ -12838,6 +12838,7 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
 
   window.cancelCloudTransfer = function() {
     try{window.clearCloudUploadNotif&&window.clearCloudUploadNotif();}catch(e){}
+    try{window.clearCloudUploadNotification&&window.clearCloudUploadNotification();}catch(e){}
     try{document.body.classList.remove('uploading-cloud');}catch(e){}
 
     window.__cloudCancelFlag = true;
@@ -12859,15 +12860,56 @@ window.openGuideModal = () => { document.getElementById('guideModal').style.disp
       window.__cloudAborts = [];
       window.__cloudAbort = null;
     } catch (e) {}
+
+    /* Kill sticky job counters so next upload can start clean */
+    try { window.__cloudJobs = { b2: 0, infini: 0 }; } catch (eJ) {}
     window.__cloudUploading = false;
     window.__cloudDownloading = false;
-    if (typeof window.setCloudBgUpload === 'function') window.setCloudBgUpload(false);
+
+    /* Clear ALL progress traces (top bar + bottom + per-provider) */
+    try {
+      if (typeof window.setCloudProviderProgress === 'function') {
+        window.setCloudProviderProgress('b2', false);
+        window.setCloudProviderProgress('infini', false);
+      }
+    } catch (eP) {}
+    try {
+      if (typeof window.setCloudBgUpload === 'function') window.setCloudBgUpload(false);
+    } catch (eB) {}
+    try {
+      window.__cloudProg = {
+        b2: { active: false, text: '', pct: 0 },
+        infini: { active: false, text: '', pct: 0 }
+      };
+      if (typeof window.paintCloudTransferUI === 'function') window.paintCloudTransferUI();
+    } catch (ePaint) {}
+    try {
+      ['cloudBgUpload','cloudUploadInlineBar','cloudBgJobLines'].forEach(function(id){
+        var el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      var fill = document.getElementById('cloudUploadInlineBarFill');
+      if (fill) fill.style.width = '0%';
+      var bar = document.getElementById('cloudBgUploadBar');
+      if (bar) bar.style.width = '0%';
+      var tx = document.getElementById('cloudBgUploadText');
+      if (tx) tx.textContent = '';
+      var lines = document.getElementById('cloudBgJobLines');
+      if (lines) lines.innerHTML = '';
+    } catch (eUI) {}
     try {
       const el = document.getElementById('cloudConnStatus');
       if (el) { el.textContent = 'Transfer cancelled.'; el.style.color = 'var(--text-dim)'; }
       const prog = document.getElementById('cloudUploadProgress');
-      if (prog) { prog.textContent = 'Cancelled.'; prog.style.color = 'var(--text-dim)'; }
+      if (prog) { prog.textContent = ''; prog.style.color = 'var(--text-dim)'; }
     } catch (e) {}
+
+    /* Allow a fresh upload immediately after cancel (flag cleared next tick) */
+    try {
+      setTimeout(function(){
+        try { window.__cloudCancelFlag = false; } catch (e2) {}
+      }, 80);
+    } catch (e3) {}
   };
 
   // Per-provider live progress (top bar = active provider only; bottom = all)
@@ -17409,7 +17451,9 @@ async function listAllFiles(forcedProvider) {
       formatBytes(file.size)
     );
 
+    if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
     await authorizeB2();
+    if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
 
     // -------------------------------------------------------
     // Get B2 upload URL.
@@ -17945,7 +17989,9 @@ async function listAllFiles(forcedProvider) {
       return await uploadInfiniFile(file, safeName, progressCallback);
     }
 
+    if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
     await authorizeB2();
+    if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
 
     const rawSafeName =
       rawSafeName0;
@@ -17953,9 +17999,16 @@ async function listAllFiles(forcedProvider) {
     // Never silently overwrite an existing file with the same name — get
     // the next free "name(1).ext" style name instead, same convention as
     // OS/browser download managers.
-    let safeName = await uniqueCloudFileName(rawSafeName, 'b2');
+    let safeName;
+    try {
+      safeName = await uniqueCloudFileName(rawSafeName, 'b2');
+    } catch (eUniq) {
+      console.warn('[B2] unique name check failed, using raw name', eUniq);
+      safeName = rawSafeName;
+    }
     // Store under current folder prefix on B2
     if (cloudCwd()) safeName = cloudJoinPath(cloudCwd(), safeName);
+    if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
 
     // -------------------------------------------------------
     // <= 10 MiB:
@@ -18156,12 +18209,9 @@ async function listAllFiles(forcedProvider) {
 
       // Allow B2 + Infini jobs at the same time
       window.__cloudJobs = window.__cloudJobs || { b2: 0, infini: 0 };
+      // Always arm a fresh batch — never inherit a sticky cancel from last abort
+      window.__cloudCancelFlag = false;
       window.__cloudJobs[provider] = (window.__cloudJobs[provider] || 0) + 1;
-
-      // New batch clears cancel only if no other transfer is running
-      if ((window.__cloudJobs.b2 || 0) + (window.__cloudJobs.infini || 0) === 1) {
-        window.__cloudCancelFlag = false;
-      }
 
       const prog =
         document.getElementById(
@@ -18259,7 +18309,22 @@ async function listAllFiles(forcedProvider) {
       await Promise.all(workers);
       if (cancelledBatch) {
         setStatus('Upload cancelled.', null);
-        if (prog) { prog.style.color = 'var(--text-dim)'; prog.textContent = 'Cancelled.'; }
+        if (prog) { prog.style.color = 'var(--text-dim)'; prog.textContent = ''; }
+        try {
+          if (typeof setCloudProviderProgress === 'function') {
+            setCloudProviderProgress(provider, false);
+          }
+          if (typeof setCloudBgUpload === 'function') setCloudBgUpload(false);
+          window.__cloudProg = window.__cloudProg || {};
+          window.__cloudProg[provider === 'infini' ? 'infini' : 'b2'] = { active: false, text: '', pct: 0 };
+          if (typeof paintCloudTransferUI === 'function') paintCloudTransferUI();
+          var fill = document.getElementById('cloudUploadInlineBarFill');
+          if (fill) fill.style.width = '0%';
+          var ib = document.getElementById('cloudUploadInlineBar');
+          if (ib) ib.style.display = 'none';
+          var bg = document.getElementById('cloudBgUpload');
+          if (bg) bg.style.display = 'none';
+        } catch (eClr) {}
       }
 
       try {
