@@ -17534,44 +17534,100 @@ async function listAllFiles(forcedProvider) {
     // Browser controls forbidden request headers.
     // -------------------------------------------------------
 
-    // Live progress via XHR (fetch has no upload progress events)
+    // Live progress via XHR. WebView-safe: send Blob (ArrayBuffer send often fails on Android).
     // Do NOT send X-Bz-Info-* — CORS preflight blocks unknown headers.
     if (typeof progressCallback === 'function') progressCallback(1);
-    const result = await new Promise(function(resolve, reject) {
-      const xhr = new XMLHttpRequest();
-      if (window.__cloudRegisterXhr) window.__cloudRegisterXhr(xhr);
-      xhr.open('POST', up.uploadUrl, true);
-      try {
-        xhr.setRequestHeader('Authorization', up.authorizationToken);
-        xhr.setRequestHeader('X-Bz-File-Name', encodeB2FileName(safeName));
-        xhr.setRequestHeader('Content-Type', (file.type && file.type.length) ? file.type : 'b2/x-auto');
-        xhr.setRequestHeader('X-Bz-Content-Sha1', sha1);
-      } catch (e) {}
-      xhr.upload.onprogress = function(ev) {
-        if (!ev.lengthComputable) return;
-        const pct = Math.min(99.5, (ev.loaded / ev.total) * 100);
-        if (typeof progressCallback === 'function') progressCallback(pct);
-      };
-      xhr.onload = function() {
-        if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try { resolve(JSON.parse(xhr.responseText || '{}')); }
-          catch (e) { resolve({}); }
-        } else {
-          reject(new Error('B2 upload failed: ' + xhr.status + ' ' + String(xhr.responseText || '').slice(0, 120)));
-        }
-      };
-      xhr.onerror = function() {
-        if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
-        reject(new Error('B2 network error during upload'));
-      };
-      xhr.onabort = function() {
-        if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
-        reject(new Error('cancelled'));
-      };
-      xhr.timeout = 0;
-      xhr.send(buf);
-    });
+    const ct = (file.type && file.type.length) ? file.type : 'b2/x-auto';
+    const blobBody = (buf instanceof Blob) ? buf : new Blob([buf], { type: ct });
+
+    async function b2XhrUpload() {
+      return await new Promise(function(resolve, reject) {
+        const xhr = new XMLHttpRequest();
+        if (window.__cloudRegisterXhr) window.__cloudRegisterXhr(xhr);
+        xhr.open('POST', up.uploadUrl, true);
+        try {
+          xhr.setRequestHeader('Authorization', up.authorizationToken);
+          xhr.setRequestHeader('X-Bz-File-Name', encodeB2FileName(safeName));
+          xhr.setRequestHeader('Content-Type', ct);
+          xhr.setRequestHeader('X-Bz-Content-Sha1', sha1);
+        } catch (e) {}
+        xhr.upload.onprogress = function(ev) {
+          if (!ev.lengthComputable) return;
+          const pct = Math.min(99.5, (ev.loaded / ev.total) * 100);
+          if (typeof progressCallback === 'function') progressCallback(pct);
+        };
+        xhr.onload = function() {
+          if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try { resolve(JSON.parse(xhr.responseText || '{}')); }
+            catch (e) { resolve({}); }
+          } else {
+            reject(new Error('B2 upload failed: ' + xhr.status + ' ' + String(xhr.responseText || '').slice(0, 160)));
+          }
+        };
+        xhr.onerror = function() {
+          if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+          reject(new Error('B2 network error during upload'));
+        };
+        xhr.onabort = function() {
+          if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
+          reject(new Error('cancelled'));
+        };
+        xhr.timeout = 0;
+        xhr.send(blobBody);
+      });
+    }
+
+    async function b2ProxyUpload() {
+      const proxy = String(b2.proxyUrl || '').replace(/\/$/, '');
+      if (!proxy) throw new Error('B2 network error during upload');
+      if (typeof progressCallback === 'function') progressCallback(30);
+      const u8 = buf instanceof ArrayBuffer ? new Uint8Array(buf) : new Uint8Array(await blobBody.arrayBuffer());
+      const chunkSize = 0x8000;
+      const chunks = [];
+      for (let i = 0; i < u8.length; i += chunkSize) {
+        chunks.push(String.fromCharCode.apply(null, u8.subarray(i, i + chunkSize)));
+      }
+      const bodyB64 = btoa(chunks.join(''));
+      if (typeof progressCallback === 'function') progressCallback(55);
+      const res = await fetch(proxy, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: up.uploadUrl,
+          method: 'POST',
+          headers: {
+            Authorization: up.authorizationToken,
+            'X-Bz-File-Name': encodeB2FileName(safeName),
+            'Content-Type': ct,
+            'X-Bz-Content-Sha1': sha1
+          },
+          bodyB64: bodyB64,
+          isBinaryResponse: false
+        })
+      });
+      const pack = await res.json().catch(function(){ return {}; });
+      if (!res.ok) throw new Error(pack.error || pack.message || ('Proxy HTTP ' + res.status));
+      const st = pack.status != null ? pack.status : res.status;
+      if (!(st >= 200 && st < 300)) {
+        throw new Error('B2 upload failed: ' + st + ' ' + String(pack.text || pack.message || '').slice(0, 160));
+      }
+      if (typeof progressCallback === 'function') progressCallback(95);
+      return pack.json || {};
+    }
+
+    let result;
+    try {
+      result = await b2XhrUpload();
+    } catch (directErr) {
+      if (directErr && String(directErr.message || '').toLowerCase().indexOf('cancel') >= 0) throw directErr;
+      if (b2.proxyUrl && String(b2.proxyUrl).trim()) {
+        console.warn('[B2] direct upload failed, trying proxy', directErr);
+        result = await b2ProxyUpload();
+      } else {
+        throw directErr;
+      }
+    }
 
     try {
       await saveFileMeta(result.fileName || safeName, result.fileId, file);
@@ -17770,7 +17826,7 @@ async function listAllFiles(forcedProvider) {
                 reject(new Error('cancelled'));
               };
               xhr.timeout = 0;
-              xhr.send(chunkBuf);
+              xhr.send(chunkBuf instanceof Blob ? chunkBuf : new Blob([chunkBuf]));
             });
 
             uploadedBytes += partSize;
