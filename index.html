@@ -15101,76 +15101,94 @@ async function listInfiniFiles() {
       setCloudBgUpload(true, 'Preparing download…', 0);
     }
     setStatus('Downloading…', null);
-    // Yield a frame so the chip paints before network work
-    await new Promise(function(r) { requestAnimationFrame(function() { requestAnimationFrame(r); }); });
+    // Everything below is wrapped in try/finally so the bottom "Infini +
+    // DL · N%" chip and window.__cloudDownloading ALWAYS get cleared when
+    // this function exits — success, thrown error, or cancel alike. The
+    // B2 sibling (downloadCloudFile) already does this with its own
+    // try/catch; this one previously only cleared state on the success
+    // path (after the final a.click()), so any failure partway through
+    // (network error, bad auth header, rejected/aborted XHR, etc.) left
+    // __cloudDownloading permanently true and the progress chip stuck at
+    // whatever percent it last painted — exactly the "pill never goes
+    // away after it reaches 100%" bug.
+    try {
+      const rel = (String(fileName).indexOf('/') >= 0) ? fileName : cloudJoinPath(cloudCwd(), fileName);
+      const targetUrl = cloudPathUrl(rel);
+      const finalUrl = (typeof infiniProxyUrl === 'function')
+        ? infiniProxyUrl(targetUrl)
+        : (function() {
+            const proxy = (infini.proxyUrl || '').trim().replace(/\/$/, '');
+            if (!proxy) return targetUrl;
+            return proxy + (proxy.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(targetUrl);
+          })();
 
-    const rel = (String(fileName).indexOf('/') >= 0) ? fileName : cloudJoinPath(cloudCwd(), fileName);
-    const targetUrl = cloudPathUrl(rel);
-    const finalUrl = (typeof infiniProxyUrl === 'function')
-      ? infiniProxyUrl(targetUrl)
-      : (function() {
-          const proxy = (infini.proxyUrl || '').trim().replace(/\/$/, '');
-          if (!proxy) return targetUrl;
-          return proxy + (proxy.indexOf('?') >= 0 ? '&' : '?') + 'url=' + encodeURIComponent(targetUrl);
-        })();
-
-    const blob = await new Promise(function(resolve, reject) {
-      const xhr = new XMLHttpRequest();
-      if (window.__cloudRegisterXhr) window.__cloudRegisterXhr(xhr);
-      else window.__cloudXhr = xhr;
-      window.__cloudCancelFlag = false;
-      xhr.open('GET', finalUrl, true);
-      xhr.responseType = 'blob';
-      try {
-        xhr.setRequestHeader('Authorization', infiniAuthHeader());
-      } catch (e) {}
-      xhr.timeout = 0;
-      xhr.onprogress = function(ev) {
-        if (!ev.lengthComputable) {
-          if (typeof setCloudBgUpload === 'function') {
-            setCloudBgUpload(true, 'Downloading…', null);
+      const blob = await new Promise(function(resolve, reject) {
+        const xhr = new XMLHttpRequest();
+        if (window.__cloudRegisterXhr) window.__cloudRegisterXhr(xhr);
+        else window.__cloudXhr = xhr;
+        window.__cloudCancelFlag = false;
+        xhr.open('GET', finalUrl, true);
+        xhr.responseType = 'blob';
+        try {
+          xhr.setRequestHeader('Authorization', infiniAuthHeader());
+        } catch (e) {}
+        xhr.timeout = 0;
+        xhr.onprogress = function(ev) {
+          if (!ev.lengthComputable) {
+            if (typeof setCloudBgUpload === 'function') {
+              setCloudBgUpload(true, 'Downloading…', null);
+            }
+            return;
           }
-          return;
-        }
-        const pct = Math.min(99.5, (ev.loaded / ev.total) * 100);
-        if (typeof setCloudBgUpload === 'function') {
-          setCloudBgUpload(true, 'Downloading ' + formatBytes(ev.loaded) + ' / ' + formatBytes(ev.total), pct);
-        }
-      };
-      xhr.onload = function() {
-        window.__cloudXhr = null;
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve(xhr.response);
-        } else {
-          reject(new Error('Infini download failed (' + xhr.status + ')'));
-        }
-      };
-      xhr.onerror = function() {
-        window.__cloudXhr = null;
-        reject(new Error('Network error during download'));
-      };
-      xhr.onabort = function() {
-        window.__cloudXhr = null;
-        reject(new Error('cancelled'));
-      };
-      xhr.ontimeout = function() {
-        window.__cloudXhr = null;
-        reject(new Error('Download timed out'));
-      };
-      xhr.send();
-    });
+          const pct = Math.min(99.5, (ev.loaded / ev.total) * 100);
+          if (typeof setCloudBgUpload === 'function') {
+            setCloudBgUpload(true, 'Downloading ' + formatBytes(ev.loaded) + ' / ' + formatBytes(ev.total), pct);
+          }
+        };
+        xhr.onload = function() {
+          window.__cloudXhr = null;
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(xhr.response);
+          } else {
+            reject(new Error('Infini download failed (' + xhr.status + ')'));
+          }
+        };
+        xhr.onerror = function() {
+          window.__cloudXhr = null;
+          reject(new Error('Network error during download'));
+        };
+        xhr.onabort = function() {
+          window.__cloudXhr = null;
+          reject(new Error('cancelled'));
+        };
+        xhr.ontimeout = function() {
+          window.__cloudXhr = null;
+          reject(new Error('Download timed out'));
+        };
+        xhr.send();
+      });
 
-    if (typeof setCloudBgUpload === 'function') {
-      setCloudBgUpload(true, 'Saving file…', 100);
+      if (typeof setCloudBgUpload === 'function') {
+        setCloudBgUpload(true, 'Saving file…', 100);
+      }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = (String(fileName||'').split('/').pop() || 'download').replace(/[^\w.\-()+ ]+/g, '_');
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+      setStatus('Download complete.', true);
+    } catch (e) {
+      if (e && String(e.message || e).toLowerCase().indexOf('cancel') >= 0) {
+        setStatus('Download cancelled.', null);
+      } else {
+        setStatus('Download: ' + (typeof explainFetchError === 'function' ? explainFetchError(e) : (e && e.message || e)), false);
+      }
+      throw e;
+    } finally {
+      window.__cloudDownloading = false;
+      if (typeof setCloudBgUpload === 'function') setCloudBgUpload(false);
     }
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = (String(fileName||'').split('/').pop() || 'download').replace(/[^\w.\-()+ ]+/g, '_');
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
-    window.__cloudDownloading = false;
-    if (typeof setCloudBgUpload === 'function') setCloudBgUpload(false);
   }
 
   function guessMimeFromName(name) {
