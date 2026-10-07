@@ -18324,58 +18324,91 @@ async function listAllFiles(forcedProvider) {
 
       const workers = [];
       for (let w = 0; w < CONC; w++) workers.push(worker());
-      await Promise.all(workers);
-      if (cancelledBatch) {
-        setStatus('Upload cancelled.', null);
-        if (prog) { prog.style.color = 'var(--text-dim)'; prog.textContent = ''; }
+      // try/finally around the whole post-loop cleanup: if ANYTHING below
+      // throws unexpectedly (a DOM lookup, a notification call, etc.),
+      // the provider's progress flag and the bottom chip MUST still get
+      // cleared in the finally block — otherwise this function returns
+      // early with window.__cloudProg[provider].active still true and no
+      // setTimeout ever scheduled to flip it off, which is exactly what
+      // left the "B2/Infini + DL · 100%" chip stuck on screen forever
+      // after an upload actually finished.
+      try {
+        await Promise.all(workers);
+        if (cancelledBatch) {
+          setStatus('Upload cancelled.', null);
+          if (prog) { prog.style.color = 'var(--text-dim)'; prog.textContent = ''; }
+        }
+
+        const stillBusyPeek = (function() {
+          const jobs = window.__cloudJobs || {};
+          const otherProvider = provider === 'infini' ? 'b2' : 'infini';
+          return (jobs[otherProvider] || 0) > 0;
+        })();
+
+        if (prog) {
+          prog.textContent = completed + '/' + files.length + ' file(s) uploaded (' + tag + ').';
+        }
+        try {
+          if (window.clearCloudUploadNotification) {
+            window.clearCloudUploadNotification(
+              completed > 0 ? (tag + ' upload complete') : (tag + ' upload ended'),
+              completed + '/' + files.length + ' file(s)'
+            );
+          }
+        } catch (eDone) {}
+        try { releaseCloudWakeLock(); } catch (eWL) {}
+
+        if (!cancelledBatch && completed > 0 && typeof setCloudProviderProgress === 'function') {
+          setCloudProviderProgress(provider, true, tag + ': ' + completed + '/' + files.length + ' done', 100);
+        } else if (!cancelledBatch && completed > 0 && typeof setCloudBgUpload === 'function') {
+          setCloudBgUpload(true, completed + '/' + files.length + ' done', 100);
+        }
+      } finally {
+        try {
+          window.__cloudJobs[provider] = Math.max(0, (window.__cloudJobs[provider] || 1) - 1);
+        } catch (e) {}
+
+        const stillBusy = ((window.__cloudJobs && window.__cloudJobs.b2) || 0) + ((window.__cloudJobs && window.__cloudJobs.infini) || 0) > 0;
+
+        // Always clear this provider's own progress state — success,
+        // cancel, or unexpected throw alike. A short delay lets the
+        // "N/N done · 100%" state flash briefly before disappearing;
+        // on an unexpected error path there's nothing meaningful to
+        // flash, so clear immediately instead of leaving it stuck.
         try {
           if (typeof setCloudProviderProgress === 'function') {
-            setCloudProviderProgress(provider, false);
+            setTimeout(function() {
+              setCloudProviderProgress(provider, false);
+              if (!stillBusy) window.__cloudUploading = false;
+            }, (cancelledBatch) ? 0 : (stillBusy ? 400 : 1600));
+          } else if (typeof setCloudBgUpload === 'function') {
+            if (stillBusy && !cancelledBatch) {
+              setCloudBgUpload(true, 'Other cloud still uploading…', null);
+            } else {
+              setTimeout(function(){ setCloudBgUpload(false); }, cancelledBatch ? 0 : 1800);
+              if (!stillBusy) window.__cloudUploading = false;
+            }
+          } else {
+            // Neither helper exists (shouldn't happen) — still force the
+            // raw DOM/state clear directly rather than leaving it stuck.
+            window.__cloudProg = window.__cloudProg || {};
+            window.__cloudProg[provider === 'infini' ? 'infini' : 'b2'] = { active: false, text: '', pct: 0 };
+            if (typeof paintCloudTransferUI === 'function') paintCloudTransferUI();
+            if (!stillBusy) window.__cloudUploading = false;
           }
-          if (typeof setCloudBgUpload === 'function') setCloudBgUpload(false);
-          window.__cloudProg = window.__cloudProg || {};
-          window.__cloudProg[provider === 'infini' ? 'infini' : 'b2'] = { active: false, text: '', pct: 0 };
-          if (typeof paintCloudTransferUI === 'function') paintCloudTransferUI();
-          var fill = document.getElementById('cloudUploadInlineBarFill');
-          if (fill) fill.style.width = '0%';
-          var ib = document.getElementById('cloudUploadInlineBar');
-          if (ib) ib.style.display = 'none';
-          var bg = document.getElementById('cloudBgUpload');
-          if (bg) bg.style.display = 'none';
-        } catch (eClr) {}
-      }
-
-      try {
-        window.__cloudJobs[provider] = Math.max(0, (window.__cloudJobs[provider] || 1) - 1);
-      } catch (e) {}
-
-      const stillBusy = ((window.__cloudJobs && window.__cloudJobs.b2) || 0) + ((window.__cloudJobs && window.__cloudJobs.infini) || 0) > 0;
-
-      if (prog) {
-        prog.textContent = completed + '/' + files.length + ' file(s) uploaded (' + tag + ').';
-      }
-      try {
-        if (window.clearCloudUploadNotification) {
-          window.clearCloudUploadNotification(
-            completed > 0 ? (tag + ' upload complete') : (tag + ' upload ended'),
-            completed + '/' + files.length + ' file(s)'
-          );
-        }
-      } catch (eDone) {}
-      try { releaseCloudWakeLock(); } catch (eWL) {}
-      if (typeof setCloudProviderProgress === 'function') {
-        if (completed > 0) setCloudProviderProgress(provider, true, tag + ': ' + completed + '/' + files.length + ' done', 100);
-        setTimeout(function() {
-          setCloudProviderProgress(provider, false);
-          if (!stillBusy) window.__cloudUploading = false;
-        }, stillBusy ? 400 : 1600);
-      } else if (typeof setCloudBgUpload === 'function') {
-        if (stillBusy) {
-          setCloudBgUpload(true, 'Other cloud still uploading…', null);
-        } else {
-          if (completed > 0) setCloudBgUpload(true, completed + '/' + files.length + ' done', 100);
-          setTimeout(function(){ setCloudBgUpload(false); }, 1800);
-          window.__cloudUploading = false;
+        } catch (eClr) {
+          // Last-resort direct clear if even the helpers above threw.
+          try {
+            window.__cloudProg = window.__cloudProg || {};
+            window.__cloudProg[provider === 'infini' ? 'infini' : 'b2'] = { active: false, text: '', pct: 0 };
+            window.__cloudUploading = false;
+            var fill = document.getElementById('cloudUploadInlineBarFill');
+            if (fill) fill.style.width = '0%';
+            var ib = document.getElementById('cloudUploadInlineBar');
+            if (ib) ib.classList.remove('show');
+            var bg = document.getElementById('cloudBgUpload');
+            if (bg) bg.classList.remove('show');
+          } catch (eLast) {}
         }
       }
 
