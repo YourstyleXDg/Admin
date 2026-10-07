@@ -14797,19 +14797,24 @@ async function listInfiniFiles() {
   // in order (see the big comment further down about proxies silently
   // overwriting instead of appending if that order/header is ever lost) —
   // that correctness requirement means this path can't be parallelized
-  // the way B2's part upload was. The lever that's still safe to pull for
-  // large files is chunk SIZE: a fixed 16MB chunk means a 10GB file is
-  // ~640 sequential round-trips, each one paying full request/response
-  // overhead — that's the main reason large Infini uploads crawl/glitch
-  // compared to their actual available bandwidth. Scaling the chunk size
-  // up with file size (still sequential, still one chunk in flight at a
-  // time) cuts that round-trip count drastically without touching the
-  // ordering guarantee the correctness fix depends on.
+  // the way B2's part upload was. Chunk SIZE is still a safe lever for
+  // large files, but it's a genuine trade-off against the upload's own
+  // Worker proxy: each chunk's "done" signal to the browser is upload-to-
+  // Worker finishing, not Worker-to-Teracloud — those two legs have very
+  // different speeds, so the XHR's upload.onprogress can look "finished"
+  // for a chunk well before the Worker has actually relayed it onward,
+  // then the browser just waits (no progress events at all) for xhr.onload.
+  // Bigger chunks mean fewer round-trips (good for raw throughput) but a
+  // LONGER blind wait per chunk with no visible progress (bad for "is
+  // this actually uploading?" feedback) — a 128MB chunk can leave the bar
+  // motionless for a long stretch. Capped at 48MB here so a chunk's own
+  // blind-wait window stays short enough that the bar keeps visibly
+  // moving, while still cutting round-trips well below the original flat
+  // 16MB for very large files.
   function infiniChunkSizeFor(totalBytes) {
     const GB = 1024 * 1024 * 1024;
-    if (totalBytes >= 8 * GB) return 128 * 1024 * 1024;  // 8GB+  -> 128MB chunks (~80 round-trips for 10GB)
-    if (totalBytes >= 2 * GB) return 64 * 1024 * 1024;   // 2-8GB -> 64MB chunks
-    if (totalBytes >= 512 * 1024 * 1024) return 32 * 1024 * 1024; // 512MB-2GB -> 32MB chunks
+    if (totalBytes >= 2 * GB) return 48 * 1024 * 1024;   // 2GB+ -> 48MB chunks (~215 round-trips for 10GB, still responsive)
+    if (totalBytes >= 512 * 1024 * 1024) return 24 * 1024 * 1024; // 512MB-2GB -> 24MB chunks
     return INFINI_CHUNK_SIZE; // under 512MB -> keep the original 16MB (best progress granularity)
   }
 
@@ -14877,31 +14882,73 @@ async function listInfiniFiles() {
     delete hdrs['Content-Length'];
     delete hdrs['content-length'];
 
+    // The browser's upload.onprogress only covers the browser->Worker leg.
+    // Once that finishes, the Worker is still relaying the data on to
+    // Teracloud — a leg the browser has zero visibility into — so for a
+    // (potentially long, on a big chunk) stretch, no progress event fires
+    // at all and the bar looks dead or simply never appears. This wraps
+    // onProgress with a heartbeat: if ~900ms passes with no real progress
+    // event, it nudges the UI forward slightly (capped well short of
+    // 100% of this chunk) so it's visibly still working rather than
+    // frozen. Any genuine onprogress tick immediately takes over again.
+    let lastRealLoaded = 0;
+    let heartbeatTimer = null;
+    function wrappedProgress(loaded, total) {
+      lastRealLoaded = loaded;
+      if (typeof onProgress === 'function') onProgress(loaded, total);
+    }
+    function startHeartbeat(total) {
+      stopHeartbeat();
+      let pulse = 0;
+      heartbeatTimer = setInterval(function() {
+        pulse++;
+        // Nudge up to ~92% of this chunk while waiting on the invisible
+        // relay leg — never claims the chunk is actually done.
+        const nudged = Math.min(total * 0.92, lastRealLoaded + pulse * (total * 0.03));
+        if (typeof onProgress === 'function') onProgress(nudged, total);
+      }, 900);
+    }
+    function stopHeartbeat() {
+      if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+    }
+
     let lastErr = null;
-    // 1) Direct to Teracloud (fastest when CORS allows)
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        return await xhrPutBlob(targetUrl, blob, hdrs, onProgress);
-      } catch (e) {
-        lastErr = e;
-        const st = e && e.status;
-        if (st && st >= 400 && st < 500 && st !== 408 && st !== 429) break; // fall to proxy
-        await sleepMs(200 * attempt);
+    try {
+      // 1) Direct to Teracloud (fastest when CORS allows)
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          startHeartbeat(blob.size || 0);
+          const r = await xhrPutBlob(targetUrl, blob, hdrs, wrappedProgress);
+          stopHeartbeat();
+          return r;
+        } catch (e) {
+          stopHeartbeat();
+          lastErr = e;
+          const st = e && e.status;
+          if (st && st >= 400 && st < 500 && st !== 408 && st !== 429) break; // fall to proxy
+          await sleepMs(200 * attempt);
+        }
       }
-    }
-    // 2) Via CORS Worker proxy
-    const finalUrl = infiniProxyUrl(targetUrl);
-    for (let attempt = 1; attempt <= INFINI_MAX_RETRIES; attempt++) {
-      try {
-        return await xhrPutBlob(finalUrl, blob, hdrs, onProgress);
-      } catch (e) {
-        lastErr = e;
-        const st = e && e.status;
-        if (st && st >= 400 && st < 500 && st !== 408 && st !== 429) throw e;
-        await sleepMs(Math.min(3000, 250 * Math.pow(2, attempt - 1)));
+      // 2) Via CORS Worker proxy
+      const finalUrl = infiniProxyUrl(targetUrl);
+      for (let attempt = 1; attempt <= INFINI_MAX_RETRIES; attempt++) {
+        try {
+          startHeartbeat(blob.size || 0);
+          const r = await xhrPutBlob(finalUrl, blob, hdrs, wrappedProgress);
+          stopHeartbeat();
+          return r;
+        } catch (e) {
+          stopHeartbeat();
+          lastErr = e;
+          const st = e && e.status;
+          if (st && st >= 400 && st < 500 && st !== 408 && st !== 429) throw e;
+          await sleepMs(Math.min(3000, 250 * Math.pow(2, attempt - 1)));
+        }
       }
+      throw lastErr || new Error('Infini upload failed after retries');
+    } finally {
+      stopHeartbeat();
     }
-    throw lastErr || new Error('Infini upload failed after retries');
   }
 
   async function uploadInfiniFile(file, safeName, progressCallback) {
@@ -17735,7 +17782,26 @@ async function listAllFiles(forcedProvider) {
 
     const partSha1Array = [];
 
-    let uploadedBytes = 0;
+    // Per-part bytes-done, summed fresh on every progress tick instead of
+    // one shared mutable "uploadedBytes" counter. With several parts
+    // uploading in parallel, a shared counter requires each part's
+    // onprogress handler to know the OTHER parts' current progress too —
+    // the old code approximated that with a "baseDone" snapshot taken
+    // once before each part started, which goes stale the moment any
+    // other concurrent part finishes and bumps the shared counter forward.
+    // The result: whichever part's onprogress fires next reports a total
+    // computed from a now-outdated baseline, so the percentage shown to
+    // the user jumps backward and forward instead of climbing steadily —
+    // the "0-1-0-1" flicker. Summing each part's own last-known progress
+    // is race-free by construction: every part only ever writes its own
+    // slot, so the sum is always consistent regardless of finish order.
+    const partBytesDone = new Array(totalParts).fill(0);
+    function reportTotalProgress() {
+      if (typeof progressCallback !== 'function') return;
+      let sum = 0;
+      for (let i = 0; i < partBytesDone.length; i++) sum += partBytesDone[i];
+      progressCallback(Math.min(99.5, (sum / file.size) * 100));
+    }
 
     try {
 
@@ -17825,8 +17891,6 @@ async function listAllFiles(forcedProvider) {
             const urlData = workerUrlCache[slotIndex];
 
             // Direct to B2 with live XHR progress
-            const partSize = end - start;
-            const baseDone = uploadedBytes;
             await new Promise(function(resolve, reject) {
               const xhr = new XMLHttpRequest();
               if (window.__cloudRegisterXhr) window.__cloudRegisterXhr(xhr);
@@ -17838,10 +17902,8 @@ async function listAllFiles(forcedProvider) {
               } catch (e) {}
               xhr.upload.onprogress = function(ev) {
                 if (!ev.lengthComputable) return;
-                const done = baseDone + ev.loaded;
-                if (typeof progressCallback === 'function') {
-                  progressCallback(Math.min(99.5, (done / file.size) * 100));
-                }
+                partBytesDone[partNumber - 1] = ev.loaded;
+                reportTotalProgress();
               };
               xhr.onload = function() {
                 if (window.__cloudUnregisterXhr) window.__cloudUnregisterXhr(xhr);
@@ -17860,15 +17922,21 @@ async function listAllFiles(forcedProvider) {
               xhr.send(chunkBuf);
             });
 
-            uploadedBytes += partSize;
-            if (typeof progressCallback === 'function') {
-              progressCallback(Math.min(99.5, (uploadedBytes / file.size) * 100));
-            }
+            // Mark this part fully done (in case the browser never fired a
+            // final onprogress at exactly 100% for it) and repaint.
+            partBytesDone[partNumber - 1] = end - start;
+            reportTotalProgress();
             console.log('[B2] Part ' + partNumber + '/' + totalParts + ' done');
             return;
           } catch (e) {
             lastErr = e;
             console.warn('[B2] Part ' + partNumber + ' attempt ' + attempt, e && e.message);
+            // A failed/aborted attempt may have left partial bytes counted
+            // (onprogress firing partway through before the error) — reset
+            // this part's slot to 0 so the total doesn't double-count a
+            // failed send once the retry starts sending from byte 0 again.
+            partBytesDone[partNumber - 1] = 0;
+            reportTotalProgress();
             // The cached URL for this slot may be stale/invalidated (B2
             // upload-part URLs can expire or be rejected after certain
             // errors) — drop it so the next attempt fetches a fresh one
