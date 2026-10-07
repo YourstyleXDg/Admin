@@ -14793,6 +14793,26 @@ async function listInfiniFiles() {
   const INFINI_CHUNK_SIZE = 16 * 1024 * 1024; // 16MB — better progress + less Worker memory stall
   const INFINI_MAX_RETRIES = 4;
 
+  // Infini's chunked upload writes Content-Range PUTs to ONE url, strictly
+  // in order (see the big comment further down about proxies silently
+  // overwriting instead of appending if that order/header is ever lost) —
+  // that correctness requirement means this path can't be parallelized
+  // the way B2's part upload was. The lever that's still safe to pull for
+  // large files is chunk SIZE: a fixed 16MB chunk means a 10GB file is
+  // ~640 sequential round-trips, each one paying full request/response
+  // overhead — that's the main reason large Infini uploads crawl/glitch
+  // compared to their actual available bandwidth. Scaling the chunk size
+  // up with file size (still sequential, still one chunk in flight at a
+  // time) cuts that round-trip count drastically without touching the
+  // ordering guarantee the correctness fix depends on.
+  function infiniChunkSizeFor(totalBytes) {
+    const GB = 1024 * 1024 * 1024;
+    if (totalBytes >= 8 * GB) return 128 * 1024 * 1024;  // 8GB+  -> 128MB chunks (~80 round-trips for 10GB)
+    if (totalBytes >= 2 * GB) return 64 * 1024 * 1024;   // 2-8GB -> 64MB chunks
+    if (totalBytes >= 512 * 1024 * 1024) return 32 * 1024 * 1024; // 512MB-2GB -> 32MB chunks
+    return INFINI_CHUNK_SIZE; // under 512MB -> keep the original 16MB (best progress granularity)
+  }
+
   function sleepMs(ms) {
     return new Promise(function(r) { setTimeout(r, ms); });
   }
@@ -14900,8 +14920,14 @@ async function listInfiniFiles() {
       }
     }
 
+    // Adaptive chunk size — small/medium files keep the original 16MB (best
+    // progress granularity); large files use bigger chunks so a 10GB
+    // upload isn't paying round-trip overhead ~640 times (see
+    // infiniChunkSizeFor's comment above).
+    const effectiveChunkSize = infiniChunkSizeFor(total);
+
     // Small file: single PUT with live progress
-    if (total <= INFINI_CHUNK_SIZE) {
+    if (total <= effectiveChunkSize) {
       await infiniPutWithRetry(
         targetUrl,
         file,
@@ -14913,10 +14939,10 @@ async function listInfiniFiles() {
       // Large file: sequential Content-Range chunks (robust through CORS proxy)
       let offset = 0;
       let chunkIndex = 0;
-      const totalChunks = Math.ceil(total / INFINI_CHUNK_SIZE);
+      const totalChunks = Math.ceil(total / effectiveChunkSize);
       while (offset < total) {
         if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
-        const end = Math.min(offset + INFINI_CHUNK_SIZE, total);
+        const end = Math.min(offset + effectiveChunkSize, total);
         const blob = file.slice(offset, end);
         const rangeHeader = 'bytes ' + offset + '-' + (end - 1) + '/' + total;
         chunkIndex++;
@@ -17714,16 +17740,70 @@ async function listAllFiles(forcedProvider) {
     try {
 
       // =====================================================
-      // PARALLEL PART UPLOAD (concurrency 3) + per-part retries
+      // PARALLEL PART UPLOAD + per-part retries
       // =====================================================
-
-      const B2_PART_CONCURRENCY = 3;
+      //
+      // Two changes from the earlier version, both aimed at large (multi-GB)
+      // files glitching/crawling instead of running at full speed:
+      //
+      // 1) Upload-part URLs are now CACHED PER WORKER SLOT instead of being
+      //    re-fetched from B2 before every single part. B2's own API docs
+      //    say a URL from b2_get_upload_part_url stays valid "for the duration
+      //    of the upload connection" and can be reused for more than one part
+      //    on the same connection — only re-fetch after it actually fails
+      //    (expired/invalidated). A 10GB file at 50MB parts is ~205 parts;
+      //    the old code did 205+ extra round-trips just to ask "where do I
+      //    upload next", serialized in front of every part's real upload.
+      //    That extra request-per-part tax is what produced the uneven
+      //    "glitchy" speed on slower/mobile connections.
+      //
+      // 2) Concurrency now SCALES UP for larger files (still capped for
+      //    memory safety — each in-flight part holds a full chunk buffer in
+      //    RAM) instead of a flat 3 workers regardless of file size. A small
+      //    file doesn't benefit much from more parallel parts; a 10GB file
+      //    very much does, as long as we don't hold too many chunk buffers
+      //    in memory at once.
       const B2_PART_RETRIES = 4;
+      const B2_PART_CONCURRENCY = (function() {
+        // Fewer than ~6 parts total: no point over-parallelizing.
+        if (totalParts <= 6) return Math.min(3, totalParts);
+        // Scale with part count, but cap at 6 concurrent 50MB chunk buffers
+        // (~300MB peak resident) — safe headroom on both desktop and mobile
+        // WebViews while still cutting a 10GB upload's wall-clock time hard.
+        return 6;
+      })();
 
       // Pre-size sha array so part numbers map correctly under concurrency
       for (let i = 0; i < totalParts; i++) partSha1Array[i] = null;
 
-      async function uploadOneB2Part(partNumber) {
+      async function getFreshPartUrl() {
+        const urlRes = await b2Fetch(
+          b2.apiUrl + '/b2api/v2/b2_get_upload_part_url',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: b2.authToken,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ fileId: fileId })
+          }
+        );
+        const urlData = await urlRes.json().catch(() => ({}));
+        if (!urlRes.ok) {
+          throw new Error(urlData.message || 'Failed to get part upload URL');
+        }
+        if (!urlData.uploadUrl || !urlData.authorizationToken) {
+          throw new Error('Invalid B2 part upload URL.');
+        }
+        return urlData;
+      }
+
+      // One cached { uploadUrl, authorizationToken } per concurrent worker
+      // slot, passed by reference so each worker can refresh its own slot
+      // in place after a failure without disturbing the others.
+      const workerUrlCache = new Array(B2_PART_CONCURRENCY).fill(null);
+
+      async function uploadOneB2Part(partNumber, slotIndex) {
         if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
         const start = (partNumber - 1) * B2_PART_SIZE;
         const end = Math.min(start + B2_PART_SIZE, file.size);
@@ -17736,24 +17816,13 @@ async function listAllFiles(forcedProvider) {
         for (let attempt = 1; attempt <= B2_PART_RETRIES; attempt++) {
           if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
           try {
-            const urlRes = await b2Fetch(
-              b2.apiUrl + '/b2api/v2/b2_get_upload_part_url',
-              {
-                method: 'POST',
-                headers: {
-                  Authorization: b2.authToken,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ fileId: fileId })
-              }
-            );
-            const urlData = await urlRes.json().catch(() => ({}));
-            if (!urlRes.ok) {
-              throw new Error(urlData.message || ('Failed to get part URL ' + partNumber));
+            // Reuse this slot's cached upload URL when we have one; only
+            // fetch a fresh one on the first use or after a prior failure
+            // cleared it below.
+            if (!workerUrlCache[slotIndex]) {
+              workerUrlCache[slotIndex] = await getFreshPartUrl();
             }
-            if (!urlData.uploadUrl || !urlData.authorizationToken) {
-              throw new Error('Invalid B2 part upload URL.');
-            }
+            const urlData = workerUrlCache[slotIndex];
 
             // Direct to B2 with live XHR progress
             const partSize = end - start;
@@ -17800,6 +17869,12 @@ async function listAllFiles(forcedProvider) {
           } catch (e) {
             lastErr = e;
             console.warn('[B2] Part ' + partNumber + ' attempt ' + attempt, e && e.message);
+            // The cached URL for this slot may be stale/invalidated (B2
+            // upload-part URLs can expire or be rejected after certain
+            // errors) — drop it so the next attempt fetches a fresh one
+            // instead of retrying the same bad URL repeatedly. A cancel
+            // doesn't need this, but it's harmless to always clear it.
+            workerUrlCache[slotIndex] = null;
             await new Promise(function(r) {
               setTimeout(r, Math.min(6000, 300 * Math.pow(2, attempt - 1)));
             });
@@ -17809,16 +17884,16 @@ async function listAllFiles(forcedProvider) {
       }
 
       let nextPart = 1;
-      async function partWorker() {
+      async function partWorker(slotIndex) {
         while (true) {
           const n = nextPart++;
           if (n > totalParts) return;
-          await uploadOneB2Part(n);
+          await uploadOneB2Part(n, slotIndex);
         }
       }
       const workers = [];
       for (let w = 0; w < Math.min(B2_PART_CONCURRENCY, totalParts); w++) {
-        workers.push(partWorker());
+        workers.push(partWorker(w));
       }
       await Promise.all(workers);
 
