@@ -14901,6 +14901,15 @@ async function listInfiniFiles() {
       stopHeartbeat();
       let pulse = 0;
       heartbeatTimer = setInterval(function() {
+        // Stop nudging once the transfer has been cancelled — the XHR
+        // abort() below will reject the in-flight promise shortly, but
+        // this timer isn't tied to that promise, so without this check
+        // it keeps reporting fake "still going" progress for up to
+        // another 900ms after the user already hit Cancel.
+        if (window.__cloudIsCancelled && window.__cloudIsCancelled()) {
+          stopHeartbeat();
+          return;
+        }
         pulse++;
         // Nudge up to ~92% of this chunk while waiting on the invisible
         // relay leg — never claims the chunk is actually done.
@@ -14912,21 +14921,36 @@ async function listInfiniFiles() {
       if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
     }
 
+    // Chunked (Content-Range) PUTs skip the direct-to-Teracloud attempt
+    // entirely and go straight to the Worker proxy. Direct browser->WebDAV
+    // requests almost never have permissive-enough CORS to begin with
+    // (that's the whole reason this proxy exists elsewhere in this file),
+    // so for a big chunk this "try direct first" step just burns a full
+    // chunk's worth of upload time against a connection that was always
+    // going to fail or get CORS-blocked — exactly the kind of long,
+    // progress-silent stall that makes a large upload's chip look dead or
+    // never show up, even with the heartbeat below running. Small, single-
+    // PUT files still try direct first since that path is fast either way.
+    const isChunkedPut = !!(headers && (headers['Content-Range'] || hdrs['Content-Range']));
+
     let lastErr = null;
     try {
-      // 1) Direct to Teracloud (fastest when CORS allows)
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        try {
-          startHeartbeat(blob.size || 0);
-          const r = await xhrPutBlob(targetUrl, blob, hdrs, wrappedProgress);
-          stopHeartbeat();
-          return r;
-        } catch (e) {
-          stopHeartbeat();
-          lastErr = e;
-          const st = e && e.status;
-          if (st && st >= 400 && st < 500 && st !== 408 && st !== 429) break; // fall to proxy
-          await sleepMs(200 * attempt);
+      // 1) Direct to Teracloud (fastest when CORS allows) — skipped for
+      // chunked large-file PUTs, see comment above.
+      if (!isChunkedPut) {
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            startHeartbeat(blob.size || 0);
+            const r = await xhrPutBlob(targetUrl, blob, hdrs, wrappedProgress);
+            stopHeartbeat();
+            return r;
+          } catch (e) {
+            stopHeartbeat();
+            lastErr = e;
+            const st = e && e.status;
+            if (st && st >= 400 && st < 500 && st !== 408 && st !== 429) break; // fall to proxy
+            await sleepMs(200 * attempt);
+          }
         }
       }
       // 2) Via CORS Worker proxy
@@ -14967,108 +14991,163 @@ async function listInfiniFiles() {
       }
     }
 
+    // Unlike B2 (which uploads parts into a separate, invisible in-progress
+    // "large file" that only becomes the real file once finished, and is
+    // explicitly cancelled server-side via b2_cancel_large_file on error),
+    // Infini's chunked upload writes STRAIGHT to the final file path with
+    // each Content-Range PUT. That means the moment the first chunk lands,
+    // a real (incomplete) file already exists at that path on the server.
+    // If the upload is cancelled or fails partway through, nothing used to
+    // clean that up — the next directory listing showed a truncated/
+    // corrupt file sitting where the real one should be ("residue of
+    // improper file"). hasWrittenAnyBytes tracks whether at least one PUT
+    // has actually landed; if the function exits any way other than a
+    // clean, fully-verified success, that partial remote file gets
+    // deleted so nothing broken is left behind for the user to find.
+    let hasWrittenAnyBytes = false;
+    let uploadSucceeded = false;
+
     // Adaptive chunk size — small/medium files keep the original 16MB (best
     // progress granularity); large files use bigger chunks so a 10GB
     // upload isn't paying round-trip overhead ~640 times (see
     // infiniChunkSizeFor's comment above).
     const effectiveChunkSize = infiniChunkSizeFor(total);
 
-    // Small file: single PUT with live progress
-    if (total <= effectiveChunkSize) {
-      await infiniPutWithRetry(
-        targetUrl,
-        file,
-        { 'Content-Type': ctype, 'Content-Length': String(total) },
-        function(loaded) { report(loaded); }
-      );
-      if (typeof progressCallback === 'function') progressCallback(100);
-    } else {
-      // Large file: sequential Content-Range chunks (robust through CORS proxy)
-      let offset = 0;
-      let chunkIndex = 0;
-      const totalChunks = Math.ceil(total / effectiveChunkSize);
-      while (offset < total) {
-        if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
-        const end = Math.min(offset + effectiveChunkSize, total);
-        const blob = file.slice(offset, end);
-        const rangeHeader = 'bytes ' + offset + '-' + (end - 1) + '/' + total;
-        chunkIndex++;
-        console.log('[Infini] chunk', chunkIndex + '/' + totalChunks, rangeHeader);
-        try {
-          await infiniPutWithRetry(
-            targetUrl,
-            blob,
-            {
-              'Content-Type': ctype,
-              'Content-Range': rangeHeader,
-              'Content-Length': String(end - offset)
-            },
-            function(loaded) { report(offset + loaded); }
-          );
-        } catch (e) {
-          // If server rejects Content-Range on first chunk, fall back to single PUT
-          // only when file is under ~90MB (Worker-safe). Otherwise surface clear error.
-          if (chunkIndex === 1 && offset === 0) {
-            const st = e && e.status;
-            if (st === 400 || st === 501 || st === 405 || st === 501) {
-              if (total <= 90 * 1024 * 1024) {
-                console.warn('[Infini] Content-Range not supported — single PUT fallback');
-                await infiniPutWithRetry(
-                  targetUrl,
-                  file,
-                  { 'Content-Type': ctype },
-                  function(loaded) { report(loaded); }
-                );
-                offset = total;
-                break;
-              }
-              throw new Error(
-                'Infini/proxy rejected chunked upload and file is too large for single PUT (' +
-                formatBytes(total) + '). Use a Worker that supports streaming, or split the file.'
-              );
-            }
-          }
-          throw e;
-        }
-        offset = end;
-        report(offset);
-      }
-      if (typeof progressCallback === 'function') progressCallback(100);
-
-      // Verify the file actually landed at full size. A chunked upload writes the
-      // SAME URL multiple times with different Content-Range headers — if any proxy
-      // between here and the server drops that header, each PUT silently overwrites
-      // the last one instead of extending it, and the file ends up only as big as
-      // whichever chunk was written last (this is exactly what "70MB file became a
-      // few hundred KB" looks like). A wrong final size is caught here immediately
-      // instead of only being noticed later when the file won't play.
-      try {
-        const pf = await infiniFetch(targetUrl, {
-          method: 'PROPFIND',
-          headers: { Depth: '0', 'Content-Type': 'application/xml; charset=utf-8' },
-          body: '<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:getcontentlength/></d:prop></d:propfind>'
-        });
-        const txt = await pf.text().catch(function() { return ''; });
-        const m = /<[a-z0-9]*:?getcontentlength[^>]*>\s*(\d+)\s*<\/[a-z0-9]*:?getcontentlength>/i.exec(txt);
-        const serverSize = m ? Number(m[1]) : -1;
-        if (serverSize >= 0 && serverSize !== total) {
-          throw new Error(
-            'Upload verification failed: server has ' + formatBytes(serverSize) + ' but file is ' + formatBytes(total) +
-            '. The upload proxy is dropping Content-Range on large files — check the Worker deployment. File NOT confirmed intact.'
-          );
-        }
-      } catch (e) {
-        if (e && /Upload verification failed/.test(e.message || '')) throw e;
-        // PROPFIND itself failing shouldn't block the upload result — just skip verification.
-      }
-    }
-
     try {
-      await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(safeName)), {
-        name: safeName, size: file.size || 0, uploadedAt: Date.now(), src_date: null
-      });
-    } catch (e) {}
-    return { fileName: safeName };
+      // Small file: single PUT with live progress
+      if (total <= effectiveChunkSize) {
+        await infiniPutWithRetry(
+          targetUrl,
+          file,
+          { 'Content-Type': ctype, 'Content-Length': String(total) },
+          function(loaded) { report(loaded); }
+        );
+        hasWrittenAnyBytes = true;
+        if (typeof progressCallback === 'function') progressCallback(100);
+      } else {
+        // Large file: sequential Content-Range chunks (robust through CORS proxy)
+        //
+        // Fire an immediate 0% progress tick BEFORE the first chunk even
+        // starts uploading. Small files reach their first real progress
+        // event almost instantly (one PUT, usually finishes in well under
+        // a second), so the bottom chip appears to "just show up" right
+        // away. Large files take noticeably longer to reach that same
+        // first event — name uniqueness checks, auth, opening the first
+        // XHR — and on a slow/throttled connection that gap can be long
+        // enough that the chip never gets its first "show" call before
+        // the user notices nothing has appeared. This makes large files
+        // behave the same as small ones: the chip shows immediately, at
+        // 0%, the moment the upload actually starts.
+        report(0);
+        let offset = 0;
+        let chunkIndex = 0;
+        const totalChunks = Math.ceil(total / effectiveChunkSize);
+        while (offset < total) {
+          if (window.__cloudIsCancelled && window.__cloudIsCancelled()) throw new Error('cancelled');
+          const end = Math.min(offset + effectiveChunkSize, total);
+          const blob = file.slice(offset, end);
+          const rangeHeader = 'bytes ' + offset + '-' + (end - 1) + '/' + total;
+          chunkIndex++;
+          console.log('[Infini] chunk', chunkIndex + '/' + totalChunks, rangeHeader);
+          try {
+            await infiniPutWithRetry(
+              targetUrl,
+              blob,
+              {
+                'Content-Type': ctype,
+                'Content-Range': rangeHeader,
+                'Content-Length': String(end - offset)
+              },
+              function(loaded) { report(offset + loaded); }
+            );
+            // The very first successful chunk PUT is the moment a real
+            // (incomplete) file starts existing at targetUrl on the
+            // server — from here on, a cancel/failure must clean it up.
+            hasWrittenAnyBytes = true;
+          } catch (e) {
+            // If server rejects Content-Range on first chunk, fall back to single PUT
+            // only when file is under ~90MB (Worker-safe). Otherwise surface clear error.
+            if (chunkIndex === 1 && offset === 0) {
+              const st = e && e.status;
+              if (st === 400 || st === 501 || st === 405 || st === 501) {
+                if (total <= 90 * 1024 * 1024) {
+                  console.warn('[Infini] Content-Range not supported — single PUT fallback');
+                  await infiniPutWithRetry(
+                    targetUrl,
+                    file,
+                    { 'Content-Type': ctype },
+                    function(loaded) { report(loaded); }
+                  );
+                  hasWrittenAnyBytes = true;
+                  offset = total;
+                  break;
+                }
+                throw new Error(
+                  'Infini/proxy rejected chunked upload and file is too large for single PUT (' +
+                  formatBytes(total) + '). Use a Worker that supports streaming, or split the file.'
+                );
+              }
+            }
+            throw e;
+          }
+          offset = end;
+          report(offset);
+        }
+        if (typeof progressCallback === 'function') progressCallback(100);
+
+        // Verify the file actually landed at full size. A chunked upload writes the
+        // SAME URL multiple times with different Content-Range headers — if any proxy
+        // between here and the server drops that header, each PUT silently overwrites
+        // the last one instead of extending it, and the file ends up only as big as
+        // whichever chunk was written last (this is exactly what "70MB file became a
+        // few hundred KB" looks like). A wrong final size is caught here immediately
+        // instead of only being noticed later when the file won't play.
+        try {
+          const pf = await infiniFetch(targetUrl, {
+            method: 'PROPFIND',
+            headers: { Depth: '0', 'Content-Type': 'application/xml; charset=utf-8' },
+            body: '<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:getcontentlength/></d:prop></d:propfind>'
+          });
+          const txt = await pf.text().catch(function() { return ''; });
+          const m = /<[a-z0-9]*:?getcontentlength[^>]*>\s*(\d+)\s*<\/[a-z0-9]*:?getcontentlength>/i.exec(txt);
+          const serverSize = m ? Number(m[1]) : -1;
+          if (serverSize >= 0 && serverSize !== total) {
+            throw new Error(
+              'Upload verification failed: server has ' + formatBytes(serverSize) + ' but file is ' + formatBytes(total) +
+              '. The upload proxy is dropping Content-Range on large files — check the Worker deployment. File NOT confirmed intact.'
+            );
+          }
+        } catch (e) {
+          if (e && /Upload verification failed/.test(e.message || '')) throw e;
+          // PROPFIND itself failing shouldn't block the upload result — just skip verification.
+        }
+      }
+
+      try {
+        await set(ref(db, 'settings/infiniFileMeta/' + metaPathKey(safeName)), {
+          name: safeName, size: file.size || 0, uploadedAt: Date.now(), src_date: null
+        });
+      } catch (e) {}
+      uploadSucceeded = true;
+      return { fileName: safeName };
+    } catch (err) {
+      // Cancelled or failed partway through: if any bytes actually landed
+      // on the server, targetUrl now holds a real but incomplete/corrupt
+      // file. Leaving it there is exactly the "residue of improper file"
+      // problem — the next listing shows a file that looks normal but is
+      // truncated or wrong-sized. Delete it so a cancelled/failed upload
+      // leaves nothing behind, the same guarantee B2's large-file path
+      // already has via b2_cancel_large_file.
+      if (hasWrittenAnyBytes && !uploadSucceeded) {
+        try {
+          console.warn('[Infini] Upload did not complete — removing partial file', relName);
+          await deleteInfiniFile(relName, false);
+        } catch (cleanupErr) {
+          console.warn('[Infini] Could not remove partial file after failed/cancelled upload:', cleanupErr);
+        }
+      }
+      throw err;
+    }
   }
 
   async function deleteInfiniFile(fileName, isFolder) {
