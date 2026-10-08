@@ -14501,7 +14501,7 @@ window.toggleCloudStatsDrop = async function() {
             }
             // Still register the leaf file so folder share gets all files
             const leaf = segs[segs.length - 1];
-            if (!leaf || leaf === '.' || leaf === '..' || leaf === '.keep') continue;
+            if (!leaf || leaf === '.' || leaf === '..' || leaf === '.keep' || leaf === '_folder_share.html') continue;
             if (isCollection) continue;
             if (seen[leaf]) continue;
             seen[leaf] = 1;
@@ -14523,7 +14523,7 @@ window.toggleCloudStatsDrop = async function() {
           }
           // cwdPrefix set and 2 segments: treat as file named segs[1] under folder segs[0]
           const leaf2 = segs[segs.length - 1];
-          if (!leaf2 || leaf2 === '.keep') continue;
+          if (!leaf2 || leaf2 === '.keep' || leaf2 === '_folder_share.html') continue;
           if (seen[leaf2]) continue;
           seen[leaf2] = 1;
           var leafFull2 = cwdPrefix ? (cwdPrefix + '/' + leaf2) : segs.join('/');
@@ -14546,6 +14546,11 @@ window.toggleCloudStatsDrop = async function() {
         if (!name || name === '.' || name === '..') continue;
         // Hide .keep placeholder files themselves
         if (name === '.keep') continue;
+        // Hide the generated folder-share gallery page from normal browsing —
+        // it's an implementation detail of "copy folder link", not a file
+        // the person uploaded. Re-sharing a folder overwrites it by this
+        // same fixed name, so it never needs to be "found" by name here.
+        if (name === '_folder_share.html') continue;
         if (seen[name] && isCollection) {
           // Upgrade existing entry to folder if we saw it as file first
           const existing = files.find(function(f) { return f.fileName === name; });
@@ -17190,10 +17195,19 @@ async function listAllFiles(forcedProvider) {
             rows.push({ name: fname, href: href, size: files[i].size });
           }
           const html = buildFolderShareHtml(rel, rows);
-          const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
-          try { await navigator.clipboard.writeText(dataUrl); }
-          catch (e) { window.prompt('Folder share (paste in browser address bar):', dataUrl); }
-          setStatus('Folder share copied · ' + rows.length + ' file(s) · paste in browser', true);
+          // A data: URL packs the WHOLE gallery page into the link text
+          // itself — fine for a couple of files, but browsers cap how
+          // much text they'll accept pasted into the address bar. Past
+          // that cap the URL gets silently truncated mid-HTML, so the
+          // page only ever renders however many <a> tags happened to
+          // survive intact before the cut — this is exactly why a
+          // 14-file folder was only ever showing 2. Uploading the
+          // gallery as a real file and linking to THAT instead has no
+          // such limit, the same way linking to any other file doesn't.
+          const shareUrl = await publishFolderShareHtml(rel, html, 'infini');
+          try { await navigator.clipboard.writeText(shareUrl); }
+          catch (e) { window.prompt('Folder share link (valid as long as the file exists):', shareUrl); }
+          setStatus('Folder share copied · ' + rows.length + ' file(s)', true);
           return;
         }
         // B2 folder
@@ -17234,10 +17248,16 @@ async function listAllFiles(forcedProvider) {
           return { name: String(f.fileName).split('/').pop(), href: href, size: f.contentLength || 0 };
         });
         const html = buildFolderShareHtml(rel, rows);
-        const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
-        try { await navigator.clipboard.writeText(dataUrl); }
-        catch (e) { window.prompt('Folder share (paste in browser address bar):', dataUrl); }
-        setStatus('Folder share copied · ' + rows.length + ' file(s) · valid 1h · paste in browser', true);
+        // See the matching comment in the Infini branch above: a data:
+        // URL truncates past some length and silently drops files from
+        // the rendered page. Upload the gallery as a real file instead.
+        // Note this gallery's own file links are still only valid for
+        // the 1-hour B2 authorization baked into them above, even though
+        // the gallery file itself persists — same as before.
+        const shareUrl = await publishFolderShareHtml(rel, html, 'b2');
+        try { await navigator.clipboard.writeText(shareUrl); }
+        catch (e) { window.prompt('Folder share link (file links valid 1h):', shareUrl); }
+        setStatus('Folder share copied · ' + rows.length + ' file(s) · valid 1h', true);
         return;
       }
 
@@ -17294,6 +17314,52 @@ async function listAllFiles(forcedProvider) {
       setStatus('Link: ' + (typeof explainFetchError === 'function' ? explainFetchError(e) : ((e && e.message) || e)), false);
     }
   }
+  // Uploads a generated folder-share gallery page as a REAL file (instead
+  // of packing the whole page into a data: URL, which silently truncates
+  // past some length and drops files from the rendered result — see the
+  // comments at both call sites). Returns a normal, open-in-browser link
+  // to that uploaded file, built the same way an individual file's share
+  // link already is for that provider. The uploaded gallery file is
+  // placed inside the shared folder itself, named so it's recognizable
+  // and sorts predictably, and re-shares safely overwrite the same name
+  // rather than piling up duplicates every time "copy folder link" is
+  // used again for the same folder.
+  async function publishFolderShareHtml(folderRelPath, html, provider) {
+    const blob = new Blob([html], { type: 'text/html' });
+    const shareFileName = '_folder_share.html';
+    const shareRel = cloudJoinPath(folderRelPath, shareFileName);
+
+    if (provider === 'infini') {
+      await uploadInfiniFile(blob, shareRel, null);
+      const target = cloudPathUrl(shareRel);
+      const proxy = (infini.proxyUrl || '').trim().replace(/\/$/, '');
+      const authB64 = btoa(unescape(encodeURIComponent((infini.user || '') + ':' + (infini.pass || ''))));
+      // Deliberately no filename/disposition=attachment here, unlike a
+      // normal file link — this is a page meant to be opened and viewed,
+      // not downloaded as a .html file.
+      return proxy
+        ? (proxy + '?url=' + encodeURIComponent(target) + '&a=' + encodeURIComponent(authB64))
+        : target;
+    }
+
+    // B2
+    await authorizeB2();
+    await uploadSmallFile(blob, shareRel, null);
+    const authRes = await b2Fetch(
+      b2.apiUrl + '/b2api/v2/b2_get_download_authorization',
+      {
+        method: 'POST',
+        headers: { Authorization: b2.authToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bucketId: b2.bucketId, fileNamePrefix: shareRel, validDurationInSeconds: 3600 })
+      }
+    );
+    const authData = await authRes.json().catch(function(){ return {}; });
+    if (!authRes.ok) throw new Error(authData.message || 'Gallery link auth failed');
+    const path = shareRel.split('/').map(encodeURIComponent).join('/');
+    return b2.downloadUrl + '/file/' + encodeURIComponent(b2.bucketName) + '/' + path +
+      '?Authorization=' + encodeURIComponent(authData.authorizationToken);
+  }
+
   function buildFolderShareHtml(folderName, rows) {
     const title = String(folderName || 'Folder').replace(/[<>&]/g, '');
     const items = (rows || []).map(function(r) {
